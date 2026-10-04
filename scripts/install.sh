@@ -64,7 +64,13 @@ if [ "$dry_run" = 0 ]; then
   relay_binary="$download_dir/codex-relay-$target"
  fi
  install -m 0755 "$relay_binary" "$install_bin"
- if [ "$role" = agent ]; then install -m 0600 "$token_file" "$config_dir/$machine.token"; fi
+ if [ "$role" = agent ]; then
+  # Enrollment may already be staged at its final path.
+  target_token="$config_dir/$machine.token"
+  [ ! -L "$token_file" ] && [ ! -L "$target_token" ] || { printf '%s\n' 'Token files must not be symlinks' >&2; exit 1; }
+  if [ "$token_file" -ef "$target_token" ]; then chmod 0600 "$target_token"
+  else install -m 0600 "$token_file" "$target_token"; fi
+ fi
 fi
 if [ "$role" = agent ]; then token_file="$config_dir/$machine.token"; fi
 unit_quote() { printf '"'; printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/%/%%/g'; printf '"'; }

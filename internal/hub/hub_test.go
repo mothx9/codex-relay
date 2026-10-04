@@ -177,21 +177,29 @@ type fakeBackend struct {
 	done      chan struct{}
 	once      sync.Once
 	snapshots int
+	title     string
+	epoch     string
+	requests  []protocol.PendingRequest
 }
 
 func (f *fakeBackend) Snapshot(context.Context) ([]protocol.Session, []protocol.PendingRequest, error) {
 	f.mu.Lock()
 	f.snapshots++
 	f.mu.Unlock()
-	return []protocol.Session{{ID: "m~t", MachineID: "m", ThreadID: "t", Status: protocol.Ready}}, nil, nil
+	return []protocol.Session{{ID: "m~t", MachineID: "m", ThreadID: "t", Title: f.title, Status: protocol.Ready}}, append([]protocol.PendingRequest(nil), f.requests...), nil
 }
 func (f *fakeBackend) Execute(_ context.Context, c protocol.Command) protocol.Result {
 	return protocol.Result{ID: c.ID, OK: true}
 }
 func (f *fakeBackend) Events() <-chan protocol.Event { return f.events }
 func (f *fakeBackend) Done() <-chan struct{}         { return f.done }
-func (f *fakeBackend) Cursor() (string, uint64)      { return "fake-epoch", 0 }
-func (f *fakeBackend) Close()                        { f.once.Do(func() { close(f.done) }) }
+func (f *fakeBackend) Cursor() (string, uint64) {
+	if f.epoch != "" {
+		return f.epoch, 0
+	}
+	return "fake-epoch", 0
+}
+func (f *fakeBackend) Close() { f.once.Do(func() { close(f.done) }) }
 func TestAgentReconnectAndHubRestart(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "db")
 	h, s, srv := testHub(t, path)
@@ -295,4 +303,60 @@ func TestRecoveryExpiresBuffersAndRevokesConnections(t *testing.T) {
 		t.Error("ephemeral context survived TTL")
 	}
 	h.mu.Unlock()
+}
+
+// A new Codex connection must replace stale requests and reload source state.
+func TestAgentReconnectAfterCodexRestart(t *testing.T) {
+	h, s, srv := testHub(t, filepath.Join(t.TempDir(), "db"))
+	defer s.Close()
+	defer srv.Close()
+	defer h.Close()
+	if err := s.Token("m", testToken); err != nil {
+		t.Fatal(err)
+	}
+	tokenFile := filepath.Join(t.TempDir(), "token")
+	if err := writeTestSecret(tokenFile, testToken); err != nil {
+		t.Fatal(err)
+	}
+	first := &fakeBackend{events: make(chan protocol.Event, 16), done: make(chan struct{}), title: "before restart", epoch: "first", requests: []protocol.PendingRequest{{ID: "old-request", MachineID: "m", SessionID: "m~t", ThreadID: "t", Kind: "command", Status: "pending", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(time.Hour)}}}
+	second := &fakeBackend{events: make(chan protocol.Event, 16), done: make(chan struct{}), title: "after restart", epoch: "second"}
+	opens := 0
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		done <- agent.Run(ctx, agent.Config{HubURL: srv.URL, TokenFile: tokenFile, MachineID: "m", Insecure: true, RetryMin: 10 * time.Millisecond, Open: func(context.Context, codex.Config) (codex.Backend, error) {
+			opens++
+			if opens == 1 {
+				return first, nil
+			}
+			return second, nil
+		}})
+	}()
+	await := func(title string, requestCount int) {
+		t.Helper()
+		deadline := time.Now().Add(5 * time.Second)
+		for time.Now().Before(deadline) {
+			h.mu.Lock()
+			ok := h.machines["m"].Status == protocol.Online && h.sessions["m~t"].Title == title && len(h.requests) == requestCount
+			h.mu.Unlock()
+			if ok {
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		t.Fatalf("snapshot not recovered: %s", title)
+	}
+	await("before restart", 1)
+	first.Close()
+	await("after restart", 0)
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("agent shutdown blocked")
+	}
+	if opens < 2 {
+		t.Fatal("Codex connection was not reopened")
+	}
 }
