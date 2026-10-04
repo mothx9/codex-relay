@@ -1,0 +1,256 @@
+package codex
+
+import (
+	"encoding/json"
+	"fmt"
+	"github.com/mothx9/codex-relay/internal/protocol"
+	"strings"
+	"time"
+)
+
+func activity(raw json.RawMessage) protocol.Activity {
+	var item struct {
+		ID      string `json:"id"`
+		Type    string `json:"type"`
+		Text    string `json:"text"`
+		Command string `json:"command"`
+		Output  string `json:"aggregatedOutput"`
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	_ = json.Unmarshal(raw, &item)
+	v := protocol.Activity{ID: item.ID, Kind: item.Type, Timestamp: time.Now().UTC()}
+	switch item.Type {
+	case "agentMessage":
+		v.Text = item.Text
+	case "userMessage":
+		for _, c := range item.Content {
+			if c.Type == "text" {
+				v.Text += c.Text
+			}
+		}
+	case "commandExecution":
+		v.Text = item.Command
+		if item.Output != "" {
+			v.Text += "\n" + item.Output
+		}
+	case "fileChange":
+		v.Text = "File changes"
+	case "mcpToolCall":
+		v.Text = "MCP tool call"
+	default:
+		return v
+	}
+	v.Text = protocol.Clip(v.Text, protocol.MaxText)
+	return v
+}
+func (a *Adapter) handle(m rpcMessage) {
+	var p struct {
+		ThreadID  string          `json:"threadId"`
+		TurnID    string          `json:"turnId"`
+		ItemID    string          `json:"itemId"`
+		Delta     string          `json:"delta"`
+		Diff      string          `json:"diff"`
+		RequestID json.RawMessage `json:"requestId"`
+		Status    status          `json:"status"`
+		Thread    thread          `json:"thread"`
+		Turn      turn            `json:"turn"`
+		Item      json.RawMessage `json:"item"`
+	}
+	if json.Unmarshal(m.Params, &p) != nil {
+		return
+	}
+	if len(m.ID) > 0 {
+		a.handleRequest(m, p.ThreadID, p.TurnID)
+		return
+	}
+	id := p.ThreadID
+	if id == "" {
+		id = p.Thread.ID
+	}
+	if id == "" {
+		return
+	}
+	a.mu.Lock()
+	s, known := a.sessions[id]
+	if m.Method == "thread/started" {
+		s = a.session(p.Thread, a.subscribed[id])
+		known = true
+	}
+	if !known {
+		a.mu.Unlock()
+		return
+	}
+	ev := protocol.Event{SessionID: s.ID, RawEvent: m.Method, TurnID: p.TurnID, ItemID: p.ItemID}
+	switch m.Method {
+	case "thread/started":
+		ev.Kind = "session"
+	case "thread/status/changed":
+		s.Status = Normalize(p.Status.Type, p.Status.Flags)
+		s.RawStatus = p.Status.Type
+		ev.Kind = "session"
+	case "thread/name/updated":
+		var v struct {
+			Name string `json:"threadName"`
+		}
+		_ = json.Unmarshal(m.Params, &v)
+		if v.Name != "" {
+			s.Title = protocol.Clip(v.Name, 128)
+		}
+		ev.Kind = "session"
+	case "thread/closed", "thread/archived", "thread/deleted":
+		s.Status = protocol.Inactive
+		s.ReadOnly = true
+		delete(a.subscribed, id)
+		ev.Kind = "session"
+	case "turn/started":
+		s.Status = protocol.Working
+		s.TurnID = p.Turn.ID
+		s.TurnStarted = time.Now().UTC()
+		ev.Kind = "turn_started"
+		ev.TurnID = p.Turn.ID
+	case "turn/completed":
+		s.TurnID = ""
+		s.TurnStarted = time.Time{}
+		s.Status = protocol.Ready
+		ev.Kind = "turn_completed"
+		ev.TurnID = p.Turn.ID
+		if p.Turn.Status == "failed" {
+			s.Status = protocol.Failed
+			ev.Kind = "failed"
+		}
+		ev.NotifyKey = s.ID + "/turn/" + p.Turn.ID
+	case "serverRequest/resolved":
+		rid := a.requestID(p.RequestID)
+		delete(a.requests, rid)
+		ev.Kind = "request_resolved"
+		ev.RequestID = rid
+	case "item/agentMessage/delta":
+		ev.Kind = "delta"
+		ev.Text = protocol.Clip(p.Delta, protocol.MaxText)
+	case "item/commandExecution/outputDelta":
+		ev.Kind = "command_output"
+		ev.Text = protocol.Clip(p.Delta, protocol.MaxText)
+	case "turn/diff/updated":
+		ev.Kind = "diff"
+		ev.Text = protocol.Clip(p.Diff, protocol.MaxText)
+	case "item/started", "item/completed":
+		v := activity(p.Item)
+		if v.Text == "" {
+			a.mu.Unlock()
+			return
+		}
+		v.TurnID = p.TurnID
+		ev.Kind = "activity"
+		ev.Activity = &v
+	default:
+		a.mu.Unlock()
+		return
+	}
+	switch ev.Kind {
+	case "session", "turn_started", "turn_completed", "failed", "request_resolved":
+		s.UpdatedAt = time.Now().UTC()
+		a.sessions[id] = s
+		ev.Session = &s
+	}
+	a.mu.Unlock()
+	a.emit(ev)
+}
+func (a *Adapter) requestID(raw json.RawMessage) string {
+	var s string
+	if json.Unmarshal(raw, &s) != nil {
+		s = string(raw)
+	}
+	return protocol.SessionID(a.cfg.MachineID, "request-"+s)
+}
+func (a *Adapter) handleRequest(m rpcMessage, threadID, turnID string) {
+	var p struct {
+		Reason    string            `json:"reason"`
+		Command   string            `json:"command"`
+		Cwd       string            `json:"cwd"`
+		ItemID    string            `json:"itemId"`
+		GrantRoot string            `json:"grantRoot"`
+		Available []json.RawMessage `json:"availableDecisions"`
+		Questions []struct {
+			ID       string            `json:"id"`
+			Header   string            `json:"header"`
+			Question string            `json:"question"`
+			Options  []protocol.Option `json:"options"`
+			Secret   bool              `json:"isSecret"`
+		} `json:"questions"`
+		Message     string          `json:"message"`
+		Mode        string          `json:"mode"`
+		StartedAtMs int64           `json:"startedAtMs"`
+		Network     json.RawMessage `json:"networkApprovalContext"`
+	}
+	if json.Unmarshal(m.Params, &p) != nil || threadID == "" {
+		return
+	}
+	now := time.Now().UTC()
+	r := protocol.PendingRequest{ID: a.requestID(m.ID), MachineID: a.cfg.MachineID, SessionID: protocol.SessionID(a.cfg.MachineID, threadID), ThreadID: threadID, TurnID: turnID, Description: protocol.Clip(p.Reason, 2048), Operation: protocol.Clip(p.Command, protocol.MaxText), Cwd: p.Cwd, Payload: m.Params, CreatedAt: now, ExpiresAt: now.Add(24 * time.Hour), Status: "pending", CanApprove: true}
+	if p.StartedAtMs > 0 {
+		r.CreatedAt = time.UnixMilli(p.StartedAtMs).UTC()
+	}
+	switch m.Method {
+	case "item/commandExecution/requestApproval":
+		r.Kind = "command_approval"
+		if len(p.Available) > 0 {
+			r.CanApprove = false
+			for _, d := range p.Available {
+				if string(d) == `"accept"` {
+					r.CanApprove = true
+				}
+			}
+		}
+		if r.Operation == "" && len(p.Network) > 0 {
+			r.Operation = "Network access: " + string(p.Network)
+		}
+	case "item/fileChange/requestApproval":
+		r.Kind = "file_approval"
+		r.Operation = "Apply proposed file changes"
+		if p.GrantRoot != "" {
+			r.Operation += " under " + p.GrantRoot
+		}
+	case "item/permissions/requestApproval":
+		r.Kind = "permissions_approval"
+		r.Operation = "Grant requested permissions for this turn"
+	case "item/tool/requestUserInput":
+		r.Kind = "user_input"
+		r.Description = "Codex requests your input"
+		for _, q := range p.Questions {
+			r.Questions = append(r.Questions, protocol.Question{ID: q.ID, Header: q.Header, Question: q.Question, Options: q.Options, Secret: q.Secret})
+		}
+	case "mcpServer/elicitation/request":
+		r.Kind = "mcp_elicitation"
+		r.Description = p.Message
+		r.Operation = "MCP elicitation (" + p.Mode + ")"
+		if p.Mode == "url" {
+			r.CanApprove = false
+		}
+	default:
+		r.Kind = "unsupported"
+		r.CanApprove = false
+		r.Description = "Resolve this request in local Codex: " + m.Method
+	}
+	if r.Description == "" {
+		r.Description = strings.ReplaceAll(r.Kind, "_", " ")
+	}
+	a.mu.Lock()
+	if len(a.requests) >= 128 {
+		a.mu.Unlock()
+		a.Close()
+		return
+	}
+	a.requests[r.ID] = pending{Request: r, RawID: m.ID, Method: m.Method, Params: m.Params}
+	s, ok := a.sessions[threadID]
+	if !ok {
+		s = protocol.Session{ID: r.SessionID, MachineID: a.cfg.MachineID, ThreadID: threadID, Cwd: p.Cwd, Title: "Thread " + protocol.Clip(threadID, 8)}
+	}
+	s.Status = protocol.NeedsYou
+	s.UpdatedAt = now
+	a.sessions[threadID] = s
+	a.mu.Unlock()
+	a.emit(protocol.Event{Kind: "request", SessionID: r.SessionID, Session: &s, Request: &r, RawEvent: m.Method, NotifyKey: fmt.Sprintf("%s/request/%s/%s", r.SessionID, r.TurnID, p.ItemID)})
+}
