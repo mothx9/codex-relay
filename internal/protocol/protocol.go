@@ -48,6 +48,7 @@ type Session struct {
 	QueueSupported bool      `json:"queue_supported"`
 }
 type Activity struct {
+	Truncated bool      `json:"truncated,omitempty"`
 	ID        string    `json:"id"`
 	TurnID    string    `json:"turn_id,omitempty"`
 	Kind      string    `json:"kind"`

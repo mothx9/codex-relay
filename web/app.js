@@ -394,8 +394,6 @@ function renderPending(s, connected) {
       box.append(
         node("pre", JSON.stringify(payload.permissions || {}, null, 2)),
       );
-    if (r.kind === "file_approval" && payload.grantRoot)
-      box.append(node("p", "Root richiesto: " + payload.grantRoot));
     const form = node("form");
     const fields = new Map();
     for (const q of r.questions || []) {
@@ -435,7 +433,7 @@ function renderPending(s, connected) {
     let mcp;
     if (r.kind === "mcp_elicitation") {
       box.append(
-        node("pre", JSON.stringify(payload.requestedSchema || {}, null, 2)),
+        node("pre", JSON.stringify(payload.input_schema || {}, null, 2)),
       );
       mcp = node("textarea");
       mcp.placeholder = "Risposta JSON conforme allo schema MCP";
@@ -524,7 +522,6 @@ function connect() {
   const socket = state.socket;
   let firstSnapshot = true;
   socket.onopen = () => {
-    state.online = true;
     state.retry = 0;
     render();
   };
@@ -536,6 +533,7 @@ function connect() {
       return;
     }
     if (m.type === "snapshot") {
+      state.online = true;
       state.machines = new Map(m.snapshot.machines.map((v) => [v.id, v]));
       state.sessions = new Map(m.snapshot.sessions.map((v) => [v.id, v]));
       state.requests = new Map(

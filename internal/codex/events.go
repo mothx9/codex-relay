@@ -51,6 +51,7 @@ func activity(raw json.RawMessage) protocol.Activity {
 	default:
 		return v
 	}
+	v.Truncated = len(v.Text) > protocol.MaxText
 	v.Text = protocol.Clip(v.Text, protocol.MaxText)
 	return v
 }
@@ -203,12 +204,14 @@ func (a *Adapter) handleRequest(m rpcMessage, threadID, turnID string) {
 		Mode        string          `json:"mode"`
 		StartedAtMs int64           `json:"startedAtMs"`
 		Network     json.RawMessage `json:"networkApprovalContext"`
+		Permissions json.RawMessage `json:"permissions"`
+		Schema      json.RawMessage `json:"requestedSchema"`
 	}
 	if json.Unmarshal(m.Params, &p) != nil || threadID == "" {
 		return
 	}
 	now := time.Now().UTC()
-	r := protocol.PendingRequest{ID: a.requestID(m.ID), MachineID: a.cfg.MachineID, SessionID: protocol.SessionID(a.cfg.MachineID, threadID), ThreadID: threadID, TurnID: turnID, Description: protocol.Clip(p.Reason, 2048), Operation: protocol.Clip(p.Command, protocol.MaxText), Cwd: p.Cwd, Payload: m.Params, CreatedAt: now, ExpiresAt: now.Add(24 * time.Hour), Status: "pending", CanApprove: true}
+	r := protocol.PendingRequest{ID: a.requestID(m.ID), MachineID: a.cfg.MachineID, SessionID: protocol.SessionID(a.cfg.MachineID, threadID), ThreadID: threadID, TurnID: turnID, Description: protocol.Clip(p.Reason, 2048), Operation: protocol.Clip(p.Command, protocol.MaxText), Cwd: p.Cwd, Payload: nil, CreatedAt: now, ExpiresAt: now.Add(24 * time.Hour), Status: "pending", CanApprove: true}
 	a.mu.Lock()
 	item, hasItem := a.items[threadID+"/"+p.ItemID]
 	a.mu.Unlock()
@@ -226,6 +229,9 @@ func (a *Adapter) handleRequest(m rpcMessage, threadID, turnID string) {
 		r.Kind = "command_approval"
 		if r.Operation == "" && hasItem {
 			r.Operation = item.Text
+			if item.Truncated {
+				r.CanApprove = false
+			}
 		}
 		if len(p.Available) > 0 {
 			r.CanApprove = false
@@ -241,7 +247,7 @@ func (a *Adapter) handleRequest(m rpcMessage, threadID, turnID string) {
 	case "item/fileChange/requestApproval":
 		r.Kind = "file_approval"
 		r.Operation = "Apply proposed file changes"
-		if hasItem {
+		if hasItem && !item.Truncated {
 			r.Operation = item.Text
 		} else {
 			r.CanApprove = false
@@ -261,7 +267,7 @@ func (a *Adapter) handleRequest(m rpcMessage, threadID, turnID string) {
 		}
 	case "mcpServer/elicitation/request":
 		r.Kind = "mcp_elicitation"
-		r.Description = p.Message
+		r.Description = protocol.Clip(p.Message, 2048)
 		r.Operation = "MCP elicitation (" + p.Mode + ")"
 		if p.Mode == "url" {
 			r.CanApprove = false
@@ -269,11 +275,27 @@ func (a *Adapter) handleRequest(m rpcMessage, threadID, turnID string) {
 	default:
 		r.Kind = "unsupported"
 		r.CanApprove = false
-		r.Description = "Resolve this request in local Codex: " + m.Method
+		r.Description = "Questa operazione richiede una risposta dal client Codex locale."
 	}
 	r.NotifyKey = fmt.Sprintf("%s/request/%s/%s/%s", r.SessionID, r.TurnID, r.Kind, p.ItemID)
 	if p.ItemID == "" {
 		r.NotifyKey += "/" + r.ID
+	}
+	// Only canonical display context crosses the adapter boundary. RPC response shape stays local.
+	contextFields := map[string]json.RawMessage{}
+	if len(p.Permissions) > 0 {
+		contextFields["permissions"] = p.Permissions
+	}
+	if len(p.Schema) > 0 {
+		contextFields["input_schema"] = p.Schema
+	}
+	if len(contextFields) > 0 {
+		r.Payload, _ = json.Marshal(contextFields)
+	}
+	if len(m.Params) > 64<<10 || len(p.Command) > protocol.MaxText || len(r.Operation) > protocol.MaxText || len(r.Payload) > 64<<10 {
+		r.CanApprove = false
+		r.Description = "Contesto troppo grande: approva soltanto dal client Codex locale."
+		r.Payload = nil
 	}
 	r.Operation = protocol.Clip(r.Operation, protocol.MaxText)
 	if r.Description == "" {
@@ -285,7 +307,11 @@ func (a *Adapter) handleRequest(m rpcMessage, threadID, turnID string) {
 		a.Close()
 		return
 	}
-	a.requests[r.ID] = pending{Request: r, RawID: m.ID, Method: m.Method, Params: m.Params}
+	params := m.Params
+	if len(params) > 64<<10 {
+		params = nil
+	}
+	a.requests[r.ID] = pending{Request: r, RawID: m.ID, Method: m.Method, Params: params}
 	s, ok := a.sessions[threadID]
 	if !ok {
 		s = protocol.Session{ID: r.SessionID, MachineID: a.cfg.MachineID, ThreadID: threadID, Cwd: p.Cwd, Title: "Thread " + protocol.Clip(threadID, 8)}
