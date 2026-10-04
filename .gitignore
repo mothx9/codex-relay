@@ -1,0 +1,9 @@
+/bin/
+/dist/
+/.relay/
+*.db
+*.db-wal
+*.db-shm
+*.secret
+*.token
+.env
