@@ -15,6 +15,11 @@ func activity(raw json.RawMessage) protocol.Activity {
 		Text    string `json:"text"`
 		Command string `json:"command"`
 		Output  string `json:"aggregatedOutput"`
+		Changes []struct {
+			Path string          `json:"path"`
+			Kind json.RawMessage `json:"kind"`
+			Diff string          `json:"diff"`
+		} `json:"changes"`
 		Content []struct {
 			Type string `json:"type"`
 			Text string `json:"text"`
@@ -38,6 +43,9 @@ func activity(raw json.RawMessage) protocol.Activity {
 		}
 	case "fileChange":
 		v.Text = "File changes"
+		for _, change := range item.Changes {
+			v.Text += "\n" + change.Path + " " + string(change.Kind) + "\n" + change.Diff
+		}
 	case "mcpToolCall":
 		v.Text = "MCP tool call"
 	default:
@@ -143,6 +151,17 @@ func (a *Adapter) handle(m rpcMessage) {
 			return
 		}
 		v.TurnID = p.TurnID
+		if v.Kind == "commandExecution" || v.Kind == "fileChange" {
+			key := id + "/" + v.ID
+			if _, exists := a.items[key]; !exists {
+				a.itemOrder = append(a.itemOrder, key)
+			}
+			a.items[key] = v
+			if len(a.itemOrder) > 128 {
+				delete(a.items, a.itemOrder[0])
+				a.itemOrder = a.itemOrder[1:]
+			}
+		}
 		ev.Kind = "activity"
 		ev.Activity = &v
 	default:
@@ -190,12 +209,24 @@ func (a *Adapter) handleRequest(m rpcMessage, threadID, turnID string) {
 	}
 	now := time.Now().UTC()
 	r := protocol.PendingRequest{ID: a.requestID(m.ID), MachineID: a.cfg.MachineID, SessionID: protocol.SessionID(a.cfg.MachineID, threadID), ThreadID: threadID, TurnID: turnID, Description: protocol.Clip(p.Reason, 2048), Operation: protocol.Clip(p.Command, protocol.MaxText), Cwd: p.Cwd, Payload: m.Params, CreatedAt: now, ExpiresAt: now.Add(24 * time.Hour), Status: "pending", CanApprove: true}
+	a.mu.Lock()
+	item, hasItem := a.items[threadID+"/"+p.ItemID]
+	a.mu.Unlock()
+	if r.Cwd == "" {
+		a.mu.Lock()
+		r.Cwd = a.sessions[threadID].Cwd
+		a.mu.Unlock()
+	}
 	if p.StartedAtMs > 0 {
 		r.CreatedAt = time.UnixMilli(p.StartedAtMs).UTC()
 	}
+	r.ExpiresAt = r.CreatedAt.Add(24 * time.Hour)
 	switch m.Method {
 	case "item/commandExecution/requestApproval":
 		r.Kind = "command_approval"
+		if r.Operation == "" && hasItem {
+			r.Operation = item.Text
+		}
 		if len(p.Available) > 0 {
 			r.CanApprove = false
 			for _, d := range p.Available {
@@ -210,6 +241,12 @@ func (a *Adapter) handleRequest(m rpcMessage, threadID, turnID string) {
 	case "item/fileChange/requestApproval":
 		r.Kind = "file_approval"
 		r.Operation = "Apply proposed file changes"
+		if hasItem {
+			r.Operation = item.Text
+		} else {
+			r.CanApprove = false
+			r.Description = "Proposed files unavailable: review and resolve in local Codex"
+		}
 		if p.GrantRoot != "" {
 			r.Operation += " under " + p.GrantRoot
 		}
@@ -238,6 +275,7 @@ func (a *Adapter) handleRequest(m rpcMessage, threadID, turnID string) {
 	if p.ItemID == "" {
 		r.NotifyKey += "/" + r.ID
 	}
+	r.Operation = protocol.Clip(r.Operation, protocol.MaxText)
 	if r.Description == "" {
 		r.Description = strings.ReplaceAll(r.Kind, "_", " ")
 	}

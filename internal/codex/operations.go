@@ -11,16 +11,32 @@ import (
 )
 
 func (a *Adapter) Snapshot(ctx context.Context) ([]protocol.Session, []protocol.PendingRequest, error) {
-	var list struct {
-		Data []thread `json:"data"`
+	var all []thread
+	cursor := ""
+	for len(all) < protocol.MaxSessions {
+		var page struct {
+			Data       []thread `json:"data"`
+			NextCursor string   `json:"nextCursor"`
+		}
+		params := map[string]any{"limit": protocol.MaxSessions - len(all), "sortKey": "updated_at", "sourceKinds": []string{"cli", "vscode", "appServer", "exec"}, "useStateDbOnly": true}
+		if cursor != "" {
+			params["cursor"] = cursor
+		}
+		raw, e := a.rpc(ctx, "thread/list", params)
+		if e != nil {
+			return nil, nil, e
+		}
+		if e = decode(raw, &page); e != nil {
+			return nil, nil, e
+		}
+		all = append(all, page.Data...)
+		if page.NextCursor == "" || page.NextCursor == cursor || len(page.Data) == 0 {
+			break
+		}
+		cursor = page.NextCursor
 	}
-	raw, e := a.rpc(ctx, "thread/list", map[string]any{"limit": protocol.MaxSessions, "sortKey": "updated_at", "sourceKinds": []string{"cli", "vscode", "appServer", "exec"}, "useStateDbOnly": true})
-	if e != nil {
-		return nil, nil, e
-	}
-	if e = decode(raw, &list); e != nil {
-		return nil, nil, e
-	}
+	var raw json.RawMessage
+	var e error
 	var loaded struct {
 		Data []string `json:"data"`
 	}
@@ -32,10 +48,12 @@ func (a *Adapter) Snapshot(ctx context.Context) ([]protocol.Session, []protocol.
 		return nil, nil, e
 	}
 	threads := map[string]thread{}
-	for _, t := range list.Data {
+	for _, t := range all {
 		threads[t.ID] = t
 	}
+	loadedSet := map[string]bool{}
 	for _, id := range loaded.Data {
+		loadedSet[id] = true
 		a.mu.Lock()
 		sub := a.subscribed[id]
 		a.mu.Unlock()
@@ -44,9 +62,7 @@ func (a *Adapter) Snapshot(ctx context.Context) ([]protocol.Session, []protocol.
 			if err != nil {
 				continue
 			}
-			a.mu.Lock()
-			a.sessions[id] = s
-			a.mu.Unlock()
+			_ = s
 		} else {
 			var r struct {
 				Thread thread `json:"thread"`
@@ -58,11 +74,27 @@ func (a *Adapter) Snapshot(ctx context.Context) ([]protocol.Session, []protocol.
 		}
 	}
 	a.mu.Lock()
-	for id, t := range threads {
-		if !a.subscribed[id] {
-			a.sessions[id] = a.session(t, false)
+	for id := range a.subscribed {
+		if !loadedSet[id] {
+			delete(a.subscribed, id)
 		}
 	}
+	current := map[string]protocol.Session{}
+	for id, t := range threads {
+		if a.subscribed[id] {
+			if existing, ok := a.sessions[id]; ok {
+				current[id] = existing
+				continue
+			}
+		}
+		current[id] = a.session(t, false)
+	}
+	for id := range loadedSet {
+		if existing, ok := a.sessions[id]; ok {
+			current[id] = existing
+		}
+	}
+	a.sessions = current
 	// Keep bounded metadata. Live subscribed threads take precedence over old history.
 	out := make([]protocol.Session, 0, len(a.sessions))
 	for _, s := range a.sessions {
@@ -89,6 +121,7 @@ func (a *Adapter) Snapshot(ctx context.Context) ([]protocol.Session, []protocol.
 	return out, requests, nil
 }
 func (a *Adapter) attach(ctx context.Context, id string) (protocol.Session, error) {
+	fetchedAt := time.Now()
 	a.mu.Lock()
 	sub := a.subscribed[id]
 	a.mu.Unlock()
@@ -123,6 +156,9 @@ func (a *Adapter) attach(ctx context.Context, id string) (protocol.Session, erro
 		}
 	}
 	a.mu.Lock()
+	if current, ok := a.sessions[id]; ok && current.UpdatedAt.After(fetchedAt) {
+		s = current
+	}
 	a.sessions[id] = s
 	a.mu.Unlock()
 	return s, nil

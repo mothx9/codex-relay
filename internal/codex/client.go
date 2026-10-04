@@ -85,6 +85,8 @@ type Adapter struct {
 	once             sync.Once
 	sessions         map[string]protocol.Session
 	requests         map[string]pending
+	items            map[string]protocol.Activity
+	itemOrder        []string
 	subscribed       map[string]bool
 	epoch            string
 	sequence         uint64
@@ -167,7 +169,7 @@ func Open(ctx context.Context, cfg Config) (*Adapter, error) {
 		c.SetReadLimit(protocol.MaxMessage)
 		t = &wsTransport{c}
 	}
-	a := &Adapter{cfg: cfg, t: t, calls: map[string]chan rpcMessage{}, events: make(chan protocol.Event, 256), done: make(chan struct{}), sessions: map[string]protocol.Session{}, requests: map[string]pending{}, subscribed: map[string]bool{}, epoch: protocol.ID(), queue: true}
+	a := &Adapter{cfg: cfg, t: t, calls: map[string]chan rpcMessage{}, events: make(chan protocol.Event, 256), done: make(chan struct{}), sessions: map[string]protocol.Session{}, requests: map[string]pending{}, items: map[string]protocol.Activity{}, subscribed: map[string]bool{}, epoch: protocol.ID(), queue: true}
 	go a.readLoop()
 	if _, e := a.rpc(ctx, "initialize", map[string]any{"clientInfo": map[string]string{"name": "codex_relay", "title": "Codex Relay", "version": "0.1.0"}, "capabilities": map[string]any{"experimentalApi": true, "optOutNotificationMethods": []string{"item/reasoning/textDelta", "item/reasoning/summaryTextDelta", "thread/tokenUsage/updated"}}}); e != nil {
 		a.Close()

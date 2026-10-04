@@ -3,6 +3,7 @@ package codex
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/mothx9/codex-relay/internal/protocol"
 	"net/http"
@@ -179,4 +180,51 @@ func TestRealCodexDiscovery(t *testing.T) {
 		}
 	}
 	t.Log("all sessions currently read-only")
+}
+
+type captureTransport struct{ messages []json.RawMessage }
+
+func (c *captureTransport) Read() (rpcMessage, error) { return rpcMessage{}, nil }
+func (c *captureTransport) Write(v any) error {
+	b, e := json.Marshal(v)
+	c.messages = append(c.messages, b)
+	return e
+}
+func (c *captureTransport) Close() error { return nil }
+func TestStructuredResponsesAndFileContext(t *testing.T) {
+	tr := &captureTransport{}
+	a := &Adapter{cfg: Config{MachineID: "m"}, t: tr, sessions: map[string]protocol.Session{"t": {ID: "m~t", MachineID: "m", ThreadID: "t", Cwd: "/tmp/test"}}, requests: map[string]pending{}, items: map[string]protocol.Activity{}, events: make(chan protocol.Event, 32), done: make(chan struct{}), subscribed: map[string]bool{}, epoch: "epoch"}
+	raw := json.RawMessage(`{"threadId":"t","turnId":"turn","item":{"id":"file","type":"fileChange","changes":[{"path":"/tmp/test/example.go","kind":{"type":"update"},"diff":"+added line"}]}}`)
+	a.handle(rpcMessage{Method: "item/started", Params: raw})
+	requests := []struct {
+		method, params string
+		decision       string
+		answers        map[string][]string
+		want           string
+	}{
+		{"item/fileChange/requestApproval", `{"threadId":"t","turnId":"turn","itemId":"file"}`, "approve", nil, `"decision":"accept"`},
+		{"item/permissions/requestApproval", `{"threadId":"t","turnId":"turn","itemId":"perm","permissions":{"network":{"enabled":true}}}`, "approve", nil, `"scope":"turn"`},
+		{"item/tool/requestUserInput", `{"threadId":"t","turnId":"turn","itemId":"input","isBlocking":true,"questions":[{"id":"q","header":"Choice","question":"Choose?","options":[]}]}`, "approve", map[string][]string{"q": {"answer"}}, `"answers":{"q":{"answers":["answer"]}}`},
+	}
+	for i, c := range requests {
+		rid := json.RawMessage(fmt.Sprint(i + 10))
+		a.handle(rpcMessage{ID: rid, Method: c.method, Params: json.RawMessage(c.params)})
+		request := a.requests[a.requestID(rid)].Request
+		if c.method == "item/fileChange/requestApproval" && !strings.Contains(request.Operation, "example.go") {
+			t.Fatal("approval missing changed files")
+		}
+		if e := a.respond(protocol.Command{ThreadID: "t", RequestID: request.ID, Decision: c.decision, Answers: c.answers}); e != nil {
+			t.Fatal(e)
+		}
+		if !strings.Contains(string(tr.messages[len(tr.messages)-1]), c.want) {
+			t.Fatal("bad response", string(tr.messages[len(tr.messages)-1]))
+		}
+		if a.respond(protocol.Command{ThreadID: "t", RequestID: request.ID, Decision: c.decision, Answers: c.answers}) == nil {
+			t.Fatal("reused request")
+		}
+	}
+	a.handle(rpcMessage{ID: json.RawMessage(`30`), Method: "item/fileChange/requestApproval", Params: json.RawMessage(`{"threadId":"t","turnId":"turn","itemId":"missing"}`)})
+	if a.requests[a.requestID(json.RawMessage(`30`))].Request.CanApprove {
+		t.Fatal("approved file changes without context")
+	}
 }
