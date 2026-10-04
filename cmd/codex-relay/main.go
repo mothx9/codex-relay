@@ -27,7 +27,7 @@ import (
 	"time"
 )
 
-var version = "0.1.0-dev"
+var version = "0.1.0-rc.1"
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

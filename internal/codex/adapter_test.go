@@ -228,3 +228,68 @@ func TestStructuredResponsesAndFileContext(t *testing.T) {
 		t.Fatal("approved file changes without context")
 	}
 }
+
+func TestRealCodexRoundTrip(t *testing.T) {
+	if os.Getenv("RELAY_REAL_CODEX_TURN") != "1" {
+		t.Skip("set RELAY_REAL_CODEX_TURN=1; creates an isolated thread and consumes one small Codex turn")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+	primary, e := Open(ctx, Config{MachineID: "primary"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer primary.Close()
+	raw, e := primary.rpc(ctx, "thread/start", map[string]any{"cwd": t.TempDir(), "sandbox": "read-only", "approvalPolicy": "on-request", "approvalsReviewer": "user", "developerInstructions": "This is a bounded transport validation. Do not use tools, modify files or delegate."})
+	if e != nil {
+		t.Fatal(e)
+	}
+	var r struct {
+		Thread thread `json:"thread"`
+	}
+	if e = decode(raw, &r); e != nil {
+		t.Fatal(e)
+	}
+	defer func() {
+		_, _ = primary.rpc(context.Background(), "thread/archive", map[string]any{"threadId": r.Thread.ID})
+	}()
+	secondary, e := Open(ctx, Config{MachineID: "secondary"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer secondary.Close()
+	s, e := secondary.attach(ctx, r.Thread.ID)
+	if e != nil || s.ReadOnly {
+		t.Fatalf("second client attach: %+v %v", s, e)
+	}
+	result := secondary.Execute(ctx, protocol.Command{ID: protocol.ID(), Kind: "start", ThreadID: s.ThreadID, SessionID: s.ID, Text: "Reply exactly CODEX_RELAY_ROUND_TRIP_OK without tools."})
+	if !result.OK {
+		t.Fatal(result.Error)
+	}
+	text := ""
+	working := false
+	for {
+		select {
+		case <-ctx.Done():
+			t.Fatal(ctx.Err())
+		case e := <-secondary.Events():
+			if e.SessionID != s.ID {
+				continue
+			}
+			switch e.Kind {
+			case "turn_started":
+				working = true
+			case "delta":
+				text += e.Text
+			case "failed":
+				t.Fatal("real turn failed")
+			case "turn_completed":
+				if !working || !strings.Contains(text, "CODEX_RELAY_ROUND_TRIP_OK") {
+					t.Fatalf("missing stream or lifecycle: working=%v marker=%v", working, strings.Contains(text, "CODEX_RELAY_ROUND_TRIP_OK"))
+				}
+				t.Log("real thread: second client start, streaming and completion verified")
+				return
+			}
+		}
+	}
+}
