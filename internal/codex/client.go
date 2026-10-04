@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -109,6 +110,19 @@ func Version(ctx context.Context, binary string) (string, error) {
 	return strings.TrimSpace(string(b)), e
 }
 func Open(ctx context.Context, cfg Config) (*Adapter, error) {
+	if cfg.Private && (cfg.Endpoint != "" || cfg.Socket != "") {
+		return nil, errors.New("private app-server cannot be combined with a shared endpoint")
+	}
+	if cfg.Endpoint != "" {
+		u, e := url.Parse(cfg.Endpoint)
+		if e != nil || u.User != nil || (u.Scheme != "ws" && u.Scheme != "wss") {
+			return nil, errors.New("invalid Codex WebSocket URL")
+		}
+		ip := net.ParseIP(u.Hostname())
+		if u.Hostname() != "localhost" && (ip == nil || !ip.IsLoopback()) {
+			return nil, errors.New("Codex TCP endpoint must be local loopback; use the Unix socket for the shared daemon")
+		}
+	}
 	if cfg.Binary == "" {
 		cfg.Binary = "codex"
 	}

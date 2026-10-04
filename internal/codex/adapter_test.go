@@ -231,7 +231,7 @@ func TestStructuredResponsesAndFileContext(t *testing.T) {
 
 func TestRealCodexRoundTrip(t *testing.T) {
 	if os.Getenv("RELAY_REAL_CODEX_TURN") != "1" {
-		t.Skip("set RELAY_REAL_CODEX_TURN=1; creates an isolated thread and consumes one small Codex turn")
+		t.Skip("set RELAY_REAL_CODEX_TURN=1; creates an isolated thread and consumes two small Codex turns")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
@@ -253,6 +253,25 @@ func TestRealCodexRoundTrip(t *testing.T) {
 	defer func() {
 		_, _ = primary.rpc(context.Background(), "thread/archive", map[string]any{"threadId": r.Thread.ID})
 	}()
+	// Codex cannot resume a newly allocated zero-turn thread before its first rollout exists.
+	_, e = primary.rpc(ctx, "turn/start", map[string]any{"threadId": r.Thread.ID, "input": []map[string]any{{"type": "text", "text": "Reply exactly RELAY_PRIMED without tools.", "text_elements": []any{}}}})
+	if e != nil {
+		t.Fatal(e)
+	}
+	primed := false
+	for !primed {
+		select {
+		case <-ctx.Done():
+			t.Fatal(ctx.Err())
+		case event := <-primary.Events():
+			if event.SessionID == protocol.SessionID("primary", r.Thread.ID) && event.Kind == "turn_completed" {
+				primed = true
+			}
+			if event.Kind == "failed" {
+				t.Fatal("priming turn failed")
+			}
+		}
+	}
 	secondary, e := Open(ctx, Config{MachineID: "secondary"})
 	if e != nil {
 		t.Fatal(e)

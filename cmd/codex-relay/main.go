@@ -133,7 +133,9 @@ func runHub(ctx context.Context, args []string) error {
 	if e != nil {
 		return e
 	}
-	if u.Scheme == "http" && !loopback && !*insecure {
+	publicIP := net.ParseIP(u.Hostname())
+	publicLoopback := u.Hostname() == "localhost" || (publicIP != nil && publicIP.IsLoopback())
+	if u.Scheme == "http" && !publicLoopback && !*insecure {
 		return errors.New("production public URL requires HTTPS")
 	}
 	if *cert != "" && u.Scheme != "https" {
