@@ -201,7 +201,9 @@ func (s *Store) Subscribe(v PushSubscription) error {
 	if e := s.DB.QueryRow(`SELECT count(*) FROM push_subscriptions`).Scan(&count); e != nil {
 		return e
 	}
-	if count >= 32 {
+	var existing int
+	_ = s.DB.QueryRow(`SELECT count(*) FROM push_subscriptions WHERE endpoint=?`, v.Endpoint).Scan(&existing)
+	if count >= 32 && existing == 0 {
 		return fmt.Errorf("push subscription limit reached")
 	}
 	_, e := s.DB.Exec(`INSERT INTO push_subscriptions VALUES(?,?,?) ON CONFLICT(endpoint) DO UPDATE SET subscription=excluded.subscription,privacy=excluded.privacy`, v.Endpoint, string(v.JSON), v.Privacy)

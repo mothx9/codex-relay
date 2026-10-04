@@ -1,32 +1,139 @@
 <!doctype html>
 <html lang="it">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#101214"><meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg"><link rel="apple-touch-icon" href="/icon-192.png">
-<link rel="stylesheet" href="/app.css"><script type="module" src="/app.js"></script>
-<title>Codex Relay</title>
-</head>
-<body>
-<header><a class="brand" href="/">CODEX RELAY</a><span id="connection" role="status">Connessione…</span><div class="header-actions"><button id="settings-toggle" title="Notifiche e privacy">Notifiche</button><button id="logout">Esci</button></div></header>
-<main>
-<section id="login-view" hidden><h1>Le tue sessioni, ovunque.</h1><p>Accedi con il token bootstrap del tuo hub.</p><form id="login-form"><label for="login-token">Token operatore</label><input id="login-token" type="password" autocomplete="off" required><button type="submit">Accedi</button><p id="login-error" role="alert"></p></form></section>
-<section id="settings" hidden aria-label="Notifiche"><h2>Notifiche</h2><p>Su iPhone: apri in Safari, aggiungi alla schermata Home e abilita qui le notifiche dalla PWA installata.</p><label class="check"><input id="privacy" type="checkbox" checked>Privacy: nascondi macchina e progetto sul lock screen</label><div class="actions"><button id="push-enable">Abilita Web Push</button><button id="push-test">Invia prova</button><button id="push-disable">Disabilita</button></div><p id="push-status" role="status"></p></section>
-<section id="fleet-view" hidden>
-<nav id="tabs" aria-label="Stato sessioni"></nav>
-<div class="toolbar"><input id="search" type="search" placeholder="Cerca sessione, macchina o progetto…" aria-label="Cerca sessioni"><label>Raggruppa <select id="group"><option value="status">Stato</option><option value="machine">Macchina</option><option value="project">Progetto</option></select></label></div>
-<div id="fleet" aria-live="polite"></div><p class="keyboard">j/k ↑↓ · Enter apri · Esc indietro · g raggruppa · / cerca</p>
-</section>
-<section id="detail-view" hidden>
-<div class="detail-top"><button id="back">← Sessioni</button><span id="detail-connection"></span></div>
-<div id="detail-heading"></div>
-<details class="metadata"><summary>Contesto sessione</summary><dl id="detail-meta"></dl></details>
-<div id="pending" aria-live="polite"></div>
-<div id="chat" role="log" aria-live="polite" aria-label="Attività recente Codex"></div>
-<p id="history-status" class="muted"></p>
-<div id="readonly" hidden><p>Questo thread è visibile in sola lettura. Collegalo per ricevere gli eventi e controllarlo tramite questo app-server.</p><button id="attach">Collega thread</button></div>
-<form id="composer"><div class="composer-top"><div id="mode" class="segmented" hidden><button type="button" data-mode="steer">Adesso</button><button type="button" data-mode="queue" class="active">Dopo</button></div><button type="button" id="interrupt">Interrompi turno</button><span id="composer-hint"></span></div><label class="sr-only" for="message">Scrivi a Codex</label><textarea id="message" rows="2" placeholder="Scrivi a Codex…" maxlength="16384"></textarea><div class="composer-bottom"><span class="muted">Contesto effimero · cronologia conservata da Codex</span><button id="send" type="submit">Invia ↗</button></div></form>
-</section>
-</main><div id="toast" role="alert" hidden></div>
-</body></html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#101214" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="stylesheet" href="/app.css" />
+    <script type="module" src="/app.js"></script>
+    <title>Codex Relay</title>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">CODEX RELAY</a
+      ><span id="connection" role="status">Connessione…</span>
+      <div class="header-actions">
+        <button id="settings-toggle" title="Notifiche e privacy">
+          Notifiche</button
+        ><button id="logout">Esci</button>
+      </div>
+    </header>
+    <main>
+      <section id="login-view" hidden>
+        <h1>Le tue sessioni, ovunque.</h1>
+        <p>Accedi con il token bootstrap del tuo hub.</p>
+        <form id="login-form">
+          <label for="login-token">Token operatore</label
+          ><input
+            id="login-token"
+            type="password"
+            autocomplete="off"
+            required
+          /><button type="submit">Accedi</button>
+          <p id="login-error" role="alert"></p>
+        </form>
+      </section>
+      <section id="settings" hidden aria-label="Notifiche">
+        <h2>Notifiche</h2>
+        <p>
+          Su iPhone: apri in Safari, aggiungi alla schermata Home e abilita qui
+          le notifiche dalla PWA installata.
+        </p>
+        <label class="check"
+          ><input id="privacy" type="checkbox" checked />Privacy: nascondi
+          macchina e progetto sul lock screen</label
+        >
+        <div class="actions">
+          <button id="push-enable">Abilita Web Push</button
+          ><button id="push-test">Invia prova</button
+          ><button id="push-disable">Disabilita</button>
+        </div>
+        <p id="push-status" role="status"></p>
+      </section>
+      <section id="fleet-view" hidden>
+        <nav id="tabs" aria-label="Stato sessioni"></nav>
+        <div class="toolbar">
+          <input
+            id="search"
+            type="search"
+            placeholder="Cerca sessione, macchina o progetto…"
+            aria-label="Cerca sessioni"
+          /><label
+            >Raggruppa
+            <select id="group">
+              <option value="status">Stato</option>
+              <option value="machine">Macchina</option>
+              <option value="project">Progetto</option>
+            </select></label
+          >
+        </div>
+        <div id="fleet" aria-live="polite"></div>
+        <p class="keyboard">
+          j/k ↑↓ · Enter apri · Esc indietro · g raggruppa · / cerca
+        </p>
+      </section>
+      <section id="detail-view" hidden>
+        <div class="detail-top">
+          <button id="back">← Sessioni</button
+          ><span id="detail-connection"></span>
+        </div>
+        <div id="detail-heading"></div>
+        <details class="metadata">
+          <summary>Contesto sessione</summary>
+          <dl id="detail-meta"></dl>
+        </details>
+        <div id="pending" aria-live="polite"></div>
+        <div
+          id="chat"
+          role="log"
+          aria-live="polite"
+          aria-label="Attività recente Codex"
+        ></div>
+        <p id="history-status" class="muted"></p>
+        <div id="readonly" hidden>
+          <p>
+            Questo thread è visibile in sola lettura. Collegalo per ricevere gli
+            eventi e controllarlo tramite questo app-server.
+          </p>
+          <button id="attach">Collega thread</button>
+        </div>
+        <form id="composer">
+          <div class="composer-top">
+            <div id="mode" class="segmented" hidden>
+              <button type="button" data-mode="steer">Adesso</button
+              ><button type="button" data-mode="queue" class="active">
+                Dopo
+              </button>
+            </div>
+            <button type="button" id="interrupt">Interrompi turno</button
+            ><span id="composer-hint"></span>
+          </div>
+          <label class="sr-only" for="message">Scrivi a Codex</label
+          ><textarea
+            id="message"
+            rows="2"
+            placeholder="Scrivi a Codex…"
+            maxlength="16384"
+          ></textarea>
+          <div class="composer-bottom">
+            <span class="muted"
+              >Contesto effimero · cronologia conservata da Codex</span
+            ><button id="send" type="submit">Invia ↗</button>
+          </div>
+        </form>
+      </section>
+    </main>
+    <div id="toast" role="alert" hidden></div>
+  </body>
+</html>

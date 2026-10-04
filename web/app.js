@@ -1,88 +1,812 @@
-const $ = id => document.getElementById(id);
-const names = {NEEDS_YOU:'Needs you', WORKING:'Working', READY:'Ready', INACTIVE:'Inactive', FAILED:'Failed'};
-const priorities = ['NEEDS_YOU','WORKING','READY','FAILED','INACTIVE'];
-const state = {machines:new Map(), sessions:new Map(), requests:new Map(), chat:[], filter:'all', group:'status', selected:'', mode:'queue', socket:null, online:false, authenticated:false, retry:0, commands:new Map(), index:0, loading:false, publicKey:''};
-let reconnectTimer, backgroundTimer, toastTimer, renderFrame;
-function node(tag, text, cls) {const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n;}
-function toast(text) {$('toast').textContent=text;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,6500);}
-async function api(path, body) {const response=await fetch(path,{method:body===undefined?'GET':'POST',headers:body===undefined?{}:{'Content-Type':'application/json','X-Relay-CSRF':'1'},body:body===undefined?undefined:JSON.stringify(body),credentials:'same-origin',cache:'no-store'});if(!response.ok)throw new Error(await response.text());return response.json();}
-function send(message) {if(state.socket?.readyState!==WebSocket.OPEN){toast('Connessione non disponibile. Il messaggio non è stato inviato.');return false;}state.socket.send(JSON.stringify(message));return true;}
-function command(kind, extra={}) {const id=crypto.randomUUID();if(!send({type:'command',command:{id,kind,session_id:state.selected,...extra}}))return '';state.commands.set(id,{kind,text:extra.text});return id;}
-function elapsed(value) {if(!value||value.startsWith('0001'))return '—';const seconds=Math.max(0,(Date.now()-Date.parse(value))/1000);if(seconds<60)return 'ora';if(seconds<3600)return `${Math.floor(seconds/60)}m`;if(seconds<86400)return `${Math.floor(seconds/3600)}h`;return `${Math.floor(seconds/86400)}d`;}
-function machine(session) {return state.machines.get(session.machine_id);}
-function dot(status) {return node('span',status==='NEEDS_YOU'?'!':status==='FAILED'?'×':'●',`dot ${status.toLowerCase()}`);}
-function scheduleRender() {if(renderFrame)return;renderFrame=requestAnimationFrame(()=>{renderFrame=0;render();});}
+const $ = (id) => document.getElementById(id);
+const names = {
+  NEEDS_YOU: "Needs you",
+  WORKING: "Working",
+  READY: "Ready",
+  INACTIVE: "Inactive",
+  FAILED: "Failed",
+};
+const priorities = ["NEEDS_YOU", "WORKING", "READY", "FAILED", "INACTIVE"];
+const state = {
+  machines: new Map(),
+  sessions: new Map(),
+  requests: new Map(),
+  chat: [],
+  filter: "all",
+  group: "status",
+  selected: "",
+  mode: "queue",
+  socket: null,
+  online: false,
+  authenticated: false,
+  retry: 0,
+  commands: new Map(),
+  index: 0,
+  loading: false,
+  publicKey: "",
+};
+let reconnectTimer,
+  backgroundTimer,
+  toastTimer,
+  renderFrame,
+  pendingSignature = "";
+function node(tag, text, cls) {
+  const n = document.createElement(tag);
+  if (text != null) n.textContent = text;
+  if (cls) n.className = cls;
+  return n;
+}
+function toast(text) {
+  $("toast").textContent = text;
+  $("toast").hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => ($("toast").hidden = true), 6500);
+}
+async function api(path, body) {
+  const response = await fetch(path, {
+    method: body === undefined ? "GET" : "POST",
+    headers:
+      body === undefined
+        ? {}
+        : { "Content-Type": "application/json", "X-Relay-CSRF": "1" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    credentials: "same-origin",
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    const error = new Error(await response.text());
+    error.status = response.status;
+    throw error;
+  }
+  return response.json();
+}
+function send(message) {
+  if (state.socket?.readyState !== WebSocket.OPEN) {
+    toast("Connessione non disponibile. Il messaggio non è stato inviato.");
+    return false;
+  }
+  state.socket.send(JSON.stringify(message));
+  return true;
+}
+function command(kind, extra = {}) {
+  const id = crypto.randomUUID();
+  if (
+    !send({
+      type: "command",
+      command: { id, kind, session_id: state.selected, ...extra },
+    })
+  )
+    return "";
+  state.commands.set(id, { kind, text: extra.text });
+  return id;
+}
+function elapsed(value) {
+  if (!value || value.startsWith("0001")) return "—";
+  const seconds = Math.max(0, (Date.now() - Date.parse(value)) / 1000);
+  if (seconds < 60) return "ora";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+  return `${Math.floor(seconds / 86400)}d`;
+}
+function machine(session) {
+  return state.machines.get(session.machine_id);
+}
+function dot(status) {
+  return node(
+    "span",
+    status === "NEEDS_YOU" ? "!" : status === "FAILED" ? "×" : "●",
+    `dot ${status.toLowerCase()}`,
+  );
+}
+function scheduleRender() {
+  if (renderFrame) return;
+  renderFrame = requestAnimationFrame(() => {
+    renderFrame = 0;
+    render();
+  });
+}
 function render() {
- $('connection').textContent=state.online?'Live · '+[...state.machines.values()].filter(m=>m.status==='ONLINE').length+' macchine online':'Offline · riconnessione';
- $('logout').hidden=!state.authenticated;$('settings-toggle').hidden=!state.authenticated;
- $('login-view').hidden=state.authenticated;$('fleet-view').hidden=!state.authenticated||!!state.selected;$('detail-view').hidden=!state.authenticated||!state.selected;
- if(!state.authenticated)return;if(state.selected)renderDetail();else renderFleet();
+  $("connection").textContent = state.online
+    ? "Live · " +
+      [...state.machines.values()].filter((m) => m.status === "ONLINE").length +
+      " macchine online"
+    : "Offline · riconnessione";
+  $("logout").hidden = !state.authenticated;
+  $("settings-toggle").hidden = !state.authenticated;
+  $("login-view").hidden = state.authenticated;
+  $("fleet-view").hidden = !state.authenticated || !!state.selected;
+  $("detail-view").hidden = !state.authenticated || !state.selected;
+  if (!state.authenticated) return;
+  if (state.selected) renderDetail();
+  else renderFleet();
 }
 function renderFleet() {
- const sessions=[...state.sessions.values()];$('tabs').replaceChildren();
- for(const [value,label] of [['all','All'],...priorities.map(s=>[s,names[s]])]) {const b=node('button',label,value===state.filter?'active':'');b.append(node('span',value==='all'?sessions.length:sessions.filter(s=>s.status===value).length,'count'));b.onclick=()=>{state.filter=value;state.index=0;renderFleet();};$('tabs').append(b);}
- const query=$('search').value.toLowerCase();const visible=sessions.filter(s=>(state.filter==='all'||s.status===state.filter)&&`${s.title} ${s.project} ${s.cwd} ${machine(s)?.name||s.machine_id}`.toLowerCase().includes(query));
- const groups=new Map();for(const s of visible){const key=state.group==='status'?s.status:state.group==='machine'?(machine(s)?.name||s.machine_id):s.project;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(s);}
- const keys=[...groups.keys()].sort((a,b)=>state.group==='status'?priorities.indexOf(a)-priorities.indexOf(b):a.localeCompare(b));
- $('fleet').replaceChildren();let index=0;
- for(const key of keys){$('fleet').append(node('h2',state.group==='status'?names[key].toUpperCase():key.toUpperCase(),'group-label'));const ul=node('ul');for(const s of groups.get(key).sort((a,b)=>Date.parse(b.updated_at)-Date.parse(a.updated_at))){const li=node('li'),b=node('button',null,'session-row'+(index===state.index?' selected':''));b.dataset.session=s.id;b.dataset.index=index++;
- const m=node('div',null,'machine');m.append(dot(s.status),node('span',machine(s)?.name||s.machine_id));const title=node('div');title.append(node('div',s.title,'row-title'),node('div',s.project+(s.branch?' / '+s.branch:''),'row-project'));const status=node('div',null,'row-state');status.append(node('span',machine(s)?.status==='OFFLINE'?'Offline':names[s.status]||s.status),node('span',s.status==='WORKING'?elapsed(s.turn_started):elapsed(s.updated_at)));b.append(m,title,status);b.onclick=()=>openSession(s.id);li.append(b);ul.append(li);} $('fleet').append(ul);}
- if(!visible.length)$('fleet').append(node('p',sessions.length?'Nessuna sessione corrisponde ai filtri.':'In attesa di un agent. Registra una macchina e avvia codex-relay agent.','empty'));
+  const sessions = [...state.sessions.values()];
+  $("tabs").replaceChildren();
+  for (const [value, label] of [
+    ["all", "All"],
+    ...priorities.map((s) => [s, names[s]]),
+  ]) {
+    const b = node("button", label, value === state.filter ? "active" : "");
+    b.append(
+      node(
+        "span",
+        value === "all"
+          ? sessions.length
+          : sessions.filter((s) => s.status === value).length,
+        "count",
+      ),
+    );
+    b.onclick = () => {
+      state.filter = value;
+      state.index = 0;
+      renderFleet();
+    };
+    $("tabs").append(b);
+  }
+  const query = $("search").value.toLowerCase();
+  const visible = sessions.filter(
+    (s) =>
+      (state.filter === "all" || s.status === state.filter) &&
+      `${s.title} ${s.project} ${s.cwd} ${machine(s)?.name || s.machine_id}`
+        .toLowerCase()
+        .includes(query),
+  );
+  const groups = new Map();
+  for (const s of visible) {
+    const key =
+      state.group === "status"
+        ? s.status
+        : state.group === "machine"
+          ? machine(s)?.name || s.machine_id
+          : s.project;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(s);
+  }
+  const keys = [...groups.keys()].sort((a, b) =>
+    state.group === "status"
+      ? priorities.indexOf(a) - priorities.indexOf(b)
+      : a.localeCompare(b),
+  );
+  $("fleet").replaceChildren();
+  let index = 0;
+  for (const key of keys) {
+    $("fleet").append(
+      node(
+        "h2",
+        state.group === "status" ? names[key].toUpperCase() : key.toUpperCase(),
+        "group-label",
+      ),
+    );
+    const ul = node("ul");
+    for (const s of groups
+      .get(key)
+      .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))) {
+      const li = node("li"),
+        b = node(
+          "button",
+          null,
+          "session-row" + (index === state.index ? " selected" : ""),
+        );
+      b.dataset.session = s.id;
+      b.dataset.index = index++;
+      const m = node("div", null, "machine");
+      m.append(dot(s.status), node("span", machine(s)?.name || s.machine_id));
+      const title = node("div");
+      title.append(
+        node("div", s.title, "row-title"),
+        node(
+          "div",
+          s.project + (s.branch ? " / " + s.branch : ""),
+          "row-project",
+        ),
+      );
+      const status = node("div", null, "row-state");
+      status.append(
+        node(
+          "span",
+          machine(s)?.status === "OFFLINE"
+            ? "Offline"
+            : names[s.status] || s.status,
+        ),
+        node(
+          "span",
+          s.status === "WORKING"
+            ? elapsed(s.turn_started)
+            : elapsed(s.updated_at),
+        ),
+      );
+      b.append(m, title, status);
+      b.onclick = () => openSession(s.id);
+      li.append(b);
+      ul.append(li);
+    }
+    $("fleet").append(ul);
+  }
+  if (!visible.length)
+    $("fleet").append(
+      node(
+        "p",
+        sessions.length
+          ? "Nessuna sessione corrisponde ai filtri."
+          : "In attesa di un agent. Registra una macchina e avvia codex-relay agent.",
+        "empty",
+      ),
+    );
 }
 function renderDetail() {
- const s=state.sessions.get(state.selected);$('detail-heading').replaceChildren();$('detail-meta').replaceChildren();if(!s){$('detail-heading').append(node('h1','Sessione non disponibile'));$('composer').hidden=true;return;}
- const m=machine(s), connected=state.online&&m?.status==='ONLINE';$('detail-heading').append(node('div',`${m?.name||s.machine_id} · ${s.project}`,'eyebrow'),node('h1',s.title));const status=node('div',null,'muted');status.append(dot(s.status),node('span',`${names[s.status]||s.status} · ${s.status==='WORKING'?elapsed(s.turn_started):elapsed(s.updated_at)}${!connected?' · macchina offline':''}`));$('detail-heading').append(status);
- for(const [key,value] of [['Macchina',m?.name||s.machine_id],['Progetto',s.project],['Branch',s.branch||'—'],['cwd',s.cwd],['Thread',s.thread_id],['Adapter',m?.adapter||'—']]){$('detail-meta').append(node('dt',key),node('dd',value));}
- $('detail-connection').textContent=connected?'Live':'Connessione non disponibile';$('readonly').hidden=!s.read_only;$('attach').disabled=!connected;$('composer').hidden=s.read_only;
- const working=s.status==='WORKING',needs=s.status==='NEEDS_YOU';$('mode').hidden=!working;$('interrupt').hidden=!(working||needs);$('interrupt').disabled=!connected;$('message').disabled=!connected||needs;$('send').disabled=!connected||needs||[...state.commands.values()].some(c=>['start','steer','queue'].includes(c.kind));
- $('composer-hint').textContent=needs?'Rispondi alla richiesta qui sopra.':working?(state.mode==='steer'?'Intervieni sul turno corrente.':'Codex eseguirà il messaggio dopo il turno corrente.'):'Il messaggio avvia un nuovo turno.';
- for(const b of $('mode').querySelectorAll('button')){b.classList.toggle('active',b.dataset.mode===state.mode);b.disabled=b.dataset.mode==='queue'&&!s.queue_supported;}
- renderPending(s,connected);renderChat();$('history-status').textContent=state.loading?'Carico il contesto recente da Codex…':'Ultimi item · nessun transcript nel database Relay';
+  const s = state.sessions.get(state.selected);
+  $("detail-heading").replaceChildren();
+  $("detail-meta").replaceChildren();
+  if (!s) {
+    $("detail-heading").append(node("h1", "Sessione non disponibile"));
+    $("composer").hidden = true;
+    return;
+  }
+  const m = machine(s),
+    connected = state.online && m?.status === "ONLINE";
+  $("detail-heading").append(
+    node("div", `${m?.name || s.machine_id} · ${s.project}`, "eyebrow"),
+    node("h1", s.title),
+  );
+  const status = node("div", null, "muted");
+  status.append(
+    dot(s.status),
+    node(
+      "span",
+      `${names[s.status] || s.status} · ${s.status === "WORKING" ? elapsed(s.turn_started) : elapsed(s.updated_at)}${!connected ? " · macchina offline" : ""}`,
+    ),
+  );
+  $("detail-heading").append(status);
+  for (const [key, value] of [
+    ["Macchina", m?.name || s.machine_id],
+    ["Progetto", s.project],
+    ["Branch", s.branch || "—"],
+    ["cwd", s.cwd],
+    ["Thread", s.thread_id],
+    ["Adapter", m?.adapter || "—"],
+  ]) {
+    $("detail-meta").append(node("dt", key), node("dd", value));
+  }
+  $("detail-connection").textContent = connected
+    ? "Live"
+    : "Connessione non disponibile";
+  $("readonly").hidden = !s.read_only;
+  $("attach").disabled = !connected;
+  $("composer").hidden = s.read_only;
+  const working = s.status === "WORKING",
+    needs = s.status === "NEEDS_YOU";
+  $("mode").hidden = !working;
+  $("interrupt").hidden = !(working || needs);
+  $("interrupt").disabled = !connected;
+  $("message").disabled = !connected || needs;
+  $("send").disabled =
+    !connected ||
+    needs ||
+    [...state.commands.values()].some((c) =>
+      ["start", "steer", "queue"].includes(c.kind),
+    );
+  $("composer-hint").textContent = needs
+    ? "Rispondi alla richiesta qui sopra."
+    : working
+      ? state.mode === "steer"
+        ? "Intervieni sul turno corrente."
+        : "Codex eseguirà il messaggio dopo il turno corrente."
+      : "Il messaggio avvia un nuovo turno.";
+  for (const b of $("mode").querySelectorAll("button")) {
+    b.classList.toggle("active", b.dataset.mode === state.mode);
+    b.disabled = b.dataset.mode === "queue" && !s.queue_supported;
+  }
+  renderPending(s, connected);
+  renderChat();
+  $("history-status").textContent = state.loading
+    ? "Carico il contesto recente da Codex…"
+    : "Ultimi item · nessun transcript nel database Relay";
 }
-function renderChat() {const nearBottom=$('chat').scrollHeight-$('chat').scrollTop-$('chat').clientHeight<80;$('chat').replaceChildren();for(const a of state.chat){const article=node('article',null,'activity '+a.kind);const label=({agentMessage:'Codex',delta:'Codex',userMessage:'Me',commandExecution:'Comando',command_output:'Output',diff:'Diff',fileChange:'File'})[a.kind]||a.kind;article.append(node('p',label,'activity-label'),node('pre',a.text));$('chat').append(article);}if(nearBottom)$('chat').scrollTop=$('chat').scrollHeight;}
-function addActivity(a) {if(!a?.text)return;const i=state.chat.findIndex(v=>v.id===a.id);a={...a,text:a.text.slice(0,16384)};if(i<0)state.chat.push(a);else state.chat[i]=a;while(state.chat.length>50||state.chat.reduce((n,a)=>n+a.text.length,0)>131072)state.chat.shift();}
-function applyChat(e) {if(e.activity){addActivity(e.activity);return;}if(!['delta','command_output','diff'].includes(e.kind))return;const id=e.item_id||e.turn_id+'/'+e.kind;const previous=state.chat.find(a=>a.id===id);addActivity({id,kind:e.kind,text:e.kind==='diff'?e.text:(previous?.text||'')+(e.text||'')});}
-function renderPending(s,connected) {$('pending').replaceChildren();for(const r of state.requests.values()){if(r.session_id!==s.id)continue;const box=node('section',null,'pending-request');box.append(node('h2',({command_approval:'Approval comando',file_approval:'Approval modifica file',permissions_approval:'Permessi per questo turno',user_input:'Codex ha bisogno di te',mcp_elicitation:'Richiesta MCP'})[r.kind]||'Richiesta da risolvere in Codex locale'),node('p',`${machine(s)?.name||s.machine_id} · ${s.project} · ${r.cwd||s.cwd} · thread ${s.thread_id}`,'context'),node('p',r.description),node('pre',r.operation||'','operation'));
- let payload={};try{payload=JSON.parse(typeof r.payload==='string'?r.payload:JSON.stringify(r.payload||{}));}catch{}
- if(r.kind==='permissions_approval')box.append(node('pre',JSON.stringify(payload.permissions||{},null,2)));
- if(r.kind==='file_approval'&&payload.grantRoot)box.append(node('p','Root richiesto: '+payload.grantRoot));
- const form=node('form');const fields=new Map();
- for(const q of r.questions||[]){const label=node('label',q.question);let input;if(q.options?.length){input=node('select');for(const o of q.options){const option=node('option',o.label+(o.description?' — '+o.description:''));option.value=o.label;input.append(option);}const free=node('option','Risposta libera…');free.value='__free__';input.append(free);const extra=node('input');extra.hidden=true;extra.placeholder='La tua risposta';label.append(input,extra);fields.set(q.id,()=>input.value==='__free__'?extra.value:input.value);input.onchange=()=>extra.hidden=input.value!=='__free__';}else{input=node('input');input.type=q.secret?'password':'text';input.required=true;input.maxLength=16384;label.append(input);fields.set(q.id,()=>input.value);}form.append(label);}
- let mcp;if(r.kind==='mcp_elicitation'){box.append(node('pre',JSON.stringify(payload.requestedSchema||{},null,2)));mcp=node('textarea');mcp.placeholder='Risposta JSON conforme allo schema MCP';form.append(mcp);}
- const actions=node('div',null,'actions');if(r.can_approve){const approve=node('button',r.kind==='user_input'?'Invia risposta':r.kind==='permissions_approval'?'APPROVA PER QUESTO TURNO':'APPROVA UNA VOLTA','approve');approve.type='submit';approve.disabled=!connected;actions.append(approve);}
- if(r.kind!=='unsupported'){const reject=node('button','RIFIUTA');reject.type='button';reject.disabled=!connected;reject.onclick=()=>respond(r,'reject');actions.append(reject);}form.append(actions);form.onsubmit=e=>{e.preventDefault();const answers=Object.fromEntries([...fields].map(([id,read])=>[id,[read()]]));let content;if(mcp){try{content=JSON.parse(mcp.value);}catch{return toast('Inserisci una risposta JSON valida.');}}respond(r,'approve',{answers,content});};box.append(form);$('pending').append(box);}}
-function respond(r,decision,extra={}) {if(command('respond',{request_id:r.request_id,decision,...extra}))toast('Risposta inviata. Attendo la conferma da Codex.');}
-function openSession(id,push=true) {state.selected=id;state.chat=[];state.loading=true;state.commands.clear();if(push)history.pushState({},'',`/session/${encodeURIComponent(id)}`);send({type:'watch',session_id:id});render();}
-function closeSession(push=true){send({type:'watch',session_id:''});state.selected='';state.chat=[];state.commands.clear();if(push)history.pushState({},'','/');render();}
-function route(){const match=location.pathname.match(/^\/session\/([^/]+)$/);if(match){try{openSession(decodeURIComponent(match[1]),false);}catch{closeSession(false);}}else closeSession(false);}
-function connect(){clearTimeout(reconnectTimer);if(!state.authenticated||document.hidden)return;state.socket=new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}/api/ui`);const socket=state.socket;let firstSnapshot=true;
- socket.onopen=()=>{state.online=true;state.retry=0;render();};
- socket.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}if(m.type==='snapshot'){state.machines=new Map(m.snapshot.machines.map(v=>[v.id,v]));state.sessions=new Map(m.snapshot.sessions.map(v=>[v.id,v]));state.requests=new Map(m.snapshot.requests.map(v=>[v.request_id,v]));if(firstSnapshot&&state.selected){state.loading=true;send({type:'watch',session_id:state.selected});}firstSnapshot=false;}
- if((m.type==='event'||m.type==='pending')&&m.event){const e=m.event;if(e.session)state.sessions.set(e.session.id,e.session);if(e.request)state.requests.set(e.request.request_id,e.request);if(e.kind==='request_resolved')state.requests.delete(e.request_id);if(e.session_id===state.selected)applyChat(e);}
- if(m.type==='result'){const r=m.result,c=state.commands.get(r.id);state.commands.delete(r.id);if(!r.ok)toast(r.error||'Il comando non è riuscito.');if(r.session_id===state.selected){if(r.history){for(const a of r.history)addActivity(a);}if(!c||c.kind==='history')state.loading=false;if(r.ok&&c?.text){addActivity({id:r.id,kind:'userMessage',text:c.text});$('message').value='';}}}
- scheduleRender();};
- socket.onerror=()=>socket.close();socket.onclose=()=>{if(socket!==state.socket)return;state.online=false;state.commands.clear();render();if(state.authenticated&&!document.hidden){const delay=Math.min(30000,1000*2**Math.min(state.retry++,5))*(.5+Math.random()*.5);reconnectTimer=setTimeout(async()=>{try{await api('/api/bootstrap');connect();}catch{state.authenticated=false;render();}},delay);}};
+function renderChat() {
+  const nearBottom =
+    $("chat").scrollHeight - $("chat").scrollTop - $("chat").clientHeight < 80;
+  $("chat").replaceChildren();
+  for (const a of state.chat) {
+    const article = node("article", null, "activity " + a.kind);
+    const label =
+      {
+        agentMessage: "Codex",
+        delta: "Codex",
+        userMessage: "Me",
+        commandExecution: "Comando",
+        command_output: "Output",
+        diff: "Diff",
+        fileChange: "File",
+      }[a.kind] || a.kind;
+    article.append(node("p", label, "activity-label"), node("pre", a.text));
+    $("chat").append(article);
+  }
+  if (nearBottom) $("chat").scrollTop = $("chat").scrollHeight;
 }
-$('login-form').onsubmit=async e=>{e.preventDefault();try{await api('/api/login',{token:$('login-token').value});$('login-token').value='';await bootstrap();}catch(e){$('login-error').textContent=e.message;}};
-$('logout').onclick=async()=>{try{await api('/api/logout',{});}catch{}state.authenticated=false;state.chat=[];state.requests.clear();state.socket?.close();render();};
-$('back').onclick=()=>closeSession();document.querySelector('.brand').onclick=e=>{e.preventDefault();closeSession();};window.onpopstate=route;
-$('settings-toggle').onclick=()=>$('settings').hidden=!$('settings').hidden;
-$('search').oninput=()=>{state.index=0;renderFleet();};$('group').onchange=()=>{state.group=$('group').value;state.index=0;renderFleet();};
-for(const b of $('mode').querySelectorAll('button'))b.onclick=()=>{state.mode=b.dataset.mode;renderDetail();};
-$('composer').onsubmit=e=>{e.preventDefault();const s=state.sessions.get(state.selected),text=$('message').value.trim();if(!s||!text)return;command(s.status==='WORKING'?state.mode:'start',{text,turn_id:s.turn_id||''});renderDetail();};
-$('message').onkeydown=e=>{if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){$('composer').requestSubmit();e.preventDefault();}};
-$('interrupt').onclick=()=>{const s=state.sessions.get(state.selected);if(s)command('interrupt',{turn_id:s.turn_id||''});};$('attach').onclick=()=>command('attach');
-document.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName))return;if(e.key==='Escape'){closeSession();return;}if(state.selected)return;const rows=[...document.querySelectorAll('.session-row')];if(['j','ArrowDown','k','ArrowUp'].includes(e.key)){e.preventDefault();state.index=Math.max(0,Math.min(rows.length-1,state.index+(['j','ArrowDown'].includes(e.key)?1:-1)));renderFleet();document.querySelector('.session-row.selected')?.scrollIntoView({block:'nearest'});}if(e.key==='Enter')rows[state.index]?.click();if(e.key==='/'){e.preventDefault();$('search').focus();}if(e.key==='g'){const groups=['status','machine','project'];state.group=groups[(groups.indexOf(state.group)+1)%3];$('group').value=state.group;renderFleet();}});
-document.addEventListener('visibilitychange',()=>{clearTimeout(backgroundTimer);if(document.hidden){backgroundTimer=setTimeout(()=>{state.chat=[];state.socket?.close();},300000);}else if(state.authenticated){if(state.socket?.readyState===WebSocket.OPEN&&state.selected){send({type:'watch',session_id:state.selected});}else connect();}});
-window.addEventListener('pagehide',()=>{state.chat=[];});
-function publicKeyBytes(key){return Uint8Array.from(atob(key.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));}
-async function registration(){if(!('serviceWorker'in navigator)||!('PushManager'in window))throw new Error('Web Push non disponibile. Su iPhone apri la PWA dalla schermata Home.');return navigator.serviceWorker.ready;}
-$('push-enable').onclick=async()=>{try{if(!state.publicKey)throw new Error('VAPID non configurato sul Hub.');const r=await registration();const permission=await Notification.requestPermission();if(permission!=='granted')throw new Error('Permesso notifiche non concesso.');const subscription=await r.pushManager.getSubscription()||await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:publicKeyBytes(state.publicKey)});await api('/api/push/subscribe',{subscription:subscription.toJSON(),privacy:$('privacy').checked});$('push-status').textContent='Web Push attivo. Funziona anche quando la PWA è chiusa.';}catch(e){$('push-status').textContent=e.message;}};
-$('push-test').onclick=async()=>{try{await api('/api/push/test',{});$('push-status').textContent='Notifica accodata al servizio push.';}catch(e){$('push-status').textContent=e.message;}};
-$('push-disable').onclick=async()=>{try{const r=await registration(),s=await r.pushManager.getSubscription();if(s){await api('/api/push/unsubscribe',{endpoint:s.endpoint});await s.unsubscribe();}$('push-status').textContent='Web Push disabilitato su questo dispositivo.';}catch(e){$('push-status').textContent=e.message;}};
-$('privacy').onchange=async()=>{try{const r=await registration(),s=await r.pushManager.getSubscription();if(s)await api('/api/push/subscribe',{subscription:s.toJSON(),privacy:$('privacy').checked});}catch(e){toast(e.message);}};
-async function bootstrap(){try{const b=await api('/api/bootstrap');state.publicKey=b.push_public_key;state.authenticated=true;const match=location.pathname.match(/^\/session\/([^/]+)$/);state.selected=match?decodeURIComponent(match[1]):'';connect();}catch{state.authenticated=false;}render();}
-if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+function addActivity(a) {
+  if (!a?.text) return;
+  const i = state.chat.findIndex((v) => v.id === a.id);
+  a = { ...a, text: a.text.slice(0, 16384) };
+  if (i < 0) state.chat.push(a);
+  else state.chat[i] = a;
+  while (
+    state.chat.length > 50 ||
+    state.chat.reduce((n, a) => n + a.text.length, 0) > 131072
+  )
+    state.chat.shift();
+}
+function applyChat(e) {
+  if (e.activity) {
+    addActivity(e.activity);
+    return;
+  }
+  if (!["delta", "command_output", "diff"].includes(e.kind)) return;
+  const id = e.item_id || e.turn_id + "/" + e.kind;
+  const previous = state.chat.find((a) => a.id === id);
+  addActivity({
+    id,
+    kind: e.kind,
+    text: e.kind === "diff" ? e.text : (previous?.text || "") + (e.text || ""),
+  });
+}
+function renderPending(s, connected) {
+  const signature = JSON.stringify([
+    s.id,
+    connected,
+    [...state.requests.values()].filter((r) => r.session_id === s.id),
+  ]);
+  if (signature === pendingSignature) return;
+  pendingSignature = signature;
+  $("pending").replaceChildren();
+  for (const r of state.requests.values()) {
+    if (r.session_id !== s.id) continue;
+    const box = node("section", null, "pending-request");
+    box.append(
+      node(
+        "h2",
+        {
+          command_approval: "Approval comando",
+          file_approval: "Approval modifica file",
+          permissions_approval: "Permessi per questo turno",
+          user_input: "Codex ha bisogno di te",
+          mcp_elicitation: "Richiesta MCP",
+        }[r.kind] || "Richiesta da risolvere in Codex locale",
+      ),
+      node(
+        "p",
+        `${machine(s)?.name || s.machine_id} · ${s.project} · ${r.cwd || s.cwd} · thread ${s.thread_id}`,
+        "context",
+      ),
+      node("p", r.description),
+      node("pre", r.operation || "", "operation"),
+    );
+    let payload = {};
+    try {
+      payload = JSON.parse(
+        typeof r.payload === "string"
+          ? r.payload
+          : JSON.stringify(r.payload || {}),
+      );
+    } catch {}
+    if (r.kind === "permissions_approval")
+      box.append(
+        node("pre", JSON.stringify(payload.permissions || {}, null, 2)),
+      );
+    if (r.kind === "file_approval" && payload.grantRoot)
+      box.append(node("p", "Root richiesto: " + payload.grantRoot));
+    const form = node("form");
+    const fields = new Map();
+    for (const q of r.questions || []) {
+      const label = node("label", q.question);
+      let input;
+      if (q.options?.length) {
+        input = node("select");
+        for (const o of q.options) {
+          const option = node(
+            "option",
+            o.label + (o.description ? " — " + o.description : ""),
+          );
+          option.value = o.label;
+          input.append(option);
+        }
+        const free = node("option", "Risposta libera…");
+        free.value = "__free__";
+        input.append(free);
+        const extra = node("input");
+        extra.hidden = true;
+        extra.placeholder = "La tua risposta";
+        label.append(input, extra);
+        fields.set(q.id, () =>
+          input.value === "__free__" ? extra.value : input.value,
+        );
+        input.onchange = () => (extra.hidden = input.value !== "__free__");
+      } else {
+        input = node("input");
+        input.type = q.secret ? "password" : "text";
+        input.required = true;
+        input.maxLength = 16384;
+        label.append(input);
+        fields.set(q.id, () => input.value);
+      }
+      form.append(label);
+    }
+    let mcp;
+    if (r.kind === "mcp_elicitation") {
+      box.append(
+        node("pre", JSON.stringify(payload.requestedSchema || {}, null, 2)),
+      );
+      mcp = node("textarea");
+      mcp.placeholder = "Risposta JSON conforme allo schema MCP";
+      form.append(mcp);
+    }
+    const actions = node("div", null, "actions");
+    if (r.can_approve) {
+      const approve = node(
+        "button",
+        r.kind === "user_input"
+          ? "Invia risposta"
+          : r.kind === "permissions_approval"
+            ? "APPROVA PER QUESTO TURNO"
+            : "APPROVA UNA VOLTA",
+        "approve",
+      );
+      approve.type = "submit";
+      approve.disabled = !connected;
+      actions.append(approve);
+    }
+    if (r.kind !== "unsupported") {
+      const reject = node("button", "RIFIUTA");
+      reject.type = "button";
+      reject.disabled = !connected;
+      reject.onclick = () => respond(r, "reject");
+      actions.append(reject);
+    }
+    form.append(actions);
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const answers = Object.fromEntries(
+        [...fields].map(([id, read]) => [id, [read()]]),
+      );
+      let content;
+      if (mcp) {
+        try {
+          content = JSON.parse(mcp.value);
+        } catch {
+          return toast("Inserisci una risposta JSON valida.");
+        }
+      }
+      respond(r, "approve", { answers, content });
+    };
+    box.append(form);
+    $("pending").append(box);
+  }
+}
+function respond(r, decision, extra = {}) {
+  if (command("respond", { request_id: r.request_id, decision, ...extra }))
+    toast("Risposta inviata. Attendo la conferma da Codex.");
+}
+function openSession(id, push = true) {
+  state.selected = id;
+  pendingSignature = "";
+  state.chat = [];
+  state.loading = true;
+  state.commands.clear();
+  if (push) history.pushState({}, "", `/session/${encodeURIComponent(id)}`);
+  send({ type: "watch", session_id: id });
+  render();
+}
+function closeSession(push = true) {
+  send({ type: "watch", session_id: "" });
+  state.selected = "";
+  state.chat = [];
+  state.commands.clear();
+  if (push) history.pushState({}, "", "/");
+  render();
+}
+function route() {
+  const match = location.pathname.match(/^\/session\/([^/]+)$/);
+  if (match) {
+    try {
+      openSession(decodeURIComponent(match[1]), false);
+    } catch {
+      closeSession(false);
+    }
+  } else closeSession(false);
+}
+function connect() {
+  clearTimeout(reconnectTimer);
+  if (!state.authenticated || document.hidden) return;
+  state.socket = new WebSocket(
+    `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/ui`,
+  );
+  const socket = state.socket;
+  let firstSnapshot = true;
+  socket.onopen = () => {
+    state.online = true;
+    state.retry = 0;
+    render();
+  };
+  socket.onmessage = (e) => {
+    let m;
+    try {
+      m = JSON.parse(e.data);
+    } catch {
+      return;
+    }
+    if (m.type === "snapshot") {
+      state.machines = new Map(m.snapshot.machines.map((v) => [v.id, v]));
+      state.sessions = new Map(m.snapshot.sessions.map((v) => [v.id, v]));
+      state.requests = new Map(
+        m.snapshot.requests.map((v) => [v.request_id, v]),
+      );
+      if (firstSnapshot && state.selected) {
+        state.loading = true;
+        send({ type: "watch", session_id: state.selected });
+      }
+      firstSnapshot = false;
+    }
+    if ((m.type === "event" || m.type === "pending") && m.event) {
+      const e = m.event;
+      if (e.session) state.sessions.set(e.session.id, e.session);
+      if (e.request) state.requests.set(e.request.request_id, e.request);
+      if (e.kind === "request_resolved") state.requests.delete(e.request_id);
+      if (e.session_id === state.selected) applyChat(e);
+    }
+    if (m.type === "result") {
+      const r = m.result,
+        c = state.commands.get(r.id);
+      state.commands.delete(r.id);
+      if (!r.ok) toast(r.error || "Il comando non è riuscito.");
+      if (r.session_id === state.selected) {
+        if (r.history) {
+          for (const a of r.history) addActivity(a);
+        }
+        if (!c || c.kind === "history") state.loading = false;
+        if (r.ok && c?.text) {
+          $("message").value = "";
+        }
+      }
+    }
+    scheduleRender();
+  };
+  socket.onerror = () => socket.close();
+  socket.onclose = () => {
+    if (socket !== state.socket) return;
+    state.online = false;
+    state.commands.clear();
+    render();
+    if (state.authenticated && !document.hidden) {
+      const delay =
+        Math.min(30000, 1000 * 2 ** Math.min(state.retry++, 5)) *
+        (0.5 + Math.random() * 0.5);
+      reconnectTimer = setTimeout(async () => {
+        try {
+          await api("/api/bootstrap");
+          connect();
+        } catch (e) {
+          if (e.status === 401) {
+            state.authenticated = false;
+            render();
+          } else {
+            connect();
+          }
+        }
+      }, delay);
+    }
+  };
+}
+$("login-form").onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    await api("/api/login", { token: $("login-token").value });
+    $("login-token").value = "";
+    await bootstrap();
+  } catch (e) {
+    $("login-error").textContent = e.message;
+  }
+};
+$("logout").onclick = async () => {
+  try {
+    await api("/api/logout", {});
+  } catch {}
+  state.authenticated = false;
+  state.chat = [];
+  state.requests.clear();
+  state.socket?.close();
+  render();
+};
+$("back").onclick = () => closeSession();
+document.querySelector(".brand").onclick = (e) => {
+  e.preventDefault();
+  closeSession();
+};
+window.onpopstate = route;
+$("settings-toggle").onclick = () =>
+  ($("settings").hidden = !$("settings").hidden);
+$("search").oninput = () => {
+  state.index = 0;
+  renderFleet();
+};
+$("group").onchange = () => {
+  state.group = $("group").value;
+  state.index = 0;
+  renderFleet();
+};
+for (const b of $("mode").querySelectorAll("button"))
+  b.onclick = () => {
+    state.mode = b.dataset.mode;
+    renderDetail();
+  };
+$("composer").onsubmit = (e) => {
+  e.preventDefault();
+  const s = state.sessions.get(state.selected),
+    text = $("message").value.trim();
+  if (!s || !text) return;
+  command(s.status === "WORKING" ? state.mode : "start", {
+    text,
+    turn_id: s.turn_id || "",
+  });
+  renderDetail();
+};
+$("message").onkeydown = (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+    $("composer").requestSubmit();
+    e.preventDefault();
+  }
+};
+$("interrupt").onclick = () => {
+  const s = state.sessions.get(state.selected);
+  if (s) command("interrupt", { turn_id: s.turn_id || "" });
+};
+$("attach").onclick = () => command("attach");
+document.addEventListener("keydown", (e) => {
+  if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName))
+    return;
+  if (e.key === "Escape") {
+    closeSession();
+    return;
+  }
+  if (state.selected) return;
+  const rows = [...document.querySelectorAll(".session-row")];
+  if (["j", "ArrowDown", "k", "ArrowUp"].includes(e.key)) {
+    e.preventDefault();
+    state.index = Math.max(
+      0,
+      Math.min(
+        rows.length - 1,
+        state.index + (["j", "ArrowDown"].includes(e.key) ? 1 : -1),
+      ),
+    );
+    renderFleet();
+    document
+      .querySelector(".session-row.selected")
+      ?.scrollIntoView({ block: "nearest" });
+  }
+  if (e.key === "Enter") rows[state.index]?.click();
+  if (e.key === "/") {
+    e.preventDefault();
+    $("search").focus();
+  }
+  if (e.key === "g") {
+    const groups = ["status", "machine", "project"];
+    state.group = groups[(groups.indexOf(state.group) + 1) % 3];
+    $("group").value = state.group;
+    renderFleet();
+  }
+});
+document.addEventListener("visibilitychange", () => {
+  clearTimeout(backgroundTimer);
+  if (document.hidden) {
+    backgroundTimer = setTimeout(() => {
+      state.chat = [];
+      state.socket?.close();
+    }, 300000);
+  } else if (state.authenticated) {
+    if (state.socket?.readyState === WebSocket.OPEN && state.selected) {
+      send({ type: "watch", session_id: state.selected });
+    } else connect();
+  }
+});
+window.addEventListener("pagehide", () => {
+  state.chat = [];
+});
+function publicKeyBytes(key) {
+  return Uint8Array.from(atob(key.replace(/-/g, "+").replace(/_/g, "/")), (c) =>
+    c.charCodeAt(0),
+  );
+}
+async function registration() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window))
+    throw new Error(
+      "Web Push non disponibile. Su iPhone apri la PWA dalla schermata Home.",
+    );
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise((_, reject) =>
+      setTimeout(
+        () =>
+          reject(new Error("Service Worker non disponibile. Ricarica la PWA.")),
+        10000,
+      ),
+    ),
+  ]);
+}
+$("push-enable").onclick = async () => {
+  try {
+    if (!state.publicKey) throw new Error("VAPID non configurato sul Hub.");
+    const permission = await Notification.requestPermission();
+    const r = await registration();
+    if (permission !== "granted")
+      throw new Error("Permesso notifiche non concesso.");
+    const subscription =
+      (await r.pushManager.getSubscription()) ||
+      (await r.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: publicKeyBytes(state.publicKey),
+      }));
+    await api("/api/push/subscribe", {
+      subscription: subscription.toJSON(),
+      privacy: $("privacy").checked,
+    });
+    $("push-status").textContent =
+      "Web Push attivo. Funziona anche quando la PWA è chiusa.";
+  } catch (e) {
+    $("push-status").textContent = e.message;
+  }
+};
+$("push-test").onclick = async () => {
+  try {
+    await api("/api/push/test", {});
+    $("push-status").textContent = "Notifica accodata al servizio push.";
+  } catch (e) {
+    $("push-status").textContent = e.message;
+  }
+};
+$("push-disable").onclick = async () => {
+  try {
+    const r = await registration(),
+      s = await r.pushManager.getSubscription();
+    if (s) {
+      await api("/api/push/unsubscribe", { endpoint: s.endpoint });
+      await s.unsubscribe();
+    }
+    $("push-status").textContent =
+      "Web Push disabilitato su questo dispositivo.";
+  } catch (e) {
+    $("push-status").textContent = e.message;
+  }
+};
+$("privacy").onchange = async () => {
+  try {
+    const r = await registration(),
+      s = await r.pushManager.getSubscription();
+    if (s)
+      await api("/api/push/subscribe", {
+        subscription: s.toJSON(),
+        privacy: $("privacy").checked,
+      });
+  } catch (e) {
+    toast(e.message);
+  }
+};
+async function bootstrap() {
+  try {
+    const b = await api("/api/bootstrap");
+    state.publicKey = b.push_public_key;
+    state.authenticated = true;
+    const match = location.pathname.match(/^\/session\/([^/]+)$/);
+    state.selected = match ? decodeURIComponent(match[1]) : "";
+    connect();
+  } catch {
+    state.authenticated = false;
+  }
+  render();
+}
+if ("serviceWorker" in navigator)
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
 // This timer updates relative labels only; no network polling.
-setInterval(()=>{if(state.authenticated&&!document.hidden)scheduleRender();},60000);
+setInterval(() => {
+  if (state.authenticated && !document.hidden) scheduleRender();
+}, 60000);
 await bootstrap();

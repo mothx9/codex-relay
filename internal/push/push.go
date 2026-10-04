@@ -3,6 +3,7 @@ package push
 
 import (
 	"context"
+	"crypto/elliptic"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -56,7 +57,11 @@ func Validate(raw []byte) (webpush.Subscription, error) {
 	if e != nil || u.Scheme != "https" || u.User != nil || u.Fragment != "" || (u.Port() != "" && u.Port() != "443") {
 		return v, errors.New("invalid push endpoint")
 	}
-	switch u.Hostname() {
+	host := u.Hostname()
+	if strings.HasSuffix(host, ".push.apple.com") {
+		host = "web.push.apple.com"
+	}
+	switch host {
 	case "web.push.apple.com", "fcm.googleapis.com", "updates.push.services.mozilla.com":
 	default:
 		return v, errors.New("unsupported push service; allowlist covers Safari, Chrome, Firefox")
@@ -67,6 +72,10 @@ func Validate(raw []byte) (webpush.Subscription, error) {
 			return v, errors.New("invalid push encryption key")
 		}
 	}
+	dh, _ := base64.RawURLEncoding.DecodeString(strings.TrimRight(v.Keys.P256dh, "="))
+	if x, _ := elliptic.Unmarshal(elliptic.P256(), dh); x == nil {
+		return v, errors.New("invalid P-256 encryption key")
+	}
 	return v, nil
 }
 func (w *Worker) Run(ctx context.Context) {
@@ -75,12 +84,12 @@ func (w *Worker) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case n := <-w.queue:
-			once, e := w.store.NotifyOnce(n.Key)
-			if e != nil || !once {
+			subscriptions, e := w.store.Subscriptions()
+			if e != nil || len(subscriptions) == 0 {
 				continue
 			}
-			subscriptions, e := w.store.Subscriptions()
-			if e != nil {
+			once, e := w.store.NotifyOnce(n.Key)
+			if e != nil || !once {
 				continue
 			}
 			for _, sub := range subscriptions {
