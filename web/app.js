@@ -29,7 +29,8 @@ let reconnectTimer,
   backgroundTimer,
   toastTimer,
   renderFrame,
-  pendingSignature = "";
+  pendingSignature = "",
+  hiddenAt = 0;
 function node(tag, text, cls) {
   const n = document.createElement(tag);
   if (text != null) n.textContent = text;
@@ -698,11 +699,13 @@ document.addEventListener("keydown", (e) => {
 document.addEventListener("visibilitychange", () => {
   clearTimeout(backgroundTimer);
   if (document.hidden) {
+    hiddenAt = Date.now();
     backgroundTimer = setTimeout(() => {
       state.chat = [];
       state.socket?.close();
     }, 300000);
   } else if (state.authenticated) {
+    if (hiddenAt && Date.now() - hiddenAt > 300000) state.chat = [];
     if (state.socket?.readyState === WebSocket.OPEN && state.selected) {
       send({ type: "watch", session_id: state.selected });
     } else connect();

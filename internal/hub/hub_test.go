@@ -260,3 +260,39 @@ func TestAgentReconnectAndHubRestart(t *testing.T) {
 		t.Fatal("agent shutdown blocked")
 	}
 }
+
+func TestRecoveryExpiresBuffersAndRevokesConnections(t *testing.T) {
+	h, s, srv := testHub(t, filepath.Join(t.TempDir(), "db"))
+	defer s.Close()
+	defer srv.Close()
+	defer h.Close()
+	_ = s.Token("m", testToken)
+	a := testWS(t, srv, http.Header{"X-Relay-Machine": []string{"m"}, "Authorization": []string{"Bearer " + testToken}}, "/api/agent")
+	defer a.Close()
+	_ = a.WriteJSON(protocol.Message{Version: 1, Type: "announce", Machine: &protocol.Machine{ID: "m"}, Epoch: "epoch"})
+	end := time.Now().Add(time.Second)
+	for time.Now().Before(end) {
+		h.mu.Lock()
+		ready := h.agents["m"] != nil && h.agents["m"].epoch != ""
+		h.mu.Unlock()
+		if ready {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	h.mu.Lock()
+	h.buffers["expired"] = &Recent{Touched: time.Now().Add(-6 * time.Minute), Items: []protocol.Activity{{Text: "temporary"}}}
+	h.mu.Unlock()
+	_ = s.Revoke("m")
+	h.maintain(time.Now())
+	_ = a.SetReadDeadline(time.Now().Add(time.Second))
+	var m protocol.Message
+	if a.ReadJSON(&m) == nil {
+		t.Fatal("revoked connection not closed")
+	}
+	h.mu.Lock()
+	if h.buffers["expired"] != nil {
+		t.Error("ephemeral context survived TTL")
+	}
+	h.mu.Unlock()
+}

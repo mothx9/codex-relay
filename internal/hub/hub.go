@@ -198,6 +198,9 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 			return errors.New("invalid request")
 		}
 	}
+	if a.epoch == msg.Epoch && msg.Sequence < a.sequence {
+		return nil
+	}
 	m := *msg.Machine
 	m.ID = id
 	m.LastSeen = time.Now().UTC()
