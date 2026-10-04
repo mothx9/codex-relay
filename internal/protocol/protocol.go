@@ -80,6 +80,7 @@ type PendingRequest struct {
 	CreatedAt   time.Time       `json:"created_at"`
 	ExpiresAt   time.Time       `json:"expires_at"`
 	Status      string          `json:"status"`
+	NotifyKey   string          `json:"notify_key,omitempty"`
 	CanApprove  bool            `json:"can_approve"`
 }
 type Event struct {

@@ -84,6 +84,7 @@ func (a *Adapter) Snapshot(ctx context.Context) ([]protocol.Session, []protocol.
 	for _, p := range a.requests {
 		requests = append(requests, p.Request)
 	}
+	a.snapshotSequence = a.sequence
 	a.mu.Unlock()
 	return out, requests, nil
 }

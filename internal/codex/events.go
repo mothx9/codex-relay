@@ -234,6 +234,10 @@ func (a *Adapter) handleRequest(m rpcMessage, threadID, turnID string) {
 		r.CanApprove = false
 		r.Description = "Resolve this request in local Codex: " + m.Method
 	}
+	r.NotifyKey = fmt.Sprintf("%s/request/%s/%s/%s", r.SessionID, r.TurnID, r.Kind, p.ItemID)
+	if p.ItemID == "" {
+		r.NotifyKey += "/" + r.ID
+	}
 	if r.Description == "" {
 		r.Description = strings.ReplaceAll(r.Kind, "_", " ")
 	}

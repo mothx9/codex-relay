@@ -13,6 +13,7 @@ import (
 type Backend interface {
 	Snapshot(context.Context) ([]protocol.Session, []protocol.PendingRequest, error)
 	Execute(context.Context, protocol.Command) protocol.Result
+	Cursor() (string, uint64)
 	Events() <-chan protocol.Event
 	Done() <-chan struct{}
 	Close()

@@ -74,21 +74,22 @@ func (s *stdioTransport) Close() error {
 }
 
 type Adapter struct {
-	cfg        Config
-	t          transport
-	mu         sync.Mutex
-	writeMu    sync.Mutex
-	calls      map[string]chan rpcMessage
-	next       uint64
-	events     chan protocol.Event
-	done       chan struct{}
-	once       sync.Once
-	sessions   map[string]protocol.Session
-	requests   map[string]pending
-	subscribed map[string]bool
-	epoch      string
-	sequence   uint64
-	queue      bool
+	cfg              Config
+	t                transport
+	mu               sync.Mutex
+	writeMu          sync.Mutex
+	calls            map[string]chan rpcMessage
+	next             uint64
+	events           chan protocol.Event
+	done             chan struct{}
+	once             sync.Once
+	sessions         map[string]protocol.Session
+	requests         map[string]pending
+	subscribed       map[string]bool
+	epoch            string
+	sequence         uint64
+	snapshotSequence uint64
+	queue            bool
 }
 type pending struct {
 	Request protocol.PendingRequest
@@ -178,8 +179,13 @@ func Open(ctx context.Context, cfg Config) (*Adapter, error) {
 	}
 	return a, nil
 }
-func (a *Adapter) Close()                        { a.once.Do(func() { close(a.done); _ = a.t.Close() }) }
-func (a *Adapter) Done() <-chan struct{}         { return a.done }
+func (a *Adapter) Close()                { a.once.Do(func() { close(a.done); _ = a.t.Close() }) }
+func (a *Adapter) Done() <-chan struct{} { return a.done }
+func (a *Adapter) Cursor() (string, uint64) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.epoch, a.snapshotSequence
+}
 func (a *Adapter) Events() <-chan protocol.Event { return a.events }
 func (a *Adapter) write(v any) error             { a.writeMu.Lock(); defer a.writeMu.Unlock(); return a.t.Write(v) }
 func (a *Adapter) rpc(ctx context.Context, method string, params any) (json.RawMessage, error) {
