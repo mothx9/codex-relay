@@ -2,7 +2,7 @@
 
 A personal control plane for Codex sessions on multiple machines. Codex does the work on each host; Relay transports control, derived state and notifications. One Go binary contains the hub, outbound agent and browser PWA. The hub needs no Node runtime, GPU or external database.
 
-**Status: v0.1.0-rc.2.** Real Codex chat, steering, queueing, command approval, structured input, second-client request resolution and Relay restart recovery have been exercised. Delivery to an installed iPhone PWA is still an operator acceptance check; it is not claimed as verified. See [VALIDATION.md](VALIDATION.md) for evidence and limits.
+**Status: release candidate.** The canonical composer and ephemeral follow-up lifecycle run against real Codex 0.160.0. The reference deployment has one always-on hub on Zima, with Exon, Spark and MacBook as agents. The actual Zima cutover and physical iPhone push acceptance remain unverified; the current Exon loopback hub is validation/rollback only. See [VALIDATION.md](VALIDATION.md) for evidence and limits.
 
 Codex Relay is an independent project, not affiliated with or endorsed by OpenAI. Apache-2.0 licensed. No OpenAI logos are used.
 
@@ -22,9 +22,11 @@ Codex Relay is an independent project, not affiliated with or endorsed by OpenAI
     app-server    app-server     app-server
 ```
 
-The fleet view has status filters, search, grouping by status/machine/project, and keyboard navigation (`j/k`, arrows, Enter, Esc, `g`, `/`). Session detail has recent context, live output, a composer and contextual approval/input forms. **Adesso** steers the current turn; **Dopo** uses Codex's durable queue. Interrupt targets the current turn ID. Saved inactive threads are read-only until explicitly attached.
+The fleet view has status filters, search, grouping by status/machine/project, and keyboard navigation (`j/k`, arrows, Enter, Esc, `g`, `/`). Session detail has recent context, live output and contextual approval/input forms. At READY, **Invia** starts a new turn. At WORKING, **Invia follow-up** uses Codex's native queue; the message appears immediately and remains visible until reconciled with its canonical userMessage. At NEEDS_YOU, answer the displayed request. **Steer turno corrente** and **Interrompi turno** are separate advanced actions, gated by explicit adapter capabilities and an active turn ID. Saved inactive threads are read-only until explicitly attached.
 
-![Actual PWA on a real Codex validation thread](screenshots/session.png)
+The existing screenshot predates the canonical composer; the updated control flow is described above.
+
+![Earlier PWA validation on a real Codex thread](screenshots/session.png)
 
 ## Quick start: localhost
 
@@ -138,6 +140,8 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for exact Zima/Exon/Spark/MacBook commands, t
 
 The agent keeps its Codex connection while the hub is unavailable. Both WebSocket links have bounded queues. Slow consumers are disconnected instead of accumulating unbounded output. Reconnect uses exponential backoff with jitter. After reconnect the agent reconstructs its snapshot from Codex, including replayed pending requests; the hub trusts that snapshot over old derived state. Commands are not silently retried: an interrupted command reports an unknown outcome, so inspect the real thread before resubmitting.
 
+The follow-up outbox is browser RAM only: up to 32 unmaterialized messages / 128 KiB, with at most 128 entries including correlation metadata. It is cleared on logout, page exit or five minutes in the background; inactive entries have a five-minute TTL. A successful queue RPC means **QUEUED**, never turn completion. Codex userMessage `clientId` reconciles the optimistic bubble without text guessing. Explicit Retry preserves user choice; a lost outcome never causes automatic resubmission. Opening a session also reads its bounded native Codex queue.
+
 Chat is fetched on session open with a descending `thread/items/list` page (40 items), then streams live. Each recent buffer is capped at 50 items / 128 KiB, with at most 64 hub buffers and a five-minute TTL. Closing the last viewer removes its buffer. Unwatched completion drops its buffer. The browser caps the same recent context, clears it on close/background expiry, and stores no transcripts in localStorage, IndexedDB or its service-worker cache.
 
 ## Doctor and validation
@@ -151,7 +155,7 @@ make cross
 
 Doctor reports CLI/daemon adapter connectivity, session count, hub reachability, current machine WebSocket status, read-only DB quick-check, VAPID file presence and its own runtime memory. Its memory value is **not** the RSS of a running hub or agent.
 
-CI checks gofmt, vet, race-tested unit/integration tests, and all three target builds. Fake app-server/backend tests require no Codex account. Optional real daemon tests are excluded from normal CI:
+CI checks gofmt, vet, race-tested Go unit/integration tests, the ES-module control-flow tests, and all three target builds. Development control-flow tests need Node; the installed hub and agents do not. Fake app-server/backend tests require no Codex account. Optional real daemon tests are excluded from normal CI:
 
 ```sh
 RELAY_REAL_CODEX=1 go test ./internal/codex -run TestRealCodexDiscovery -v
@@ -161,13 +165,13 @@ RELAY_REAL_CODEX_TURN=1 go test ./internal/codex -run TestRealCodexRoundTrip -v
 
 ## Limits and next compatibility work
 
-- Verified CLI/daemon: 0.160.0 on Linux amd64. The protocol is experimental; other versions are unverified. Keep upgrades deliberate and run doctor/optional tests.
+- Verified CLI/daemon: 0.160.0 on Linux amd64, with native discovery also exercised on Linux arm64 and macOS arm64. The protocol is experimental; other versions are unverified. Keep upgrades deliberate and run doctor/optional tests.
 - Resume is the live subscription boundary. There is no separate `thread/subscribe` or `serverRequest/list`; the shared server replays pending requests on resume.
 - 16 machines, 256 recent sessions per agent, 1024 fleet sessions, 32 operator sockets, 32 push subscriptions, 128 pending requests/in-flight commands. These are deliberate v0.1 bounds.
 - Unloaded historical threads show INACTIVE/read-only. Relay cannot infer activity of a separate non-shared Codex process. No TUI scraping, ANSI parser or PTY controller is used.
 - File approval is disabled when proposed file context is missing. Permission grants are explicitly turn-scoped; persistent/session grants and execution-policy amendments are not exposed.
 - MCP form input uses an explicit JSON response; URL elicitations require local Codex. Legacy/dynamic requests are shown as requiring local handling. These paths have contract tests, not full live acceptance coverage.
 - No creation of new Codex projects, remote file browser, multi-user policies or autonomous orchestration. Local Codex remains the source of truth.
-- Real iPhone push acceptance and target ARM/macOS service execution remain to be verified; cross-compilation is already checked.
+- Canonical Zima hub/Wi-Fi, the three agents connected to that hub, MacBook launchd/reconnect, real Zima resource measurements and physical iPhone push/deep-link acceptance remain to be verified. ARM64/macOS binaries and Codex discovery have run on the real hosts; Spark's service is staged, inactive.
 
-After the acceptance checks, the next scope is compatibility fixtures for Codex upgrades and reliable release automation. Coordinator AI, native Swift clients, additional backends, fleet policies and YAI integration remain outside v0.1.
+Compatibility fixtures for Codex upgrades and release automation are later work. Coordinator AI, native Swift clients, additional backends, fleet policies and YAI integration remain outside v0.1.

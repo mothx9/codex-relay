@@ -1,6 +1,16 @@
 # Deployment commands
 
-The installer does not change Wi-Fi, routing, firewall, NetworkManager or VPN settings. SSH aliases below must already point to reachable, trusted hosts. A hub can run on any supported Linux machine; Zima is the intended always-on host, not a requirement for initial agent setup.
+The installer does not change Wi-Fi, routing, firewall, NetworkManager or VPN settings. SSH aliases below must already point to reachable, trusted hosts. A hub can technically run on any supported host. The reference installation uses **Zima as the sole canonical always-on hub** and Exon/Spark/MacBook only as agents. The existing Exon loopback hub is a validation rollback, not a second production fleet. Do not activate agents against an assumed URL or transfer old validation tokens as Zima credentials.
+
+## Zima recovery and cutover boundary
+
+Before installation, obtain trusted SSH to Zima. If the headless host has no working route, temporary Ethernet is the only initial recovery path available remotely. A USB Wi-Fi adapter alone cannot be configured through a disconnected host.
+
+Collect `uname -a`, `/etc/os-release`, `lsusb`, `ip -br link`, `ip -br addr`, `ip route`, `iw dev`, `rfkill list`, `nmcli general status`, `nmcli device` and NetworkManager service status. Identify the actual Alfa USB ID, driver and interface before choosing a driver. Configure Wi-Fi persistently with the host's existing network manager, keeping credentials out of command arguments/logs and preserving Ethernet. Prove a **new SSH connection via the Wi-Fi IP**, DNS and Internet access before disconnecting Ethernet; repeat those checks afterwards.
+
+Inspect `tailscale status`, `tailscale ping` and `tailscale serve status` on the recovered Zima. Use its existing routing and an available HTTPS Serve mapping; do not overwrite another service. The hub remains loopback-only. The one stable HTTPS origin belongs to Zima and is shared by operator PWA and all three outbound agents.
+
+Install Zima's persistent hub first; verify service restart, linger, DB recovery and stable bootstrap/VAPID files. Enroll Exon on this hub, then prove real snapshot/chat/follow-up/answer/reconnect before stopping the old Exon hub. Retain its private state directory temporarily for rollback. Enroll Spark next, then MacBook. An unreachable Zima blocks this cutover; a staged binary or unit is not an online fleet.
 
 ## Prerequisites and setup order
 

@@ -10,7 +10,52 @@ Codex Relay is a transport/control plane, not another AI runtime.
 - **SQLite = metadata only.** WAL, one database connection, bound parameters and transactional snapshot replacement. Persist machine/session metadata, request routing identity, token hashes, push subscriptions, bounded audit/dedupe. Request descriptions, commands, payloads, chat and answers are excluded from writes.
 - **Chat = ephemeral.** Fetch at most 40 recent Codex items on demand; use bounded 50-item/128-KiB RAM windows, a five-minute TTL and at most 64 hub buffers. Completed item IDs replace streamed deltas. Last viewer close drops the buffer. Browser caches shell assets only.
 - **Push = notification channel.** The hub owns VAPID and subscriptions. Semantic identities (session/turn/item) dedupe replay across Relay restart. A push message contains a privacy-conscious summary and deep link; never execution authority. Open the authenticated PWA to act.
-- **Network = transport agnostic.** LAN, Tailscale or other IP routing can carry HTTPS/WSS. Relay implements no VPN and modifies no routing or Wi-Fi. Keep production ingress HTTPS and Codex local.
+- **Network = transport agnostic.** LAN, Tailscale or other IP routing can carry HTTPS/WSS. Relay implements no VPN; the binary and installer do not modify routing or Wi-Fi. Host network setup is a separate deployment operation. Keep production ingress HTTPS and Codex local.
+
+## One reference deployment
+
+A hub can technically run on any supported host. This installation has one canonical always-on **Zima hub**; Exon, Spark and MacBook run outbound agents beside their existing shared Codex daemons. The Exon loopback validation hub is a temporary rollback environment and is stopped only after the Zima control path passes real acceptance. There must never be two production hubs, databases or fleets.
+
+```text
+              iPhone / Browser
+                     |
+                 HTTPS / WSS
+                     |
+          ZIMA: Hub + PWA + Web Push
+          routing + metadata SQLite
+                     ^
+            outbound Agent WebSockets
+          +----------+----------+
+          |          |          |
+         EXON       SPARK     MACBOOK
+         Agent      Agent      Agent
+          |          |          |
+        local      local       local
+        Codex      Codex       Codex
+```
+
+Zima executes no Codex inference. Codex credentials stay on the agent hosts.
+
+## Canonical message controls
+
+```text
+Message
+  New Turn   READY      -> turn/start
+  Follow-up  WORKING    -> thread/queue/add (normal submit)
+  Answer     NEEDS_YOU  -> matching server request response
+  Steer      explicit   -> turn/steer with expectedTurnId
+Interrupt    explicit   -> turn/interrupt
+```
+
+FOLLOW-UP and STEER are different instructions. A normal WORKING composer submit always means follow-up, never a current-turn intervention. Steer requires ONLINE machine, writable session, WORKING state, explicit `can_steer`, and an active turn ID. Follow-up requires `can_follow_up` but not an active turn ID. Answer uses `can_answer` from an outstanding server request; direct-input permission alone does not revoke an already-addressed request. Machine offline state disables controls. The browser does not derive these capabilities from status alone.
+
+The ephemeral browser outbox shows LOCAL → SENDING → QUEUED → DISPATCHED → MATERIALIZED, or FAILED. Steer has STEERING → APPLIED/FAILED. A command ACK is independent of turn completion. A failed command retains its text and offers explicit retry/alternative submission; a stale steer reports TURN_CHANGED and never becomes follow-up automatically. A selected steer retains its original turn identity if the turn changes while composing.
+
+Codex's `clientUserMessageId` is the Relay command ID. Native queued submissions expose this identity and their own queue ID. Live and recent canonical userMessage items expose it as `clientId`; reconciliation replaces the optimistic item without copying a transcript to SQLite. `thread/queue/changed` triggers one bounded, event-driven `thread/queue/list` read. Queue removal alone does not prove dispatch: an exact userMessage identity does. On 0.160.0, `turn/started` has empty items in the observed runs; `item/started` provides the dispatch identity before materialization.
+
+The outbox is bounded to 32 pending items / 128 KiB and 128 entries including materialized correlation metadata, with a five-minute inactive TTL. It is never stored in a DB, localStorage, IndexedDB or Service Worker cache. A reconnect fetches Codex-owned queue/recent items, never recreates submissions. UNKNOWN_OUTCOME stays unknown until canonical Codex evidence or an explicit operator decision. Safe Relay error codes preserve command/session identity; raw backend messages do not reach the browser.
+
+Source-of-truth boundaries remain: Codex owns history, execution, follow-up queue and approvals; Relay derives fleet/session status, owns machine authentication and push subscriptions, and holds only ephemeral chat RAM. No transcript database exists.
 
 ## Ordering and reconnect
 

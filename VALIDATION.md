@@ -1,4 +1,6 @@
-# Validation record — v0.1.0-rc.1
+# Validation record
+
+## Historical MVP acceptance — v0.1.0-rc.1
 
 Performed 2026-10-04 on Exon, Linux amd64, with Codex CLI/shared daemon **0.160.0**, Go **1.27.0-X:nodwarf5**, and system Chromium driven by temporary Playwright tooling outside the repository. CI uses stable Go 1.27.x and builds the three release targets. Neither the hub nor agent requires Node. These measurements are not Zima measurements.
 
@@ -19,7 +21,7 @@ Started the actual Go hub on localhost:8787, enrolled a distinct validation agen
 | 17: tests | `go test ./...`, `go test -race ./...`, gofmt and `go vet ./...` pass. |
 | 18: public updated repository | Public repository and incremental commits pushed; CI tests and all three builds pass. |
 
-**This is a release candidate, not a declaration that the complete v0.1 definition of done has passed.** Physical iPhone notification delivery/tap is the remaining end-to-end acceptance gap.
+**This historical MVP run was a release candidate, not complete v0.1 acceptance.** Its iPhone delivery/tap was not verified. The canonical multi-machine wave below adds further deployment acceptance requirements; this older local run does not satisfy them.
 
 Additional real controls: steering while Codex ran a harmless seven-second command; native queue add followed by automatic next turn and response; bounded context fetched from the true thread; shared-second-client pending replay/resolution. Optional discovery and real round-trip tests passed. The latter creates a fresh thread, primes its first rollout, attaches a second client, starts a small turn, observes streaming/completion, and archives that test thread.
 
@@ -85,3 +87,48 @@ A copied Spark deployment command used a documentation URL and referenced an age
 Deployment commands now require the real hub URL through `RELAY_HUB_URL` and explain the hub/token/transfer/install order. The installer rejects reserved documentation domains before modifying files, reports the missing token path and enrollment prerequisite, and offers Linux `--no-start` to install files without enabling or starting a unit.
 
 Checked shell syntax, Linux unit rendering, three placeholder-domain failures and a missing-token failure. On the real Spark, installed the verified rc.2 ARM64 binary, copied its existing enrolled token to its final private path, and installed the unit with `--no-start`. `systemd-analyze --user verify` passed; systemd reported `loaded`, `inactive`, `disabled`. Token contents matched the current hub enrollment without displaying them. The installed binary's doctor, given the same absolute Codex path as the unit, connected to Codex 0.160.0 and found 78 actual sessions. This is a prepared installation, not a claim that Spark has connected to the hub; HTTPS activation remains pending.
+
+## 2026-10-05: canonical controls and cutover acceptance
+
+Installed Codex CLI/shared daemon **0.160.0**. Fresh schema inspection and isolated real queue experiments confirmed `clientUserMessageId` → queuedSubmission identity → canonical userMessage `clientId`, both in live item events and a later independent `thread/items/list` read. The observed `turn/started` had no items. See [DISCOVERY.md](DISCOVERY.md) for the exact protocol boundary.
+
+Ran the actual embedded PWA in system Chromium through temporary Playwright tooling outside the repository, at **390×844**. The same authenticated local Exon validation hub/data directory was restarted during a queued native follow-up; bootstrap token remained stable. No Codex daemon or unrelated workload was restarted.
+
+| Canonical control/recovery check | Observed result |
+| --- | --- |
+| READY submit → NEW TURN | Real `new_turn` command, daemon turn and live response. |
+| WORKING default → FOLLOW-UP | Real `follow_up` command; native Codex queue accepted it. No primary Adesso/Dopo controls. |
+| Optimistic lifecycle | INVIO appeared immediately, then IN CODA while the first turn worked. RPC ACK did not complete that turn. |
+| Browser disconnect + Hub restart while queued | Reconnected to the same hub state; one follow-up wire submission, one canonical user bubble, exact client ID match. Codex executed its own queued instruction independently. |
+| Explicit STEER | Separate advanced control sent `steer` during a harmless command window; the requested unique marker arrived live. |
+| NEEDS_YOU → ANSWER → READY | Real plan-mode Alpha/Beta input. Normal composer hidden, `answer` command observed, structured Alpha response returned and pending request retired. |
+| Mobile browser correctness | No horizontal overflow, no page errors, zero localStorage entries. |
+| Transcript exclusion | All three unique wave conversation markers absent from SQLite main/WAL/SHM and Relay runtime log; SQL quick_check passed. No transcript table. |
+| Automated regression | `go test ./...`, `go test -race ./...`, vet, shell syntax and nine ES-module control-flow tests passed. Local socket tests run with the required environment permission. |
+| Public CI | Canonical controls and outbox commits passed GitHub CI, including Go race tests, UI control tests and all three cross-builds. |
+
+Tests cover explicit capabilities; follow-up without an active turn ID; stale steer TURN_CHANGED; ACK/materialization races; queue errors retaining text; unknown disconnect outcome without resubmission; native queue rehydration; duplicate canonical user items; per-session identity and bounded outbox/TTL. Direct-input read-only state does not prevent answering an outstanding addressed server request, and answering it does not grant other controls.
+
+New rc.3-code binaries also **ran on the real Spark and MacBook**: doctor connected to each existing 0.160.0 shared daemon and enumerated **78** and **85** sessions, respectively. These were private staging binaries, not agents enrolled on an assumed hub. Spark's pre-existing staged systemd unit remained inactive. MacBook launchd was not activated.
+
+### Actual deployment matrix at this checkpoint
+
+| Check | EXON | SPARK | MACBOOK |
+| --- | --- | --- | --- |
+| SSH/host reachable | local | yes | yes |
+| New binary runs natively | yes | Linux arm64 | macOS arm64 |
+| Real Codex discovered | yes, 0.160.0 | yes, 0.160.0 | yes, 0.160.0 |
+| Agent on canonical Zima hub | not yet | not yet | not yet |
+| Sessions/control through canonical Zima PWA | not yet | not yet | not yet |
+| Local validation new turn/follow-up/live/answer | passed | not run | not run |
+| Canonical deployment reconnect | not yet | not yet | not yet |
+
+### Current root blocker: trusted SSH to Zima
+
+The operator confirmed temporary Ethernet connected. Known Zima SSH/Tailscale addresses remained unreachable; Tailscale reported Zima offline. Relevant known-neighbour/mDNS checks on Exon, Spark and MacBook did not identify a reachable Zima. The candidate IP supplied by the operator exposed HTTP/HTTPS and printing, with SSH closed; it matched the earlier HP printer discovery, not a verified Zima.
+
+The operator explicitly authorized using only the router's existing Firefox session to read DHCP. Direct scoped cookie queries found no usable persisted router cookies. Copying the entire locked Firefox cookie DB was rejected by automatic approval review because it would duplicate other sites' sessions; that action was not performed. A safer capture of the exact router window showed “Session timed out because of inactivity”; renewed router login was requested. No Wi-Fi credential, browser cookie, token or device lease list is in this repository. No router/firewall/routing setting was changed.
+
+Until trusted Zima SSH is available, its actual Alfa USB chipset/driver, Wi-Fi survival after Ethernet removal, OS/service/HTTPS deployment and ten-minute resource/latency measurements cannot be verified. The three canonical agent enrollments and physical iPhone push/tap acceptance remain downstream requirements. The old Exon loopback hub is retained only as validation rollback; there is no claim of a completed Zima cutover or a production multi-machine fleet.
+
+**CANONICAL ARCHITECTURE: BLOCKED at Zima access.** Do not promote this candidate to v0.1.0 based on local tests or staged remote binaries.

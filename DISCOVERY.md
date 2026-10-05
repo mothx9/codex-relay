@@ -29,6 +29,24 @@ Official transports include stdio, TCP WebSocket and WebSocket over Unix sockets
 
 Only isolated validation threads received commands. No unrelated thread's approvals were answered. Relay hub and agent process restarts were exercised with the real shared daemon left running; a new real message succeeded afterwards. Codex-daemon restart is covered by a fake-backend disconnection/rehydration test, not a destructive restart of the daemon serving other work.
 
+## 2026-10-05 canonical follow-up protocol verification
+
+Regenerated experimental JSON schemas from the installed **0.160.0** CLI before changing control flow. Rechecked official `openai/codex` queue processing; no upstream schema/code was copied into Relay. Separate harmless validation threads exercised a running turn, queue add/list/change, automatic next turn and canonical user messages.
+
+| Official surface | Installed schema and real observation |
+| --- | --- |
+| `thread/queue/add` | Requires `threadId`, input and `clientUserMessageId`. Response `queuedSubmission` contains native `id`, the same `clientUserMessageId` and input. Exact identity matched the submitted Relay command ID. |
+| `thread/queue/list` | Bounded paginated `data` contains queued submissions with both IDs and input. Accepted validation follow-up appeared with the exact identity. |
+| `thread/queue/changed` | Contains `threadId`, not a full queue. Observed on queue changes; adapter refreshes through the official list RPC, without polling. |
+| `turn/start` / `turn/steer` | Accept client identity. Steer retains `expectedTurnId`; a stale turn is a canonical TURN_CHANGED error, never a queued instruction. |
+| `turn/started` | Schema permits items, but **actual items were empty** in these runs. Do not infer follow-up identity from this event or FIFO ordering. |
+| `item/started`, `item/completed` | A queued canonical `userMessage` exposed `clientId` equal to the submitted `clientUserMessageId`. The started event identifies dispatch; the actual item replaces the browser outbox bubble. |
+| `thread/items/list` after completion | Independently reread the completed validation thread: the follow-up userMessage retained its exact `clientId`, turn ID and item ID. Reconnect reconciliation therefore uses identity in recent history too. |
+
+The native queue executed the follow-up after the first turn and produced two independent turn/completed events. Queue ACK alone did not change the running turn to READY. The real PWA showed IN CODA while working, survived a browser connection loss plus local hub restart with **one follow-up submission**, then displayed one canonical user message. Explicit steer and new-turn controls also reached the real daemon. No text/timestamp fallback is needed for this tested protocol because a correlatable ID exists both live and in recent history.
+
+The adapter treats missing/false `canAcceptDirectInput` as read-only. Normalization alone cannot grant steer. Pending server requests separately grant answer capability and are withdrawn by official `serverRequest/resolved`.
+
 ## Implemented protocol surfaces
 
 Installed schema and adapter contract tests cover `turn/start`, `turn/steer`, `turn/interrupt`, native `thread/queue/add`, command/file/permissions approval, structured user input and MCP form elicitation. Event normalization includes `thread/status/changed`, `turn/started`, `turn/completed`, agent-message streaming, command output, item/file changes, `turn/diff/updated` and `serverRequest/resolved`.
