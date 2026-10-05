@@ -101,6 +101,8 @@ Ran the actual embedded PWA in system Chromium through temporary Playwright tool
 | Optimistic lifecycle | INVIO appeared immediately, then IN CODA while the first turn worked. RPC ACK did not complete that turn. |
 | Browser disconnect + Hub restart while queued | Reconnected to the same hub state; one follow-up wire submission, one canonical user bubble, exact client ID match. Codex executed its own queued instruction independently. |
 | Explicit STEER | Separate advanced control sent `steer` during a harmless command window; the requested unique marker arrived live. |
+| Turn changes while composing Steer | Draft and explicit Steer intent remained; send was disabled at READY. A subsequent current turn did not replace the captured expectedTurnId. Sending then returned TURN_CHANGED, retained text, and emitted no follow-up. |
+| Explicit INTERRUPT | PWA targeted the actual current turn. The other official client observed `turn/completed` with `interrupted`; UI returned to READY independently of command ACK. |
 | NEEDS_YOU → ANSWER → READY | Real plan-mode Alpha/Beta input. Normal composer hidden, `answer` command observed, structured Alpha response returned and pending request retired. |
 | Mobile browser correctness | No horizontal overflow, no page errors, zero localStorage entries. |
 | Transcript exclusion | All three unique wave conversation markers absent from SQLite main/WAL/SHM and Relay runtime log; SQL quick_check passed. No transcript table. |
@@ -125,7 +127,7 @@ New rc.3-code binaries also **ran on the real Spark and MacBook**: doctor connec
 
 ### Current root blocker: trusted SSH to Zima
 
-The operator confirmed temporary Ethernet connected. Known Zima SSH/Tailscale addresses remained unreachable; Tailscale reported Zima offline. Relevant known-neighbour/mDNS checks on Exon, Spark and MacBook did not identify a reachable Zima. The candidate IP supplied by the operator exposed HTTP/HTTPS and printing, with SSH closed; it matched the earlier HP printer discovery, not a verified Zima.
+The operator confirmed temporary Ethernet connected. Known Zima SSH/Tailscale addresses remained unreachable; Tailscale reported Zima offline. Relevant known-neighbour/mDNS checks on Exon, Spark and MacBook did not identify a reachable Zima. The candidate IP supplied by the operator exposed HTTP/HTTPS and printing, with SSH closed. Both DNS-SD and its public device descriptor definitively identified an HP printer, not Zima.
 
 The operator explicitly authorized using only the router's existing Firefox session to read DHCP. Direct scoped cookie queries found no usable persisted router cookies. Copying the entire locked Firefox cookie DB was rejected by automatic approval review because it would duplicate other sites' sessions; that action was not performed. A safer capture of the exact router window showed “Session timed out because of inactivity”; renewed router login was requested. No Wi-Fi credential, browser cookie, token or device lease list is in this repository. No router/firewall/routing setting was changed.
 
