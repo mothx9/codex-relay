@@ -70,7 +70,7 @@ if [ "$dry_run" = 0 ]; then
  umask 077
  mkdir -p "$(dirname "$install_bin")" "$state_dir" "$config_dir"
  if [ -z "$relay_binary" ]; then
-  relay_version=${RELAY_VERSION:-v0.1.0-rc.2}
+  relay_version=${RELAY_VERSION:-v0.1.0-rc.3}
   download_dir=$(mktemp -d)
   trap 'rm -rf "$download_dir"' EXIT HUP INT TERM
   base="https://github.com/mothx9/codex-relay/releases/download/$relay_version"
