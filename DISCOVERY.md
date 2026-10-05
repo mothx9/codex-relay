@@ -73,3 +73,7 @@ Compared the installed protocol with the official app-server documentation and u
 - `codex-rs/app-server/src/outgoing_message.rs` (pending-request replay on thread attachment)
 
 The installed generated protocol remains authoritative for this adapter. Other Codex versions, ARM hosts and macOS runtime behavior require their own acceptance checks.
+
+## Canonical host roles and native execution
+
+The rc.3 binaries also executed natively on Linux ARM64 Spark and macOS ARM64 MacBook; doctor discovered their existing shared Codex 0.160.0 daemons. This does not yet prove their production service/control flow. Zima is Debian 12, Linux amd64 with kernel 6.1.0-37-amd64; its verified rc.3 binary runs the hub role, which needs no Codex backend. Its systemd hub unit is prepared but inactive. Physical network cutover and agent enrollment are separate acceptance requirements, recorded in [VALIDATION.md](VALIDATION.md).

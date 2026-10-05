@@ -1,5 +1,27 @@
 # Validation record
 
+## Current deployment checkpoint — 2026-10-05
+
+Trusted Zima SSH is restored. Debian 12 (bookworm), Linux amd64, kernel 6.1.0-37-amd64 now reports `running` with zero failed units. A missing optional HDD was blocking boot; its fstab entry now has `nofail` and a bounded device timeout. Only the invalid legacy NFS entry was disabled. Existing root/data filesystems were not reformatted or repaired destructively; original configuration backups remain private on Zima.
+
+The old Zima bridge/DHCP setup was announcing a conflicting LAN subnet. Both networkd DHCP and dnsmasq are now disabled, the old bridge/address/routes are absent, and there is no UDP 67 listener. NetworkManager owns Zima's ordinary DHCP client interfaces. These recovery changes were made on Zima only; Exon's network configuration was not modified during this recovery.
+
+Actual Alfa: USB `0bda:0811`, AWUS036ACS / RTL8811AU. An initial rtw88 backport associated but produced firmware TX-report errors, packet loss and HTTPS timeouts. The alternative recommended in [Alfa's Linux support](https://docs.alfa.com.tw/Support/Linux/RTL8811AU/) was built from `morrownr/8821au-20210708` commit `1a819991f5b75e64dfcf922b96a6681f367cbba0`, installed as DKMS `rtl8821au/5.12.5.2`, and limited to 20 MHz with power saving disabled. The unused rtw88 backport was removed to avoid driver contention; its sources/configuration remain available for rollback on Zima. The profile and credentials are private, autoconnect is enabled, and Wi-Fi has primary route preference with Ethernet retained as fallback.
+
+| Zima recovery check | Observed |
+| --- | --- |
+| Fresh SSH through Alfa Wi-Fi | Passed, trusted existing host key. |
+| Wi-Fi → router, 20 packets | 20/20, zero loss; RTT min/avg/max 3.080 / 3.765 / 5.304 ms. |
+| Wi-Fi → Exon, 20 packets | 20/20, zero loss; RTT min/avg/max 4.074 / 27.276 / 95.021 ms. |
+| Wi-Fi DNS + HTTPS | HTTP 200; measured connect 58.740 ms, total 795.497 ms to GitHub in this sample. This is not Relay event latency. |
+| Tailscale | Existing installation running, no health warnings in the latest check. |
+| Hub artifact | rc.3 Linux amd64 executed; SHA256 matched the published artifact. |
+| Persistent hub | Unit syntax verified; **inactive/disabled**, no bootstrap token/database generated. Linger enabled. |
+| HTTPS ingress | Previously empty Serve mapping prepared persistently for the sole Zima loopback hub. Application/TLS acceptance awaits hub activation. |
+| Ethernet unplug / reboot survival | Pending physical Ethernet removal and subsequent checks. |
+
+This short Wi-Fi sample does not prove unattended stability. No Zima hub RAM/CPU, three-agent latency or iPhone push measurements are claimed yet. Spark currently responds through Tailscale; MacBook timed out on the latest SSH check. Canonical agent enrollment/control, hub recovery and physical iPhone push/tap remain pending. **The release remains rc.3.** Historical access-blocker entries below are superseded by this checkpoint.
+
 ## Historical MVP acceptance — v0.1.0-rc.1
 
 Performed 2026-10-04 on Exon, Linux amd64, with Codex CLI/shared daemon **0.160.0**, Go **1.27.0-X:nodwarf5**, and system Chromium driven by temporary Playwright tooling outside the repository. CI uses stable Go 1.27.x and builds the three release targets. Neither the hub nor agent requires Node. These measurements are not Zima measurements.
@@ -125,7 +147,7 @@ New rc.3-code binaries also **ran on the real Spark and MacBook**: doctor connec
 | Local validation new turn/follow-up/live/answer | passed | not run | not run |
 | Canonical deployment reconnect | not yet | not yet | not yet |
 
-### Current root blocker: trusted SSH to Zima
+### Historical root blocker: trusted SSH to Zima
 
 The operator confirmed temporary Ethernet connected. Known Zima SSH/Tailscale addresses remained unreachable; Tailscale reported Zima offline. Relevant known-neighbour/mDNS checks on Exon, Spark and MacBook did not identify a reachable Zima. The candidate IP supplied by the operator exposed HTTP/HTTPS and printing, with SSH closed. Both DNS-SD and its public device descriptor definitively identified an HP printer, not Zima.
 
@@ -143,4 +165,4 @@ During these checks Exon renewed its DHCP lease onto `192.168.66.0/24`, with the
 
 A single low-rate ICMP discovery of that currently connected LAN, with at most two concurrent probes, found one additional device already known from the previous LAN; its SSH port was closed. The existing `ssh zima` alias still timed out through Tailscale, whose last-seen timestamp remained unchanged. Local SSH activation was requested from the operator's console. The Alfa chipset/driver, persistent Wi-Fi connection and canonical Zima service remain unverified until administrative access is restored.
 
-**CANONICAL ARCHITECTURE: BLOCKED at Zima access.** Do not promote this candidate to v0.1.0 based on local tests or staged remote binaries.
+**Historical checkpoint: blocked at Zima access.** The current recovery status is recorded at the top of this document. Do not promote this candidate to v0.1.0 based on local tests or staged remote binaries.

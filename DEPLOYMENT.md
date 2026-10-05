@@ -4,6 +4,8 @@ The installer does not change Wi-Fi, routing, firewall, NetworkManager or VPN se
 
 ## Zima recovery and cutover boundary
 
+The 2026-10-05 recovery restored trusted SSH and normal Debian boot. Alfa USB ID `0bda:0811` identifies AWUS036ACS / RTL8811AU; the host uses the DKMS `rtl8821au/5.12.5.2` driver with a persistent NetworkManager profile, power saving disabled and a 20 MHz channel limit. Wi-Fi SSH, DNS/HTTPS and bounded packet-loss checks passed while temporary Ethernet remained connected. The user hub unit is prepared but inactive/disabled, linger is enabled, and an unused Tailscale Serve origin has been configured for its loopback listener. Ethernet-removal acceptance is required before activation. No Wi-Fi credentials, private keys or runtime state are stored in this repository.
+
 Before installation, obtain trusted SSH to Zima. If the headless host has no working route, temporary Ethernet is the only initial recovery path available remotely. A USB Wi-Fi adapter alone cannot be configured through a disconnected host.
 
 Collect `uname -a`, `/etc/os-release`, `lsusb`, `ip -br link`, `ip -br addr`, `ip route`, `iw dev`, `rfkill list`, `nmcli general status`, `nmcli device` and NetworkManager service status. Identify the actual Alfa USB ID, driver and interface before choosing a driver. Configure Wi-Fi persistently with the host's existing network manager, keeping credentials out of command arguments/logs and preserving Ethernet. Prove a **new SSH connection via the Wi-Fi IP**, DNS and Internet access before disconnecting Ethernet; repeat those checks afterwards.

@@ -2,7 +2,7 @@
 
 A personal control plane for Codex sessions on multiple machines. Codex does the work on each host; Relay transports control, derived state and notifications. One Go binary contains the hub, outbound agent and browser PWA. The hub needs no Node runtime, GPU or external database.
 
-**Status: v0.1.0-rc.3.** The canonical composer and ephemeral follow-up lifecycle run against real Codex 0.160.0. The reference deployment has one always-on hub on Zima, with Exon, Spark and MacBook as agents. The actual Zima cutover and physical iPhone push acceptance remain unverified; the current Exon loopback hub is validation/rollback only. See [VALIDATION.md](VALIDATION.md) for evidence and limits.
+**Status: v0.1.0-rc.3.** The canonical composer and ephemeral follow-up lifecycle run against real Codex 0.160.0. The reference deployment has one always-on hub on Zima, with Exon, Spark and MacBook as agents. Trusted Zima SSH and its Alfa Wi-Fi have been recovered; its hub service and HTTPS ingress are prepared. Ethernet-removal acceptance, hub activation, agent cutover and physical iPhone push acceptance remain pending. The current Exon loopback hub is validation/rollback only. See [VALIDATION.md](VALIDATION.md) for evidence and limits.
 
 Codex Relay is an independent project, not affiliated with or endorsed by OpenAI. Apache-2.0 licensed. No OpenAI logos are used.
 
