@@ -133,4 +133,14 @@ The operator explicitly authorized using only the router's existing Firefox sess
 
 Until trusted Zima SSH is available, its actual Alfa USB chipset/driver, Wi-Fi survival after Ethernet removal, OS/service/HTTPS deployment and ten-minute resource/latency measurements cannot be verified. The three canonical agent enrollments and physical iPhone push/tap acceptance remain downstream requirements. The old Exon loopback hub is retained only as validation rollback; there is no claim of a completed Zima cutover or a production multi-machine fleet.
 
+### Zima console recovery checkpoint
+
+The operator connected a monitor and keyboard. The firmware displayed “Reboot and Select proper Boot device”, explaining why Linux services could not announce the machine. The Aptio Boot screen detected the eMMC and two Debian boot entries, with Windows Boot Manager first. After selecting a Debian entry, the operator reported Linux booted and supplied `192.168.66.1`. This is physical-console evidence of boot recovery, not yet a remotely verified Zima identity or deployment.
+
+The reported address answered ARP on the office Wi-Fi broadcast domain. A temporary IPvlan diagnostic namespace reached it without changing persistent host network profiles; TCP 22, HTTP 80/443 and Cockpit 9090 all refused connections. The matching link-local IPv6 address also refused SSH. No credential was sent or new host key trusted. Containers and their temporary Docker network were removed; Docker is not a Relay runtime dependency.
+
+During these checks Exon renewed its DHCP lease onto `192.168.66.0/24`, with the reported address acting as DHCP server and gateway. This overlaps the separately configured Exon–Spark Ethernet subnet. The first diagnostic preserved the host route table; the later comparison detected the DHCP-driven change, so unchanged live routing is not claimed for the entire experiment. Relevant NetworkManager logs recorded the new DHCP lease. No persistent Wi-Fi profile, manual host route or router setting was edited.
+
+A single low-rate ICMP discovery of that currently connected LAN, with at most two concurrent probes, found one additional device already known from the previous LAN; its SSH port was closed. The existing `ssh zima` alias still timed out through Tailscale, whose last-seen timestamp remained unchanged. Local SSH activation was requested from the operator's console. The Alfa chipset/driver, persistent Wi-Fi connection and canonical Zima service remain unverified until administrative access is restored.
+
 **CANONICAL ARCHITECTURE: BLOCKED at Zima access.** Do not promote this candidate to v0.1.0 based on local tests or staged remote binaries.
