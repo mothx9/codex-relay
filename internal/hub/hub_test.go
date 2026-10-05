@@ -360,3 +360,28 @@ func TestAgentReconnectAfterCodexRestart(t *testing.T) {
 		t.Fatal("Codex connection was not reopened")
 	}
 }
+
+func TestLoginToleratesClipboardWhitespace(t *testing.T) {
+	h, s, srv := testHub(t, filepath.Join(t.TempDir(), "db"))
+	defer s.Close()
+	defer srv.Close()
+	defer h.Close()
+	for _, tc := range []struct {
+		token  string
+		status int
+	}{{" \n" + testToken + "\t", http.StatusOK}, {testToken + "x", http.StatusUnauthorized}} {
+		body, _ := json.Marshal(map[string]string{"token": tc.token})
+		req, _ := http.NewRequest("POST", srv.URL+"/api/login", strings.NewReader(string(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Origin", "http://relay.test")
+		req.Header.Set("X-Relay-CSRF", "1")
+		response, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response.Body.Close()
+		if response.StatusCode != tc.status {
+			t.Fatalf("status %d; want %d", response.StatusCode, tc.status)
+		}
+	}
+}

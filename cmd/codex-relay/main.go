@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -27,7 +28,7 @@ import (
 	"time"
 )
 
-var version = "0.1.0-rc.1"
+var version = "0.1.0-rc.2"
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -141,6 +142,20 @@ func runHub(ctx context.Context, args []string) error {
 	if *cert != "" && u.Scheme != "https" {
 		return errors.New("TLS requires an HTTPS public URL")
 	}
+	var tlsConfig *tls.Config
+	if *cert != "" {
+		pair, err := tls.LoadX509KeyPair(*cert, *key)
+		if err != nil {
+			return err
+		}
+		tlsConfig = &tls.Config{Certificates: []tls.Certificate{pair}, MinVersion: tls.VersionTLS12}
+	}
+	// Reserve the listener before creating credentials or announcing readiness.
+	listener, e := net.Listen("tcp", *listen)
+	if e != nil {
+		return fmt.Errorf("cannot listen on %s: %w", *listen, e)
+	}
+	defer listener.Close()
 	admin, e := ensureSecret(filepath.Join(*data, "admin.token"), func() ([]byte, error) { return []byte(protocol.ID() + protocol.ID()), nil })
 	if e != nil {
 		return e
@@ -177,17 +192,18 @@ func runHub(ctx context.Context, args []string) error {
 		return e
 	}
 	defer h.Close()
-	srv := &http.Server{Addr: *listen, Handler: h.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 90 * time.Second, MaxHeaderBytes: 16 << 10}
+	srv := &http.Server{Addr: *listen, TLSConfig: tlsConfig, Handler: h.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 90 * time.Second, MaxHeaderBytes: 16 << 10}
 	ended := make(chan error, 1)
 	go func() {
 		if *cert != "" {
-			ended <- srv.ListenAndServeTLS(*cert, *key)
+			ended <- srv.ServeTLS(listener, "", "")
 		} else {
-			ended <- srv.ListenAndServe()
+			ended <- srv.Serve(listener)
 		}
 	}()
 	go h.Run(ctx)
-	slog.Info("hub ready", "listen", *listen, "public_url", *public, "admin_token_file", filepath.Join(*data, "admin.token"))
+	adminPath, _ := filepath.Abs(filepath.Join(*data, "admin.token"))
+	slog.Info("hub ready", "listen", listener.Addr().String(), "public_url", *public, "admin_token_file", adminPath)
 	select {
 	case <-ctx.Done():
 		stop, cancel := context.WithTimeout(context.Background(), 10*time.Second)

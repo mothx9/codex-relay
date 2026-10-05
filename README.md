@@ -2,7 +2,7 @@
 
 A personal control plane for Codex sessions on multiple machines. Codex does the work on each host; Relay transports control, derived state and notifications. One Go binary contains the hub, outbound agent and browser PWA. The hub needs no Node runtime, GPU or external database.
 
-**Status: v0.1.0-rc.1.** Real Codex chat, steering, queueing, command approval, structured input, second-client request resolution and Relay restart recovery have been exercised. Delivery to an installed iPhone PWA is still an operator acceptance check; it is not claimed as verified. See [VALIDATION.md](VALIDATION.md) for evidence and limits.
+**Status: v0.1.0-rc.2.** Real Codex chat, steering, queueing, command approval, structured input, second-client request resolution and Relay restart recovery have been exercised. Delivery to an installed iPhone PWA is still an operator acceptance check; it is not claimed as verified. See [VALIDATION.md](VALIDATION.md) for evidence and limits.
 
 Codex Relay is an independent project, not affiliated with or endorsed by OpenAI. Apache-2.0 licensed. No OpenAI logos are used.
 
@@ -34,6 +34,7 @@ Install Go 1.27 and Codex CLI 0.160.0 or the matching managed daemon. Sign in to
 git clone https://github.com/mothx9/codex-relay.git
 cd codex-relay
 make build
+# A running hub must be stopped before starting another on the same port.
 codex --version
 codex app-server daemon version
 # Only if the shared daemon is not running:
@@ -51,7 +52,7 @@ In another terminal:
   --insecure-http --machine exon --name EXON --token-file .relay/exon.token
 ```
 
-Open `http://127.0.0.1:8787`. Read `.relay/hub/admin.token` locally and enter it in the login form. It is exchanged for an HttpOnly session cookie; it is never put in browser storage. Do not paste tokens into chat, screenshots or source files.
+Open `http://127.0.0.1:8787`. Use the token file path shown by the active hub at startup; the default is `.relay/hub/admin.token`. Copy its contents locally and enter them in the login form. A separate hub/data directory has a different token. A port conflict now fails before generating new credentials. It is exchanged for an HttpOnly session cookie; it is never put in browser storage. Do not paste tokens into chat, screenshots or source files.
 
 Create/run a normal Codex thread locally, then select it in Relay. The UI shows actual Codex state. A brand-new zero-turn thread cannot be resumed until Codex has materialized its first rollout: run its first message locally. No synthetic sessions are inserted into the application.
 

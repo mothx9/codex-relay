@@ -118,7 +118,7 @@ func (h *Hub) login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid login", 400)
 		return
 	}
-	want, got := store.Hash(h.config.AdminToken), store.Hash(input.Token)
+	want, got := store.Hash(h.config.AdminToken), store.Hash(strings.TrimSpace(input.Token))
 	if subtle.ConstantTimeCompare([]byte(want), []byte(got)) != 1 {
 		http.Error(w, "Invalid token", 401)
 		return

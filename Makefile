@@ -1,4 +1,4 @@
-VERSION ?= 0.1.0-rc.1
+VERSION ?= 0.1.0-rc.2
 LDFLAGS = -s -w -X main.version=$(VERSION)
 
 .PHONY: build test check cross

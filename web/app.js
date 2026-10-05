@@ -107,11 +107,14 @@ function scheduleRender() {
   });
 }
 function render() {
-  $("connection").textContent = state.online
-    ? "Live · " +
-      [...state.machines.values()].filter((m) => m.status === "ONLINE").length +
-      " macchine online"
-    : "Offline · riconnessione";
+  $("connection").textContent = !state.authenticated
+    ? "Accesso richiesto"
+    : state.online
+      ? "Live · " +
+        [...state.machines.values()].filter((m) => m.status === "ONLINE")
+          .length +
+        " macchine online"
+      : "Offline · riconnessione";
   $("logout").hidden = !state.authenticated;
   $("settings-toggle").hidden = !state.authenticated;
   $("login-view").hidden = state.authenticated;
@@ -598,7 +601,7 @@ function connect() {
 $("login-form").onsubmit = async (e) => {
   e.preventDefault();
   try {
-    await api("/api/login", { token: $("login-token").value });
+    await api("/api/login", { token: $("login-token").value.trim() });
     $("login-token").value = "";
     await bootstrap();
   } catch (e) {

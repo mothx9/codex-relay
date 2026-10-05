@@ -69,3 +69,9 @@ The optional turn test consumes two small Codex turns and needs a signed-in runn
 To complete physical push acceptance: deploy behind an existing HTTPS origin, install the PWA on an iPhone Home Screen, enable Web Push through the notification button, close the app, provoke a real request and tap its notification. Verify the session route and authenticated contextual decision. Follow [DEPLOYMENT.md](DEPLOYMENT.md).
 
 The supplied Zima SSH alias timed out through both its configured Tailscale address and known LAN address; Tailscale reported the peer offline at the check. No Wi-Fi, routing, firewall, VPN or NetworkManager setting was changed. A current reachable SSH address and an iPhone-reachable HTTPS origin are needed for that remote acceptance step.
+
+## 2026-10-05: startup/login correction — rc.2
+
+A retained rc.1 validation hub occupied localhost:8787 while a new invocation created a different bootstrap token in `.relay/hub`. The new invocation failed to bind, but had already logged “hub ready”. The operator copied the new token while the browser reached the old process, causing a genuine authentication rejection. The retained test processes were stopped, the user's hub/data directory started, and its existing token verified with a real HTTP 200 login/logout. EXON authenticated and reannounced through WebSocket.
+
+Startup now reserves the listening socket before creating state or announcing readiness, and validates a direct-TLS certificate before startup. A regression test verifies that an occupied port creates no credentials/state directory. Login accepts surrounding clipboard whitespace while a changed token remains rejected. The unauthenticated UI labels its state “Accesso richiesto” instead of claiming an offline reconnect. These corrections do not bypass authentication or rotate the user's credentials.
