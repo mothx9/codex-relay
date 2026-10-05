@@ -2,7 +2,7 @@
 # Per-user installation. No network, firewall, Wi-Fi, or VPN configuration changes.
 set -eu
 role=${1:-}
-case "$role" in hub|agent) shift ;; *) printf '%s\n' 'Usage: install.sh hub|agent --public-url URL | --hub-url URL --machine ID --token-file FILE [--binary FILE] [--dry-run]'; exit 2 ;; esac
+case "$role" in hub|agent) shift ;; *) printf '%s\n' 'Usage: install.sh hub|agent --public-url URL | --hub-url URL --machine ID --token-file FILE [--binary FILE] [--dry-run] [--no-start (Linux)]'; exit 2 ;; esac
 relay_binary=''
 hub_url=''
 public_url=''
@@ -11,6 +11,7 @@ token_file=''
 codex_binary=''
 insecure=''
 dry_run=0
+no_start=0
 listen='127.0.0.1:8787'
 while [ "$#" -gt 0 ]; do
  case "$1" in
@@ -23,6 +24,7 @@ while [ "$#" -gt 0 ]; do
   --listen) listen=$2; shift 2 ;;
   --insecure-http) insecure='--insecure-http'; shift ;;
   --dry-run) dry_run=1; shift ;;
+  --no-start) no_start=1; shift ;;
   *) printf 'Unknown option: %s\n' "$1" >&2; exit 2 ;;
  esac
 done
@@ -30,12 +32,28 @@ os=$(uname -s)
 arch=$(uname -m)
 case "$os/$arch" in Linux/x86_64) target=linux-amd64 ;; Linux/aarch64|Linux/arm64) target=linux-arm64 ;; Darwin/arm64) target=darwin-arm64 ;; *) printf 'Unsupported target: %s/%s\n' "$os" "$arch" >&2; exit 1 ;; esac
 if [ "$os" = Darwin ] && [ "$role" = hub ]; then printf '%s\n' 'Hub installation targets Linux; use the hub CLI directly on macOS.' >&2; exit 1; fi
+if [ "$os" != Linux ] && [ "$no_start" = 1 ]; then printf '%s\n' '--no-start requires Linux/systemd; use --dry-run to prepare a macOS service definition.' >&2; exit 2; fi
+# Documentation domains are not usable hub endpoints. Fail before installing files.
+for endpoint in "$hub_url" "$public_url"; do
+ [ -n "$endpoint" ] || continue
+ case "$endpoint" in https://*|http://*) ;; *) printf '%s\n' 'The hub URL must be an actual http:// or https:// endpoint.' >&2; exit 2 ;; esac
+ authority=${endpoint#*://}; authority=${authority%%/*}; hostname=${authority%%:*}
+ hostname=$(printf '%s' "$hostname" | tr '[:upper:]' '[:lower:]')
+ case "$hostname" in example.com|*.example.com|example.net|*.example.net|example.org|*.example.org|invalid|*.invalid)
+  printf '%s\n' 'The hub URL is a documentation placeholder. Use the real HTTPS URL reported by your reverse proxy or Tailscale Serve.' >&2; exit 2 ;;
+ esac
+done
 case "$role" in
  hub) [ -n "$public_url" ] || { printf '%s\n' '--public-url is required' >&2; exit 2; } ;;
  agent)
   [ -n "$hub_url" ] && [ -n "$machine" ] && [ -n "$token_file" ] || { printf '%s\n' '--hub-url, --machine, --token-file are required' >&2; exit 2; }
   case "$machine" in *[!A-Za-z0-9_-]*|'') printf '%s\n' 'Invalid machine ID' >&2; exit 2 ;; esac
-  [ -f "$token_file" ] || { printf '%s\n' 'Token file does not exist' >&2; exit 1; }
+  [ -f "$token_file" ] && [ -r "$token_file" ] && [ -s "$token_file" ] || {
+   printf 'Agent token is missing, empty or unreadable: %s\n' "$token_file" >&2
+   printf '%s\n' "Securely copy this machine's token from the active hub. If not yet enrolled, run codex-relay token add on that hub first. Cloning this repository does not enroll an agent; no service was installed." >&2
+   exit 1
+  }
+  [ ! -L "$token_file" ] || { printf '%s\n' 'Token files must not be symlinks' >&2; exit 1; }
   if [ -z "$codex_binary" ]; then codex_binary=$(command -v codex || true); fi
   [ -n "$codex_binary" ] || { printf '%s\n' 'Install and sign in to Codex before installing an agent.' >&2; exit 1; } ;;
 esac
@@ -89,8 +107,9 @@ if [ "$os" = Linux ]; then
  if [ "$dry_run" = 1 ]; then render_unit; exit 0; fi
  mkdir -p "$unit_dir";render_unit > "$unit_file"
  systemctl --user daemon-reload
- systemctl --user enable --now "codex-relay-$role.service"
+ if [ "$no_start" = 0 ]; then systemctl --user enable --now "codex-relay-$role.service"; fi
  printf 'Installed: %s\n' "$unit_file"
+ if [ "$no_start" = 1 ]; then printf 'Service was not enabled or started. When the endpoint is ready: systemctl --user enable --now codex-relay-%s.service\n' "$role"; fi
  printf 'For operation after logout: sudo loginctl enable-linger "%s"\n' "$(id -un)"
 else
  unit_dir="$HOME/Library/LaunchAgents";unit_file="$unit_dir/net.codex-relay.agent.plist"

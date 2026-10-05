@@ -60,7 +60,7 @@ Create/run a normal Codex thread locally, then select it in Relay. The UI shows 
 
 ```sh
 codex-relay hub --listen 127.0.0.1:8787 \
-  --public-url https://relay.example.net \
+  --public-url "${RELAY_HUB_URL:?Set the actual HTTPS hub URL first}" \
   --data-dir "$HOME/.local/share/codex-relay/hub" \
   --push-subject mailto:operator@example.net
 ```
@@ -74,7 +74,7 @@ Data directory files are a metadata-only SQLite DB (WAL), bootstrap operator tok
 ## Agent
 
 ```sh
-codex-relay agent --hub-url https://relay.example.net \
+codex-relay agent --hub-url "${RELAY_HUB_URL:?Set the actual HTTPS hub URL first}" \
   --machine spark --name SPARK --token-file "$HOME/.config/codex-relay/spark.token"
 ```
 
@@ -117,14 +117,16 @@ The headless Chromium available during validation denied real subscription regis
 
 ## Install as a service
 
-Published prerelease binaries target Linux amd64, Linux arm64 and macOS arm64, with checksums. No Go or Node runtime is needed to run Relay. `scripts/install.sh` downloads and verifies the matching binary, or accepts `--binary /path/to/prebuilt/binary`. It installs under `~/.local/bin`, not as root. `--dry-run` prints the service definition without changing files or services.
+Published prerelease binaries target Linux amd64, Linux arm64 and macOS arm64, with checksums. No Go or Node runtime is needed to run Relay. `scripts/install.sh` downloads and verifies the matching binary, or accepts `--binary /path/to/prebuilt/binary`. It installs under `~/.local/bin`, not as root. `--dry-run` prints the service definition without changing files or services. Linux's `--no-start` installs files and reloads systemd without enabling or starting the unit; use it while preparing the configured endpoint.
+
+First provide a working HTTPS endpoint and set `RELAY_HUB_URL` to its exact URL. Then create distinct agent tokens on that hub and securely copy them to their target machines. Cloning the repository does not perform enrollment. Missing tokens and documentation placeholder domains fail before service installation.
 
 ```sh
 # Linux hub, with an existing HTTPS proxy:
-./scripts/install.sh hub --public-url https://relay.example.net
+./scripts/install.sh hub --public-url "${RELAY_HUB_URL:?Set the actual HTTPS hub URL first}"
 
 # Linux/macOS agent, after copying its token:
-./scripts/install.sh agent --hub-url https://relay.example.net \
+./scripts/install.sh agent --hub-url "${RELAY_HUB_URL:?Set the actual HTTPS hub URL first}" \
   --machine exon --token-file "$HOME/exon.token"
 ```
 
@@ -141,7 +143,7 @@ Chat is fetched on session open with a descending `thread/items/list` page (40 i
 ## Doctor and validation
 
 ```sh
-codex-relay doctor --hub-url https://relay.example.net \
+codex-relay doctor --hub-url "${RELAY_HUB_URL:?Set the actual HTTPS hub URL first}" \
   --machine exon --token-file "$HOME/.config/codex-relay/exon.token"
 make check
 make cross

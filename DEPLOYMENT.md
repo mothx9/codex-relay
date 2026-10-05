@@ -1,22 +1,41 @@
 # Deployment commands
 
-These commands are instructions to run after reviewing the local validation. No Wi-Fi, routing, firewall, NetworkManager or VPN settings were changed during implementation. The configured SSH aliases `zima`/`spark`/`macbook` may need updating outside Relay if their addresses have changed. Current Zima connectivity could not be established, so no remote install is claimed.
+The installer does not change Wi-Fi, routing, firewall, NetworkManager or VPN settings. SSH aliases below must already point to reachable, trusted hosts. A hub can run on any supported Linux machine; Zima is the intended always-on host, not a requirement for initial agent setup.
+
+## Prerequisites and setup order
+
+1. Start one hub and provide a working HTTPS endpoint forwarding to its loopback listener.
+2. Create distinct agent tokens **on that active hub**, using its actual data directory.
+3. Securely copy each token to the corresponding machine.
+4. Install/start agents with that same hub's HTTPS URL.
+
+Cloning this repository does not create an agent token or a service. A token from a different hub/data directory will be rejected. Do not rerun `token add` for an already-enrolled machine merely to copy its existing token: that rotates the credential.
+
+In each target shell, set the actual URL reported by your existing reverse proxy or Tailscale Serve:
+
+```sh
+printf 'Existing HTTPS hub URL: '
+IFS= read -r RELAY_HUB_URL
+export RELAY_HUB_URL
+```
+
+The commands below require this variable; there is no copy-paste example domain to accidentally use. The installer rejects reserved documentation domains before creating files.
 
 ## Zima: Linux amd64 hub
 
-Run as the ordinary hub user on the Zima. Replace the example origin with an **existing HTTPS endpoint** that forwards to localhost:8787:
+Run as the ordinary hub user on the reachable Zima, with an **existing HTTPS endpoint** that forwards to localhost:8787:
 
 ```sh
 git clone https://github.com/mothx9/codex-relay.git
 cd codex-relay
-./scripts/install.sh hub --public-url https://relay.example.net
+./scripts/install.sh hub --public-url "${RELAY_HUB_URL:?Set the actual HTTPS hub URL first}"
 sudo loginctl enable-linger "$(id -un)"
 systemctl --user status codex-relay-hub
 ```
 
 The installer downloads and verifies the Linux amd64 prerelease. It requires curl, install, systemd and sha256sum, not Go/Node. Bootstrap token and DB are in `~/.local/share/codex-relay/hub`. Read the bootstrap token locally for login.
 
-Create the three distinct agent tokens **on Zima**:
+Create the three distinct agent tokens **on the active hub** (Zima in this deployment). Use its actual data directory if it differs from this installed-service default:
 
 ```sh
 mkdir -p "$HOME/relay-enrollment"
@@ -30,11 +49,12 @@ done
 
 ## Transfer tokens
 
-From Exon, using trusted, working SSH aliases:
+From Exon, using trusted, working SSH aliases. Here `zima` is the active hub; substitute the actual hub's alias and enrollment paths if you started elsewhere. Do not provision a second hub simply to obtain tokens:
 
 ```sh
 mkdir -p "$HOME/.config/codex-relay"
 chmod 700 "$HOME/.config/codex-relay"
+umask 077
 scp zima:relay-enrollment/exon.token "$HOME/.config/codex-relay/exon.token"
 chmod 600 "$HOME/.config/codex-relay/exon.token"
 
@@ -64,7 +84,7 @@ codex --version
 codex app-server daemon version
 # Start only if needed; do not restart active work:
 codex app-server daemon start
-./scripts/install.sh agent --hub-url https://relay.example.net \
+./scripts/install.sh agent --hub-url "${RELAY_HUB_URL:?Set the actual HTTPS hub URL first}" \
   --machine exon --token-file "$HOME/.config/codex-relay/exon.token"
 sudo loginctl enable-linger "$(id -un)"
 systemctl --user status codex-relay-agent
@@ -72,31 +92,40 @@ systemctl --user status codex-relay-agent
 
 ## Spark: Linux arm64 agent
 
-On Spark:
+On Spark, **after transferring its hub-issued token** to `~/.config/codex-relay/spark.token`:
 
 ```sh
 git clone https://github.com/mothx9/codex-relay.git
 cd codex-relay
 codex --version
 codex app-server daemon start
-./scripts/install.sh agent --hub-url https://relay.example.net \
+./scripts/install.sh agent --hub-url "${RELAY_HUB_URL:?Set the actual HTTPS hub URL first}" \
   --machine spark --token-file "$HOME/.config/codex-relay/spark.token"
 sudo loginctl enable-linger "$(id -un)"
 systemctl --user status codex-relay-agent
 ```
 
-The installer selects Linux arm64. A fixed node may use an HTTPS LAN origin if that certificate/origin is configured; no URL is hardcoded in the agent.
+The installer selects Linux arm64. If the repository already exists, enter it and run `git pull --ff-only` instead of cloning again. A fixed node may use an HTTPS LAN origin if that certificate/origin is configured; no URL is hardcoded in the agent.
+
+If HTTPS is still being prepared, Linux can install the binary, token and unit without starting it: add `--no-start` to the agent installation command. This does not enable the unit or stop an existing service. Once the configured endpoint is ready, run:
+
+```sh
+systemctl --user enable --now codex-relay-agent.service
+systemctl --user status codex-relay-agent.service
+```
+
+`Token file does not exist` from older installers means enrollment has not reached this machine: no unit was installed, so `Unit ... could not be found` is expected. Transfer the existing token from the correct hub before retrying. The current installer reports the missing path and this prerequisite explicitly. `linger` only keeps the user service manager running after logout; it does not enroll an agent or create a unit.
 
 ## MacBook: macOS arm64 agent
 
-On MacBook, as the logged-in Codex user:
+On MacBook, as the logged-in Codex user, after transferring its hub-issued token:
 
 ```sh
 git clone https://github.com/mothx9/codex-relay.git
 cd codex-relay
 codex --version
 codex app-server daemon start
-./scripts/install.sh agent --hub-url https://relay.example.net \
+./scripts/install.sh agent --hub-url "${RELAY_HUB_URL:?Set the actual HTTPS hub URL first}" \
   --machine macbook --token-file "$HOME/.config/codex-relay/macbook.token"
 launchctl print "gui/$(id -u)/net.codex-relay.agent"
 ```
@@ -118,7 +147,7 @@ Use the exact HTTPS URL that Serve reports as the hub's `--public-url` and every
 ## Verify and revoke
 
 ```sh
-"$HOME/.local/bin/codex-relay" doctor --hub-url https://relay.example.net \
+"$HOME/.local/bin/codex-relay" doctor --hub-url "${RELAY_HUB_URL:?Set the actual HTTPS hub URL first}" \
   --machine exon --token-file "$HOME/.config/codex-relay/exon.token"
 # On Zima:
 "$HOME/.local/bin/codex-relay" token revoke \
