@@ -7,10 +7,12 @@ build:
 	CGO_ENABLED=0 go build -trimpath -ldflags="$(LDFLAGS)" -o bin/codex-relay ./cmd/codex-relay
 test:
 	go test ./...
+	node web/control.test.mjs
 check:
 	test -z "$$(gofmt -l cmd internal web)"
 	go vet ./...
 	go test -race ./...
+	node web/control.test.mjs
 cross:
 	mkdir -p dist
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="$(LDFLAGS)" -o dist/codex-relay-linux-amd64 ./cmd/codex-relay

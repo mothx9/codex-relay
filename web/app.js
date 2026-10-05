@@ -1,3 +1,5 @@
+import { Outbox, messageKind, canSend, reconcileActivity } from "/control.mjs";
+const outbox = new Outbox();
 const $ = (id) => document.getElementById(id);
 const names = {
   NEEDS_YOU: "Needs you",
@@ -15,7 +17,8 @@ const state = {
   filter: "all",
   group: "status",
   selected: "",
-  mode: "queue",
+  steerMode: false,
+  steerTurnId: "",
   socket: null,
   online: false,
   authenticated: false,
@@ -66,11 +69,18 @@ function send(message) {
     toast("Connessione non disponibile. Il messaggio non è stato inviato.");
     return false;
   }
-  state.socket.send(JSON.stringify(message));
+  try {
+    state.socket.send(JSON.stringify(message));
+  } catch {
+    return false;
+  }
   return true;
 }
-function command(kind, extra = {}) {
-  const id = crypto.randomUUID();
+function command(kind, extra = {}, id = crypto.randomUUID()) {
+  if (state.commands.size >= 128) {
+    toast("Troppe richieste in corso.");
+    return "";
+  }
   if (
     !send({
       type: "command",
@@ -78,7 +88,7 @@ function command(kind, extra = {}) {
     })
   )
     return "";
-  state.commands.set(id, { kind, text: extra.text });
+  state.commands.set(id, { kind, session: state.selected });
   return id;
 }
 function elapsed(value) {
@@ -277,30 +287,46 @@ function renderDetail() {
     : "Connessione non disponibile";
   $("readonly").hidden = !s.read_only;
   $("attach").disabled = !connected;
-  $("composer").hidden = s.read_only;
   const working = s.status === "WORKING",
     needs = s.status === "NEEDS_YOU";
-  $("mode").hidden = !working;
-  $("interrupt").hidden = !(working || needs);
-  $("interrupt").disabled = !connected;
-  $("message").disabled = !connected || needs;
+  const kind = state.steerMode ? "steer" : messageKind(s),
+    cap = s.capabilities || {};
+  $("composer").hidden =
+    s.read_only || needs || !["READY", "WORKING"].includes(s.status);
+  $("advanced").hidden = s.read_only || !(working || needs || state.steerMode);
+  $("steer").hidden = !working && !state.steerMode;
+  $("steer").disabled =
+    !state.steerMode && (!connected || !cap.can_steer || !s.turn_id);
+  $("steer").textContent = state.steerMode
+    ? "Torna al normale invio"
+    : "Steer turno corrente";
+  $("interrupt").disabled = !connected || !cap.can_interrupt || !s.turn_id;
+  $("message").disabled = !connected;
+  $("message").placeholder = state.steerMode
+    ? "Correggi il lavoro in corso…"
+    : working
+      ? "Aggiungi un follow-up…"
+      : "Scrivi a Codex…";
+  $("send").textContent = state.steerMode
+    ? "Invia Steer"
+    : working
+      ? "Invia follow-up"
+      : "Invia";
   $("send").disabled =
     !connected ||
-    needs ||
-    [...state.commands.values()].some((c) =>
-      ["start", "steer", "queue"].includes(c.kind),
+    !canSend(s, kind) ||
+    [...state.commands.values()].some(
+      (c) =>
+        c.session === s.id &&
+        ["new_turn", "steer", "follow_up"].includes(c.kind),
     );
-  $("composer-hint").textContent = needs
-    ? "Rispondi alla richiesta qui sopra."
+  $("composer-hint").textContent = state.steerMode
+    ? working
+      ? "Steer modifica il lavoro ATTUALMENTE in corso."
+      : "Il turno è cambiato. Torna al normale invio per scegliere un nuovo turno."
     : working
-      ? state.mode === "steer"
-        ? "Intervieni sul turno corrente."
-        : "Codex eseguirà il messaggio dopo il turno corrente."
+      ? "Follow-up: Codex lo eseguirà dopo il lavoro corrente."
       : "Il messaggio avvia un nuovo turno.";
-  for (const b of $("mode").querySelectorAll("button")) {
-    b.classList.toggle("active", b.dataset.mode === state.mode);
-    b.disabled = b.dataset.mode === "queue" && !s.queue_supported;
-  }
   renderPending(s, connected);
   renderChat();
   $("history-status").textContent = state.loading
@@ -311,7 +337,20 @@ function renderChat() {
   const nearBottom =
     $("chat").scrollHeight - $("chat").scrollTop - $("chat").clientHeight < 80;
   $("chat").replaceChildren();
-  for (const a of state.chat) {
+  const visible = [
+    ...state.chat,
+    ...outbox.visible(state.selected).map((v) => ({
+      id: v.id,
+      kind: "userMessage",
+      text: v.text,
+      timestamp: new Date(v.at).toISOString(),
+      outbox: v,
+    })),
+  ];
+  visible.sort(
+    (a, b) => Date.parse(a.timestamp || 0) - Date.parse(b.timestamp || 0),
+  );
+  for (const a of visible) {
     const article = node("article", null, "activity " + a.kind);
     const label =
       {
@@ -324,16 +363,92 @@ function renderChat() {
         fileChange: "File",
       }[a.kind] || a.kind;
     article.append(node("p", label, "activity-label"), node("pre", a.text));
+    if (a.outbox) {
+      const v = a.outbox;
+      const phases = {
+        LOCAL: "LOCALE",
+        SENDING: "INVIO",
+        QUEUED: "IN CODA",
+        DISPATCHED: "AVVIATO",
+        ACCEPTED: "ACCETTATO",
+        STEERING: "STEERING",
+        APPLIED: "APPLICATO",
+        FAILED: "FALLITO",
+      };
+      const action =
+        v.kind === "follow_up"
+          ? "FOLLOW-UP"
+          : v.kind === "steer"
+            ? "STEER"
+            : "NEW TURN";
+      article.append(
+        node(
+          "p",
+          action + " · " + (phases[v.phase] || v.phase),
+          "activity-label",
+        ),
+      );
+      if (v.phase === "FAILED") {
+        article.append(
+          node(
+            "p",
+            v.error || "Invio fallito. Il testo resta disponibile.",
+            "muted",
+          ),
+        );
+        const actions = node("div", null, "actions"),
+          session = state.sessions.get(v.session);
+        const choices =
+          v.kind === "steer" && v.errorCode === "TURN_CHANGED"
+            ? ["follow_up", "new_turn"]
+            : [
+                v.kind,
+                ...(v.kind === "steer" ? ["follow_up", "new_turn"] : []),
+              ];
+        for (const kind of choices) {
+          if (!session || !canSend(session, kind)) continue;
+          const text =
+            kind === v.kind
+              ? v.errorCode === "UNKNOWN_OUTCOME"
+                ? "Reinvia dopo aver verificato"
+                : "Riprova"
+              : kind === "follow_up"
+                ? "Invia come follow-up"
+                : "Invia come nuovo turno";
+          const button = node("button", text);
+          button.type = "button";
+          button.disabled =
+            !state.online || machine(session)?.status !== "ONLINE";
+          button.onclick = () => {
+            if (submitMessage(kind, v.text)) outbox.items.delete(v.id);
+            renderDetail();
+          };
+          actions.append(button);
+        }
+        const discard = node("button", "Scarta");
+        discard.type = "button";
+        discard.onclick = () => {
+          outbox.items.delete(v.id);
+          renderDetail();
+        };
+        actions.append(discard);
+        article.append(actions);
+      }
+    }
     $("chat").append(article);
   }
   if (nearBottom) $("chat").scrollTop = $("chat").scrollHeight;
 }
 function addActivity(a) {
   if (!a?.text) return;
-  const i = state.chat.findIndex((v) => v.id === a.id);
-  a = { ...a, text: a.text.slice(0, 16384) };
-  if (i < 0) state.chat.push(a);
-  else state.chat[i] = a;
+  outbox.materialize(state.selected, a);
+  const existing = state.chat.find((v) => v.id === a.id);
+  a = {
+    ...a,
+    timestamp: existing?.timestamp || a.timestamp || new Date().toISOString(),
+    text: a.text.slice(0, 16384),
+  };
+  reconcileActivity(state.chat, a);
   while (
     state.chat.length > 50 ||
     state.chat.reduce((n, a) => n + a.text.length, 0) > 131072
@@ -341,6 +456,9 @@ function addActivity(a) {
     state.chat.shift();
 }
 function applyChat(e) {
+  if (e.kind === "follow_up_queue") outbox.queue(e.session_id, e.follow_ups);
+  if (["turn_started", "message_dispatched"].includes(e.kind) && e.client_id)
+    outbox.dispatched(e.session_id, e.client_id);
   if (e.activity) {
     addActivity(e.activity);
     return;
@@ -351,6 +469,7 @@ function applyChat(e) {
   addActivity({
     id,
     kind: e.kind,
+    timestamp: e.timestamp,
     text: e.kind === "diff" ? e.text : (previous?.text || "") + (e.text || ""),
   });
 }
@@ -358,6 +477,7 @@ function renderPending(s, connected) {
   const signature = JSON.stringify([
     s.id,
     connected,
+    s.capabilities?.can_answer,
     [...state.requests.values()].filter((r) => r.session_id === s.id),
   ]);
   if (signature === pendingSignature) return;
@@ -454,13 +574,13 @@ function renderPending(s, connected) {
         "approve",
       );
       approve.type = "submit";
-      approve.disabled = !connected;
+      approve.disabled = !connected || !s.capabilities?.can_answer;
       actions.append(approve);
     }
     if (r.kind !== "unsupported") {
       const reject = node("button", "RIFIUTA");
       reject.type = "button";
-      reject.disabled = !connected;
+      reject.disabled = !connected || !s.capabilities?.can_answer;
       reject.onclick = () => respond(r, "reject");
       actions.append(reject);
     }
@@ -485,15 +605,17 @@ function renderPending(s, connected) {
   }
 }
 function respond(r, decision, extra = {}) {
-  if (command("respond", { request_id: r.request_id, decision, ...extra }))
+  if (command("answer", { request_id: r.request_id, decision, ...extra }))
     toast("Risposta inviata. Attendo la conferma da Codex.");
 }
 function openSession(id, push = true) {
   state.selected = id;
+  $("message").value = "";
   pendingSignature = "";
   state.chat = [];
   state.loading = true;
-  state.commands.clear();
+  state.steerMode = false;
+  outbox.prune(id);
   if (push) history.pushState({}, "", `/session/${encodeURIComponent(id)}`);
   send({ type: "watch", session_id: id });
   render();
@@ -502,7 +624,8 @@ function closeSession(push = true) {
   send({ type: "watch", session_id: "" });
   state.selected = "";
   state.chat = [];
-  state.commands.clear();
+  state.steerMode = false;
+  outbox.prune();
   if (push) history.pushState({}, "", "/");
   render();
 }
@@ -559,15 +682,14 @@ function connect() {
       const r = m.result,
         c = state.commands.get(r.id);
       state.commands.delete(r.id);
+      outbox.result(r);
       if (!r.ok) toast(r.error || "Il comando non è riuscito.");
       if (r.session_id === state.selected) {
+        if (r.follow_ups) outbox.queue(r.session_id, r.follow_ups);
         if (r.history) {
           for (const a of r.history) addActivity(a);
         }
         if (!c || c.kind === "history") state.loading = false;
-        if (r.ok && c?.text) {
-          $("message").value = "";
-        }
       }
     }
     scheduleRender();
@@ -576,6 +698,7 @@ function connect() {
   socket.onclose = () => {
     if (socket !== state.socket) return;
     state.online = false;
+    outbox.disconnected();
     state.commands.clear();
     render();
     if (state.authenticated && !document.hidden) {
@@ -614,6 +737,8 @@ $("logout").onclick = async () => {
   } catch {}
   state.authenticated = false;
   state.chat = [];
+  outbox.clear();
+  state.commands.clear();
   state.requests.clear();
   state.socket?.close();
   render();
@@ -635,21 +760,59 @@ $("group").onchange = () => {
   state.index = 0;
   renderFleet();
 };
-for (const b of $("mode").querySelectorAll("button"))
-  b.onclick = () => {
-    state.mode = b.dataset.mode;
+$("steer").onclick = () => {
+  state.steerMode = !state.steerMode;
+  state.steerTurnId = state.steerMode
+    ? state.sessions.get(state.selected)?.turn_id || ""
+    : "";
+  renderDetail();
+  $("message").focus();
+};
+function submitMessage(kind, text) {
+  const session = state.sessions.get(state.selected);
+  if (!session || !canSend(session, kind) || !text) return false;
+  const id = crypto.randomUUID();
+  try {
+    outbox.add(id, session.id, kind, text);
+  } catch (e) {
+    toast(e.message);
+    return false;
+  }
+  outbox.sending(id);
+  if (
+    !command(
+      kind,
+      {
+        text,
+        turn_id:
+          kind === "steer" && state.steerMode
+            ? state.steerTurnId
+            : session.turn_id || "",
+      },
+      id,
+    )
+  ) {
+    outbox.result({
+      id,
+      ok: false,
+      error_code: "MACHINE_OFFLINE",
+      error:
+        "Connessione Relay non disponibile. Il messaggio non è stato inviato.",
+    });
     renderDetail();
-  };
+    return false;
+  }
+  state.steerMode = false;
+  renderDetail();
+  return true;
+}
 $("composer").onsubmit = (e) => {
   e.preventDefault();
-  const s = state.sessions.get(state.selected),
+  const session = state.sessions.get(state.selected),
     text = $("message").value.trim();
-  if (!s || !text) return;
-  command(s.status === "WORKING" ? state.mode : "start", {
-    text,
-    turn_id: s.turn_id || "",
-  });
-  renderDetail();
+  if (!session || !text) return;
+  if (submitMessage(state.steerMode ? "steer" : messageKind(session), text))
+    $("message").value = "";
 };
 $("message").onkeydown = (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -703,10 +866,14 @@ document.addEventListener("visibilitychange", () => {
     hiddenAt = Date.now();
     backgroundTimer = setTimeout(() => {
       state.chat = [];
+      outbox.clear();
       state.socket?.close();
     }, 300000);
   } else if (state.authenticated) {
-    if (hiddenAt && Date.now() - hiddenAt > 300000) state.chat = [];
+    if (hiddenAt && Date.now() - hiddenAt > 300000) {
+      state.chat = [];
+      outbox.clear();
+    }
     if (state.socket?.readyState === WebSocket.OPEN && state.selected) {
       send({ type: "watch", session_id: state.selected });
     } else connect();
@@ -714,6 +881,7 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("pagehide", () => {
   state.chat = [];
+  outbox.clear();
 });
 function publicKeyBytes(key) {
   return Uint8Array.from(atob(key.replace(/-/g, "+").replace(/_/g, "/")), (c) =>
@@ -811,6 +979,7 @@ if ("serviceWorker" in navigator)
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 // This timer updates relative labels only; no network polling.
 setInterval(() => {
+  outbox.prune(document.hidden ? "" : state.selected);
   if (state.authenticated && !document.hidden) scheduleRender();
 }, 60000);
 await bootstrap();

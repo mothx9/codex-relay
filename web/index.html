@@ -108,16 +108,14 @@
           </p>
           <button id="attach">Collega thread</button>
         </div>
+        <details id="advanced" hidden>
+          <summary>Azioni sul turno corrente</summary>
+          <button type="button" id="steer">Steer turno corrente</button>
+          <button type="button" id="interrupt">Interrompi turno</button>
+        </details>
         <form id="composer">
           <div class="composer-top">
-            <div id="mode" class="segmented" hidden>
-              <button type="button" data-mode="steer">Adesso</button
-              ><button type="button" data-mode="queue" class="active">
-                Dopo
-              </button>
-            </div>
-            <button type="button" id="interrupt">Interrompi turno</button
-            ><span id="composer-hint"></span>
+            <span id="composer-hint"></span>
           </div>
           <label class="sr-only" for="message">Scrivi a Codex</label
           ><textarea

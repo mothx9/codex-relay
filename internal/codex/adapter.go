@@ -89,6 +89,12 @@ func (a *Adapter) session(t thread, subscribed bool) protocol.Session {
 func (a *Adapter) capabilities(s protocol.Session) protocol.Session {
 	s.QueueSupported = a.queue
 	s.Capabilities = protocol.Capabilities{}
+	// Direct-input permission does not revoke a server request addressed to us.
+	for _, p := range a.requests {
+		if p.Request.ThreadID == s.ThreadID && p.Request.Kind != "unsupported" && !p.Sent {
+			s.Capabilities.CanAnswer = true
+		}
+	}
 	if s.ReadOnly {
 		return s
 	}
@@ -96,11 +102,6 @@ func (a *Adapter) capabilities(s protocol.Session) protocol.Session {
 	s.Capabilities.CanFollowUp = s.Status == protocol.Working && a.queue
 	s.Capabilities.CanSteer = s.Status == protocol.Working && s.TurnID != ""
 	s.Capabilities.CanInterrupt = (s.Status == protocol.Working || s.Status == protocol.NeedsYou) && s.TurnID != ""
-	for _, p := range a.requests {
-		if p.Request.ThreadID == s.ThreadID && p.Request.Kind != "unsupported" && !p.Sent {
-			s.Capabilities.CanAnswer = true
-		}
-	}
 	return s
 }
 func decode(raw json.RawMessage, v any) error {

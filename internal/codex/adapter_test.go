@@ -222,6 +222,22 @@ func TestAdapterCanonicalErrorMapping(t *testing.T) {
 		t.Fatal(code)
 	}
 }
+
+func TestPendingAnswerIndependentOfDirectInput(t *testing.T) {
+	a := &Adapter{requests: map[string]pending{
+		"request": {Request: protocol.PendingRequest{ThreadID: "t", Kind: "user_input"}},
+	}, queue: true}
+	s := a.capabilities(protocol.Session{ThreadID: "t", ReadOnly: true, Status: protocol.NeedsYou, TurnID: "active"})
+	if !s.Capabilities.CanAnswer || s.Capabilities.CanSend || s.Capabilities.CanSteer || s.Capabilities.CanFollowUp {
+		t.Fatal("server request must allow an answer without granting direct input", s.Capabilities)
+	}
+	p := a.requests["request"]
+	p.Sent = true
+	a.requests["request"] = p
+	if a.capabilities(s).Capabilities.CanAnswer {
+		t.Fatal("answered request still grants answer capability")
+	}
+}
 func TestRealCodexDiscovery(t *testing.T) {
 	if os.Getenv("RELAY_REAL_CODEX") != "1" {
 		t.Skip("set RELAY_REAL_CODEX=1 for optional authenticated local daemon test")

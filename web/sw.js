@@ -1,8 +1,9 @@
-const CACHE = "relay-shell-v1";
+const CACHE = "relay-shell-v2";
 const SHELL = [
   "/",
   "/app.css",
   "/app.js",
+  "/control.mjs",
   "/manifest.webmanifest",
   "/icon.svg",
   "/icon-192.png",
