@@ -40,9 +40,10 @@ type status struct {
 	Flags []string `json:"activeFlags"`
 }
 type turn struct {
-	ID        string `json:"id"`
-	Status    string `json:"status"`
-	StartedAt *int64 `json:"startedAt"`
+	ID        string            `json:"id"`
+	Status    string            `json:"status"`
+	StartedAt *int64            `json:"startedAt"`
+	Items     []json.RawMessage `json:"items"`
 }
 
 func Normalize(raw string, flags []string) string {
@@ -70,7 +71,7 @@ func (a *Adapter) session(t thread, subscribed bool) protocol.Session {
 	if t.GitInfo != nil {
 		s.Branch = t.GitInfo.Branch
 	}
-	if t.CanInput != nil && !*t.CanInput {
+	if t.CanInput == nil || !*t.CanInput {
 		s.ReadOnly = true
 	}
 	for _, v := range t.Turns {
@@ -79,6 +80,25 @@ func (a *Adapter) session(t thread, subscribed bool) protocol.Session {
 			if v.StartedAt != nil {
 				s.TurnStarted = time.Unix(*v.StartedAt, 0).UTC()
 			}
+		}
+	}
+	return a.capabilities(s)
+}
+
+// Called while adapter metadata is locked. Machine connectivity is gated by Hub/PWA.
+func (a *Adapter) capabilities(s protocol.Session) protocol.Session {
+	s.QueueSupported = a.queue
+	s.Capabilities = protocol.Capabilities{}
+	if s.ReadOnly {
+		return s
+	}
+	s.Capabilities.CanSend = s.Status == protocol.Ready
+	s.Capabilities.CanFollowUp = s.Status == protocol.Working && a.queue
+	s.Capabilities.CanSteer = s.Status == protocol.Working && s.TurnID != ""
+	s.Capabilities.CanInterrupt = (s.Status == protocol.Working || s.Status == protocol.NeedsYou) && s.TurnID != ""
+	for _, p := range a.requests {
+		if p.Request.ThreadID == s.ThreadID && p.Request.Kind != "unsupported" && !p.Sent {
+			s.Capabilities.CanAnswer = true
 		}
 	}
 	return s

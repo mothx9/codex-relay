@@ -123,6 +123,9 @@ func Payload(n Notice, privacy bool) map[string]string {
 		title = protocol.Clip(n.Machine+" · "+n.Project, 100)
 	}
 	body := "Codex ha bisogno di te."
+	if privacy {
+		body = "Una sessione ha bisogno di te."
+	}
 	switch n.Kind {
 	case "turn_completed":
 		body = "Codex ha completato il turno."

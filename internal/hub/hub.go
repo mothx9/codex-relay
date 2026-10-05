@@ -122,7 +122,7 @@ func (h *Hub) maintain(now time.Time) {
 	}
 	for id, f := range h.flights {
 		if now.Sub(f.created) > 30*time.Second {
-			r := protocol.Result{ID: id, SessionID: f.session, Error: "Command outcome unknown after timeout; inspect Codex before retrying"}
+			r := protocol.Failure(protocol.Command{ID: id, SessionID: f.session}, protocol.UnknownOutcome)
 			f.operator.peer.Enqueue(protocol.Message{Type: "result", Result: &r})
 			delete(h.flights, id) /* Keep approval reservation until resolution/reconnect: never reuse. */
 		}
@@ -154,6 +154,9 @@ func (h *Hub) snapshot() protocol.Snapshot {
 		snap.Machines = append(snap.Machines, m)
 	}
 	for _, s := range h.sessions {
+		if h.machines[s.MachineID].Status != protocol.Online {
+			s.Capabilities = protocol.Capabilities{}
+		}
 		snap.Sessions = append(snap.Sessions, s)
 	}
 	for _, r := range h.requests {
@@ -299,7 +302,7 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 	if b := h.buffers[e.SessionID]; b != nil {
 		b.Apply(e)
 	}
-	if e.Kind == "delta" || e.Kind == "activity" || e.Kind == "command_output" || e.Kind == "diff" {
+	if e.Kind == "delta" || e.Kind == "activity" || e.Kind == "command_output" || e.Kind == "diff" || e.Kind == "follow_up_queue" {
 		h.broadcast(protocol.Message{Type: "event", Event: &e}, e.SessionID)
 	} else {
 		// Full approval context is ephemeral and only delivered to operators viewing this session.
@@ -360,7 +363,7 @@ func (h *Hub) offline(id string, a *agentPeer) {
 	_ = h.store.ClearPending(id)
 	for cid, f := range h.flights {
 		if f.machine == id {
-			r := protocol.Result{ID: cid, SessionID: f.session, Error: "Agent disconnected; command outcome unknown"}
+			r := protocol.Failure(protocol.Command{ID: cid, SessionID: f.session}, protocol.UnknownOutcome)
 			f.operator.peer.Enqueue(protocol.Message{Type: "result", Result: &r})
 			delete(h.flights, cid)
 		}

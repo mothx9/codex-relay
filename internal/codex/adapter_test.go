@@ -45,6 +45,7 @@ func TestAdapterRoutingAndApproval(t *testing.T) {
 			calls <- m
 			if m.Method == "" {
 				_ = c.WriteJSON(map[string]any{"method": "serverRequest/resolved", "params": map[string]any{"threadId": "t", "requestId": 9}})
+				_ = c.WriteJSON(map[string]any{"method": "thread/status/changed", "params": map[string]any{"threadId": "t", "status": map[string]any{"type": "active"}}})
 				continue
 			}
 			result := any(map[string]any{})
@@ -66,6 +67,14 @@ func TestAdapterRoutingAndApproval(t *testing.T) {
 					data = append(data, map[string]any{"id": "turn", "status": "inProgress"})
 				}
 				result = map[string]any{"data": data}
+			case "thread/queue/list":
+				result = map[string]any{"data": []any{}}
+			case "thread/queue/add":
+				var params struct {
+					ClientID string `json:"clientUserMessageId"`
+				}
+				_ = json.Unmarshal(m.Params, &params)
+				result = map[string]any{"queuedSubmission": map[string]any{"id": "queue-id", "clientUserMessageId": params.ClientID}}
 			case "thread/items/list":
 				result = map[string]any{"data": []any{map[string]any{"turnId": "turn", "item": map[string]any{"type": "agentMessage", "id": "i", "text": "real protocol fixture"}}}}
 			}
@@ -106,12 +115,6 @@ func TestAdapterRoutingAndApproval(t *testing.T) {
 			t.Fatal("missing request")
 		}
 	}
-	for _, kind := range []string{"steer", "queue", "interrupt"} {
-		r = a.Execute(ctx, protocol.Command{ID: kind, Kind: kind, ThreadID: "t", Text: "message", TurnID: "turn"})
-		if !r.OK {
-			t.Fatal(r)
-		}
-	}
 	r = a.Execute(ctx, protocol.Command{ID: "history", Kind: "history", ThreadID: "t"})
 	if !r.OK || len(r.History) != 1 || r.History[0].Text != "real protocol fixture" {
 		t.Fatal(r)
@@ -132,6 +135,33 @@ func TestAdapterRoutingAndApproval(t *testing.T) {
 	if a.Execute(ctx, protocol.Command{Kind: "respond", ThreadID: "t", RequestID: req.ID, Decision: "approve"}).OK {
 		t.Fatal("request replay accepted")
 	}
+	for {
+		a.mu.Lock()
+		working := a.sessions["t"].Status == protocol.Working
+		a.mu.Unlock()
+		if working {
+			break
+		}
+		select {
+		case <-a.Events():
+		case <-deadline:
+			t.Fatal("missing working status after answer")
+		}
+	}
+	for _, kind := range []string{"steer", "queue", "interrupt"} {
+		r = a.Execute(ctx, protocol.Command{ID: kind, Kind: kind, ThreadID: "t", Text: "message", TurnID: "turn"})
+		if !r.OK {
+			t.Fatal(r)
+		}
+		if kind == "queue" {
+			a.mu.Lock()
+			status, turnID := a.sessions["t"].Status, a.sessions["t"].TurnID
+			a.mu.Unlock()
+			if r.QueueID != "queue-id" || status != protocol.Working || turnID != "turn" {
+				t.Fatal("queue ACK changed turn lifecycle", r)
+			}
+		}
+	}
 	seen := map[string]rpcMessage{}
 	for len(calls) > 0 {
 		m := <-calls
@@ -148,6 +178,48 @@ func TestAdapterRoutingAndApproval(t *testing.T) {
 	_ = json.Unmarshal(seen["turn/steer"].Params, &steer)
 	if steer.Expected != "turn" {
 		t.Fatal("steer missing precondition")
+	}
+}
+
+func TestNativeIdentityAndQueueSignal(t *testing.T) {
+	a := &Adapter{cfg: Config{MachineID: "m"}, sessions: map[string]protocol.Session{"t": {ID: "m~t", ThreadID: "t", Status: protocol.Ready}}, requests: map[string]pending{}, subscribed: map[string]bool{"t": true}, events: make(chan protocol.Event, 16), done: make(chan struct{}), queueSignals: make(chan string, 2), queue: true}
+	a.handle(rpcMessage{Method: "thread/queue/changed", Params: json.RawMessage(`{"threadId":"t"}`)})
+	if <-a.queueSignals != "t" {
+		t.Fatal("queue signal lost")
+	}
+	a.handle(rpcMessage{Method: "turn/started", Params: json.RawMessage(`{"threadId":"t","turn":{"id":"next","status":"inProgress","items":[{"type":"userMessage","id":"real-item","clientId":"command-id","content":[{"type":"text","text":"follow-up"}]}]}}`)})
+	ev := <-a.Events()
+	if ev.Kind != "turn_started" || ev.ClientID != "command-id" || !ev.Session.Capabilities.CanSteer {
+		t.Fatal(ev)
+	}
+	ev = <-a.Events()
+	if ev.Activity == nil || ev.Activity.ClientID != "command-id" || ev.Activity.ID != "real-item" {
+		t.Fatal(ev)
+	}
+	if v := activity(json.RawMessage(`{"type":"userMessage","id":"real-item","clientId":"command-id","content":[{"type":"text","text":"follow-up"}]}`)); v.ClientID != "command-id" {
+		t.Fatal(v)
+	}
+	a.handle(rpcMessage{Method: "item/started", Params: json.RawMessage(`{"threadId":"t","turnId":"next","item":{"type":"userMessage","id":"real-item","clientId":"command-id","content":[{"type":"text","text":"follow-up"}]}}`)})
+	if ev := <-a.Events(); ev.Kind != "message_dispatched" || ev.ClientID != "command-id" {
+		t.Fatal(ev)
+	}
+	if ev := <-a.Events(); ev.Kind != "activity" || ev.Activity.ClientID != "command-id" {
+		t.Fatal(ev)
+	}
+}
+
+func TestAdapterCanonicalErrorMapping(t *testing.T) {
+	a := &Adapter{sessions: map[string]protocol.Session{}, requests: map[string]pending{}, events: make(chan protocol.Event, 16), done: make(chan struct{}), queue: true}
+	code := a.errorCode(protocol.Command{Kind: protocol.Steer}, &rpcError{Code: -32000, Message: "expected turn ID mismatch: PRIVATE_PROMPT_CANARY"})
+	if code != protocol.TurnChanged {
+		t.Fatal(code)
+	}
+	result := protocol.Failure(protocol.Command{ID: "id"}, code)
+	if strings.Contains(result.Error, "PRIVATE") {
+		t.Fatal("raw backend error leaked")
+	}
+	if code = a.errorCode(protocol.Command{Kind: protocol.FollowUpCommand}, &rpcError{Code: -32601, Message: "unknown method"}); code != protocol.FollowUpUnavailable || a.queue {
+		t.Fatal(code)
 	}
 }
 func TestRealCodexDiscovery(t *testing.T) {

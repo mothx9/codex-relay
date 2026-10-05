@@ -30,6 +30,13 @@ type rpcMessage struct {
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
 }
+type rpcError struct {
+	Code    int
+	Message string
+}
+
+func (e *rpcError) Error() string { return fmt.Sprintf("Codex RPC rejected request (%d)", e.Code) }
+
 type transport interface {
 	Read() (rpcMessage, error)
 	Write(any) error
@@ -93,6 +100,7 @@ type Adapter struct {
 	sequence         uint64
 	snapshotSequence uint64
 	queue            bool
+	queueSignals     chan string
 }
 type pending struct {
 	Request protocol.PendingRequest
@@ -183,7 +191,7 @@ func Open(ctx context.Context, cfg Config) (*Adapter, error) {
 		c.SetReadLimit(protocol.MaxMessage)
 		t = &wsTransport{c}
 	}
-	a := &Adapter{cfg: cfg, t: t, calls: map[string]chan rpcMessage{}, events: make(chan protocol.Event, 256), done: make(chan struct{}), sessions: map[string]protocol.Session{}, requests: map[string]pending{}, items: map[string]protocol.Activity{}, subscribed: map[string]bool{}, epoch: protocol.ID(), queue: true}
+	a := &Adapter{cfg: cfg, t: t, calls: map[string]chan rpcMessage{}, events: make(chan protocol.Event, 256), done: make(chan struct{}), sessions: map[string]protocol.Session{}, requests: map[string]pending{}, items: map[string]protocol.Activity{}, subscribed: map[string]bool{}, epoch: protocol.ID(), queue: true, queueSignals: make(chan string, 64)}
 	go a.readLoop()
 	if _, e := a.rpc(ctx, "initialize", map[string]any{"clientInfo": map[string]string{"name": "codex_relay", "title": "Codex Relay", "version": "0.1.0"}, "capabilities": map[string]any{"experimentalApi": true, "optOutNotificationMethods": []string{"item/reasoning/textDelta", "item/reasoning/summaryTextDelta", "thread/tokenUsage/updated"}}}); e != nil {
 		a.Close()
@@ -193,6 +201,7 @@ func Open(ctx context.Context, cfg Config) (*Adapter, error) {
 		a.Close()
 		return nil, e
 	}
+	go a.queueLoop()
 	return a, nil
 }
 func (a *Adapter) Close()                { a.once.Do(func() { close(a.done); _ = a.t.Close() }) }
@@ -224,7 +233,7 @@ func (a *Adapter) rpc(ctx context.Context, method string, params any) (json.RawM
 		return nil, errors.New("Codex disconnected")
 	case m := <-ch:
 		if m.Error != nil {
-			return nil, fmt.Errorf("Codex RPC error %d: %s", m.Error.Code, protocol.Clip(m.Error.Message, 256))
+			return nil, &rpcError{Code: m.Error.Code, Message: m.Error.Message}
 		}
 		return m.Result, nil
 	}

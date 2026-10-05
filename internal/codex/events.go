@@ -10,12 +10,13 @@ import (
 
 func activity(raw json.RawMessage) protocol.Activity {
 	var item struct {
-		ID      string `json:"id"`
-		Type    string `json:"type"`
-		Text    string `json:"text"`
-		Command string `json:"command"`
-		Output  string `json:"aggregatedOutput"`
-		Changes []struct {
+		ID       string `json:"id"`
+		ClientID string `json:"clientId"`
+		Type     string `json:"type"`
+		Text     string `json:"text"`
+		Command  string `json:"command"`
+		Output   string `json:"aggregatedOutput"`
+		Changes  []struct {
 			Path string          `json:"path"`
 			Kind json.RawMessage `json:"kind"`
 			Diff string          `json:"diff"`
@@ -26,7 +27,7 @@ func activity(raw json.RawMessage) protocol.Activity {
 		} `json:"content"`
 	}
 	_ = json.Unmarshal(raw, &item)
-	v := protocol.Activity{ID: item.ID, Kind: item.Type, Timestamp: time.Now().UTC()}
+	v := protocol.Activity{ID: item.ID, ClientID: item.ClientID, Kind: item.Type, Timestamp: time.Now().UTC()}
 	switch item.Type {
 	case "agentMessage":
 		v.Text = item.Text
@@ -109,6 +110,15 @@ func (a *Adapter) handle(m rpcMessage) {
 			s.Title = protocol.Clip(v.Name, 128)
 		}
 		ev.Kind = "session"
+	case "thread/queue/changed":
+		a.mu.Unlock()
+		select {
+		case a.queueSignals <- id:
+		case <-a.done:
+		default:
+			a.Close()
+		}
+		return
 	case "thread/closed", "thread/archived", "thread/deleted":
 		s.Status = protocol.Inactive
 		s.ReadOnly = true
@@ -120,6 +130,12 @@ func (a *Adapter) handle(m rpcMessage) {
 		s.TurnStarted = time.Now().UTC()
 		ev.Kind = "turn_started"
 		ev.TurnID = p.Turn.ID
+		for _, raw := range p.Turn.Items {
+			if v := activity(raw); v.Kind == "userMessage" && v.ClientID != "" {
+				ev.ClientID = v.ClientID
+				break
+			}
+		}
 	case "turn/completed":
 		s.TurnID = ""
 		s.TurnStarted = time.Time{}
@@ -172,11 +188,27 @@ func (a *Adapter) handle(m rpcMessage) {
 	switch ev.Kind {
 	case "session", "turn_started", "turn_completed", "failed", "request_resolved":
 		s.UpdatedAt = time.Now().UTC()
+		s = a.capabilities(s)
 		a.sessions[id] = s
 		ev.Session = &s
 	}
 	a.mu.Unlock()
+	if m.Method == "item/started" && ev.Activity != nil && ev.Activity.Kind == "userMessage" && ev.Activity.ClientID != "" {
+		// 0.160.0 emits the canonical user item after turn/started (whose items
+		// array is empty). Its clientId confirms dispatch without FIFO guessing.
+		a.emit(protocol.Event{Kind: "message_dispatched", SessionID: s.ID, TurnID: p.TurnID, ClientID: ev.Activity.ClientID, RawEvent: m.Method})
+	}
 	a.emit(ev)
+	if m.Method == "turn/started" {
+		for _, raw := range p.Turn.Items {
+			v := activity(raw)
+			if v.Kind != "userMessage" || v.Text == "" {
+				continue
+			}
+			v.TurnID = p.Turn.ID
+			a.emit(protocol.Event{Kind: "activity", SessionID: s.ID, TurnID: p.Turn.ID, Activity: &v, RawEvent: m.Method})
+		}
+	}
 }
 func (a *Adapter) requestID(raw json.RawMessage) string {
 	var s string
@@ -314,10 +346,11 @@ func (a *Adapter) handleRequest(m rpcMessage, threadID, turnID string) {
 	a.requests[r.ID] = pending{Request: r, RawID: m.ID, Method: m.Method, Params: params}
 	s, ok := a.sessions[threadID]
 	if !ok {
-		s = protocol.Session{ID: r.SessionID, MachineID: a.cfg.MachineID, ThreadID: threadID, Cwd: p.Cwd, Title: "Thread " + protocol.Clip(threadID, 8)}
+		s = protocol.Session{ID: r.SessionID, MachineID: a.cfg.MachineID, ThreadID: threadID, Cwd: p.Cwd, Title: "Thread " + protocol.Clip(threadID, 8), ReadOnly: true}
 	}
 	s.Status = protocol.NeedsYou
 	s.UpdatedAt = now
+	s = a.capabilities(s)
 	a.sessions[threadID] = s
 	a.mu.Unlock()
 	a.emit(protocol.Event{Kind: "request", SessionID: r.SessionID, Session: &s, Request: &r, RawEvent: m.Method, NotifyKey: fmt.Sprintf("%s/request/%s/%s", r.SessionID, r.TurnID, p.ItemID)})

@@ -32,20 +32,28 @@ type Machine struct {
 	LastSeen     time.Time `json:"last_seen"`
 }
 type Session struct {
-	ID             string    `json:"id"`
-	MachineID      string    `json:"machine_id"`
-	ThreadID       string    `json:"thread_id"`
-	Title          string    `json:"title"`
-	Project        string    `json:"project"`
-	Cwd            string    `json:"cwd"`
-	Branch         string    `json:"branch,omitempty"`
-	Status         string    `json:"status"`
-	RawStatus      string    `json:"raw_status,omitempty"`
-	UpdatedAt      time.Time `json:"updated_at"`
-	TurnID         string    `json:"turn_id,omitempty"`
-	TurnStarted    time.Time `json:"turn_started,omitempty"`
-	ReadOnly       bool      `json:"read_only"`
-	QueueSupported bool      `json:"queue_supported"`
+	ID             string       `json:"id"`
+	MachineID      string       `json:"machine_id"`
+	ThreadID       string       `json:"thread_id"`
+	Title          string       `json:"title"`
+	Project        string       `json:"project"`
+	Cwd            string       `json:"cwd"`
+	Branch         string       `json:"branch,omitempty"`
+	Status         string       `json:"status"`
+	RawStatus      string       `json:"raw_status,omitempty"`
+	UpdatedAt      time.Time    `json:"updated_at"`
+	TurnID         string       `json:"turn_id,omitempty"`
+	TurnStarted    time.Time    `json:"turn_started,omitempty"`
+	ReadOnly       bool         `json:"read_only"`
+	QueueSupported bool         `json:"queue_supported"`
+	Capabilities   Capabilities `json:"capabilities"`
+}
+type Capabilities struct {
+	CanSend      bool `json:"can_send"`
+	CanFollowUp  bool `json:"can_follow_up"`
+	CanSteer     bool `json:"can_steer"`
+	CanInterrupt bool `json:"can_interrupt"`
+	CanAnswer    bool `json:"can_answer"`
 }
 type Activity struct {
 	Truncated bool      `json:"truncated,omitempty"`
@@ -54,6 +62,14 @@ type Activity struct {
 	Kind      string    `json:"kind"`
 	Text      string    `json:"text"`
 	Timestamp time.Time `json:"timestamp"`
+	ClientID  string    `json:"client_id,omitempty"`
+}
+
+// FollowUp is an ephemeral view of the queue owned by the backend.
+type FollowUp struct {
+	ID       string `json:"id"`
+	ClientID string `json:"client_id"`
+	Text     string `json:"text,omitempty"`
 }
 type Question struct {
 	ID       string   `json:"id"`
@@ -101,6 +117,8 @@ type Event struct {
 	ItemID    string          `json:"item_id,omitempty"`
 	Text      string          `json:"text,omitempty"`
 	NotifyKey string          `json:"notify_key,omitempty"`
+	FollowUps []FollowUp      `json:"follow_ups,omitempty"`
+	ClientID  string          `json:"client_id,omitempty"`
 }
 type Command struct {
 	ID        string              `json:"id"`
@@ -120,6 +138,10 @@ type Result struct {
 	Error     string     `json:"error,omitempty"`
 	History   []Activity `json:"history,omitempty"`
 	SessionID string     `json:"session_id,omitempty"`
+	ErrorCode string     `json:"error_code,omitempty"`
+	Retryable bool       `json:"retryable"`
+	QueueID   string     `json:"queue_id,omitempty"`
+	FollowUps []FollowUp `json:"follow_ups,omitempty"`
 }
 type Snapshot struct {
 	Machines []Machine        `json:"machines"`

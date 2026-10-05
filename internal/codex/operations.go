@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/mothx9/codex-relay/internal/protocol"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -157,10 +157,15 @@ func (a *Adapter) attach(ctx context.Context, id string) (protocol.Session, erro
 	}
 	a.mu.Lock()
 	if current, ok := a.sessions[id]; ok && current.UpdatedAt.After(fetchedAt) {
+		// Keep newer live status/pending replay, but trust this metadata read's
+		// explicit direct-input permission rather than a provisional event view.
+		current.ReadOnly = s.ReadOnly
 		s = current
 	}
+	s = a.capabilities(s)
 	a.sessions[id] = s
 	a.mu.Unlock()
+	_, _ = a.nativeQueue(ctx, id)
 	return s, nil
 }
 func (a *Adapter) history(ctx context.Context, id string) ([]protocol.Activity, error) {
@@ -194,63 +199,109 @@ func (a *Adapter) history(ctx context.Context, id string) ([]protocol.Activity, 
 	return out, nil
 }
 func (a *Adapter) Execute(ctx context.Context, c protocol.Command) protocol.Result {
+	c.Kind = protocol.CommandKind(c.Kind)
 	result := protocol.Result{ID: c.ID, SessionID: c.SessionID}
-	var err error
+	select {
+	case <-a.done:
+		return protocol.Failure(c, protocol.CodexDisconnected)
+	default:
+	}
 	a.mu.Lock()
 	s, exists := a.sessions[c.ThreadID]
 	a.mu.Unlock()
 	if !exists {
-		result.Error = "Session is not in the current Codex snapshot"
-		return result
+		return protocol.Failure(c, protocol.SessionReadOnly)
 	}
+	c.SessionID = s.ID
+	result.SessionID = s.ID
+	var err error
 	switch c.Kind {
 	case "history":
 		result.History, err = a.history(ctx, c.ThreadID)
+		if err == nil {
+			result.FollowUps, _ = a.nativeQueue(ctx, c.ThreadID)
+		}
 	case "attach":
 		var attached protocol.Session
 		attached, err = a.attach(ctx, c.ThreadID)
 		if err == nil {
 			a.emit(protocol.Event{Kind: "session", SessionID: attached.ID, Session: &attached})
 		}
-	case "start", "steer", "queue", "interrupt":
-		if s.ReadOnly {
-			err = errors.New("Read-only session: attach it explicitly first")
-			break
+	case protocol.NewTurn, protocol.Steer, protocol.FollowUpCommand, protocol.Interrupt:
+		if code := protocol.CheckControl(s, c); code != "" {
+			return protocol.Failure(c, code)
 		}
 		input := []map[string]any{{"type": "text", "text": c.Text, "text_elements": []any{}}}
 		switch c.Kind {
-		case "start":
-			if s.Status == protocol.Working || s.Status == protocol.NeedsYou {
-				err = errors.New("Turn is already working or waiting for input")
-				break
-			}
+		case protocol.NewTurn:
 			_, err = a.rpc(ctx, "turn/start", map[string]any{"threadId": c.ThreadID, "input": input, "clientUserMessageId": c.ID})
-		case "steer":
-			if s.TurnID == "" || s.TurnID != c.TurnID {
-				err = errors.New("Active turn changed: refresh before steering")
-				break
-			}
+		case protocol.Steer:
 			_, err = a.rpc(ctx, "turn/steer", map[string]any{"threadId": c.ThreadID, "input": input, "expectedTurnId": c.TurnID, "clientUserMessageId": c.ID})
-		case "queue":
-			_, err = a.rpc(ctx, "thread/queue/add", map[string]any{"threadId": c.ThreadID, "input": input, "clientUserMessageId": c.ID})
-		case "interrupt":
-			if s.TurnID == "" || s.TurnID != c.TurnID {
-				err = errors.New("Active turn changed")
-				break
+		case protocol.FollowUpCommand:
+			var raw json.RawMessage
+			raw, err = a.rpc(ctx, "thread/queue/add", map[string]any{"threadId": c.ThreadID, "input": input, "clientUserMessageId": c.ID})
+			if err == nil {
+				var response struct {
+					QueuedSubmission struct {
+						ID       string `json:"id"`
+						ClientID string `json:"clientUserMessageId"`
+					} `json:"queuedSubmission"`
+				}
+				err = decode(raw, &response)
+				if err == nil && (response.QueuedSubmission.ID == "" || response.QueuedSubmission.ClientID != c.ID) {
+					return protocol.Failure(c, protocol.UnknownOutcome)
+				}
+				result.QueueID = response.QueuedSubmission.ID
 			}
+		case protocol.Interrupt:
 			_, err = a.rpc(ctx, "turn/interrupt", map[string]any{"threadId": c.ThreadID, "turnId": c.TurnID})
 		}
-	case "respond":
+	case protocol.Answer:
+		if !s.Capabilities.CanAnswer {
+			return protocol.Failure(c, protocol.PendingRequestChanged)
+		}
 		err = a.respond(c)
 	default:
-		err = fmt.Errorf("Unknown Relay command %q", c.Kind)
+		return protocol.Failure(c, protocol.CodexRejected)
 	}
-	result.OK = err == nil
 	if err != nil {
-		result.Error = err.Error()
+		return protocol.Failure(c, a.errorCode(c, err))
 	}
+	result.OK = true
 	return result
 }
+
+func (a *Adapter) errorCode(c protocol.Command, err error) string {
+	var rpc *rpcError
+	if errors.As(err, &rpc) {
+		message := strings.ToLower(rpc.Message)
+		if c.Kind == protocol.FollowUpCommand && rpc.Code == -32601 {
+			a.disableQueue()
+			return protocol.FollowUpUnavailable
+		}
+		if c.Kind == protocol.Steer && strings.Contains(message, "turn") &&
+			(strings.Contains(message, "expected") || strings.Contains(message, "mismatch") || strings.Contains(message, "no active") || strings.Contains(message, "not active")) {
+			return protocol.TurnChanged
+		}
+		if strings.Contains(message, "queue") && strings.Contains(message, "changed") {
+			return protocol.QueueChanged
+		}
+		return protocol.CodexRejected
+	}
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return protocol.UnknownOutcome
+	}
+	select {
+	case <-a.done:
+		return protocol.UnknownOutcome
+	default:
+	}
+	if c.Kind == protocol.Answer {
+		return protocol.PendingRequestChanged
+	}
+	return protocol.CodexRejected
+}
+
 func (a *Adapter) respond(c protocol.Command) error {
 	a.mu.Lock()
 	p, ok := a.requests[c.RequestID]

@@ -323,62 +323,63 @@ func (h *Hub) ui(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (h *Hub) route(o *operator, c protocol.Command) {
-	fail := func(message string) {
-		r := protocol.Result{ID: c.ID, SessionID: c.SessionID, Error: message}
+	c.Kind = protocol.CommandKind(c.Kind)
+	fail := func(code string) {
+		r := protocol.Failure(c, code)
 		o.peer.Enqueue(protocol.Message{Type: "result", Result: &r})
 	}
 	if len(c.ID) < 16 || len(c.ID) > 128 || len(c.Text) > protocol.MaxText || len(c.Content) > 64<<10 {
-		fail("Invalid or oversized command")
+		fail(protocol.CodexRejected)
 		return
 	}
 	if _, exists := h.flights[c.ID]; exists {
-		fail("Command already in flight")
+		fail(protocol.UnknownOutcome)
 		return
 	}
 	if len(h.flights) >= 128 {
-		fail("Command queue full")
+		fail(protocol.CodexRejected)
 		return
 	}
 	s, ok := h.sessions[c.SessionID]
 	if !ok {
-		fail("Unknown session")
+		fail(protocol.SessionReadOnly)
 		return
 	}
 	a := h.agents[s.MachineID]
 	if a == nil || a.epoch == "" || h.machines[s.MachineID].Status != protocol.Online {
-		fail("Machine unavailable")
+		fail(protocol.MachineOffline)
 		return
 	}
 	if !h.store.Authenticate(s.MachineID, a.token) {
 		a.peer.Close()
-		fail("Machine token revoked")
+		fail(protocol.MachineOffline)
 		return
 	}
 	c.ThreadID = s.ThreadID
 	switch c.Kind {
 	case "history", "attach":
-	case "start", "steer", "queue", "interrupt":
-		if s.ReadOnly {
-			fail("Read-only session: attach it first")
+	case protocol.NewTurn, protocol.Steer, protocol.FollowUpCommand, protocol.Interrupt:
+		if code := protocol.CheckControl(s, c); code != "" {
+			fail(code)
 			return
 		}
-		if (c.Kind == "start" || c.Kind == "steer" || c.Kind == "queue") && strings.TrimSpace(c.Text) == "" {
-			fail("Message is empty")
+		if (c.Kind == protocol.NewTurn || c.Kind == protocol.Steer || c.Kind == protocol.FollowUpCommand) && strings.TrimSpace(c.Text) == "" {
+			fail(protocol.CodexRejected)
 			return
 		}
-	case "respond":
+	case protocol.Answer:
 		r, ok := h.requests[c.RequestID]
 		if !ok || r.SessionID != s.ID || time.Now().After(r.ExpiresAt) {
-			fail("Request already resolved or expired")
+			fail(protocol.PendingRequestChanged)
 			return
 		}
 		if _, busy := h.answering[r.ID]; busy {
-			fail("Request already being answered")
+			fail(protocol.PendingRequestChanged)
 			return
 		}
 		h.answering[r.ID] = c.ID
 	default:
-		fail("Unsupported command")
+		fail(protocol.CodexRejected)
 		return
 	}
 	h.flights[c.ID] = flight{o, s.MachineID, s.ID, c.Kind, c.RequestID, time.Now()}
@@ -392,12 +393,12 @@ func (h *Hub) result(machine string, r protocol.Result) {
 	}
 	delete(h.flights, r.ID)
 	r.SessionID = f.session
-	if f.kind == "respond" && !r.OK {
+	if f.kind == protocol.Answer && !r.OK {
 		delete(h.answering, f.request)
 	}
-	// Raw backend errors may quote command/prompt data. Browser gets a bounded generic failure.
+	// Only allowlisted canonical codes and safe messages reach the operator.
 	if !r.OK {
-		r.Error = "Codex command failed. Refresh state or inspect local Codex before retrying."
+		r = protocol.Failure(protocol.Command{ID: r.ID, SessionID: r.SessionID}, r.ErrorCode)
 	}
 	if f.kind == "history" {
 		if b := h.buffers[f.session]; b != nil {
@@ -407,6 +408,7 @@ func (h *Hub) result(machine string, r protocol.Result) {
 		}
 	} else {
 		r.History = nil
+		r.FollowUps = nil
 	}
 	if f.operator.session == f.session || f.kind != "history" {
 		f.operator.peer.Enqueue(protocol.Message{Type: "result", Result: &r})
