@@ -296,6 +296,7 @@ func tokens(args []string) error {
 func doctor(ctx context.Context, args []string) error {
 	fs := flags("doctor")
 	hubURL := fs.String("hub-url", "", "optional Hub URL")
+	insecure := fs.Bool("insecure-http", false, "explicitly allow plaintext diagnostics beyond loopback")
 	data := fs.String("data-dir", ".relay/hub", "Hub metadata directory")
 	tokenFile := fs.String("token-file", "", "optional Relay machine token")
 	machine := fs.String("machine", "", "registered machine ID")
@@ -303,6 +304,20 @@ func doctor(ctx context.Context, args []string) error {
 	codexFlags(fs, &c)
 	if e := fs.Parse(args); e != nil {
 		return e
+	}
+	client := &http.Client{Timeout: 5 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}}
+	if *hubURL != "" {
+		u, err := url.Parse(*hubURL)
+		if err != nil || u.Host == "" || u.User != nil || (u.Path != "" && u.Path != "/") || u.RawQuery != "" || u.Fragment != "" || (u.Scheme != "http" && u.Scheme != "https") {
+			return errors.New("doctor requires a valid HTTP(S) Hub origin without credentials or a subpath")
+		}
+		ip := net.ParseIP(u.Hostname())
+		loopback := strings.EqualFold(u.Hostname(), "localhost") || (ip != nil && ip.IsLoopback())
+		if u.Scheme == "http" && !loopback && !*insecure {
+			return errors.New("non-loopback Hub diagnostics require HTTPS or explicit --insecure-http")
+		}
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -347,7 +362,6 @@ func doctor(ctx context.Context, args []string) error {
 	}
 	reachability := "not checked"
 	wsState := any("not checked")
-	client := &http.Client{Timeout: 5 * time.Second}
 	if *hubURL != "" {
 		resp, e := client.Get(strings.TrimRight(*hubURL, "/") + "/healthz")
 		if e == nil {

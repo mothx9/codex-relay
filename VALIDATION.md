@@ -104,7 +104,7 @@ Ran the actual embedded PWA in system Chromium through temporary Playwright tool
 | NEEDS_YOU → ANSWER → READY | Real plan-mode Alpha/Beta input. Normal composer hidden, `answer` command observed, structured Alpha response returned and pending request retired. |
 | Mobile browser correctness | No horizontal overflow, no page errors, zero localStorage entries. |
 | Transcript exclusion | All three unique wave conversation markers absent from SQLite main/WAL/SHM and Relay runtime log; SQL quick_check passed. No transcript table. |
-| Automated regression | `go test ./...`, `go test -race ./...`, vet, shell syntax and nine ES-module control-flow tests passed. Local socket tests run with the required environment permission. |
+| Automated regression | `go test ./...`, `go test -race ./...`, vet, shell syntax and nine ES-module control-flow tests passed. Local socket tests run with the required environment permission. Doctor rejects non-loopback plaintext without its explicit flag and does not follow redirects or forward authentication to their target. |
 | Public CI | Canonical controls and outbox commits passed GitHub CI, including Go race tests, UI control tests and all three cross-builds. |
 
 Tests cover explicit capabilities; follow-up without an active turn ID; stale steer TURN_CHANGED; ACK/materialization races; queue errors retaining text; unknown disconnect outcome without resubmission; native queue rehydration; duplicate canonical user items; per-session identity and bounded outbox/TTL. Direct-input read-only state does not prevent answering an outstanding addressed server request, and answering it does not grant other controls.

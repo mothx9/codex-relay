@@ -153,7 +153,7 @@ make check
 make cross
 ```
 
-Doctor reports CLI/daemon adapter connectivity, session count, hub reachability, current machine WebSocket status, read-only DB quick-check, VAPID file presence and its own runtime memory. Its memory value is **not** the RSS of a running hub or agent.
+Doctor reports CLI/daemon adapter connectivity, session count, hub reachability, current machine WebSocket status, read-only DB quick-check, VAPID file presence and its own runtime memory. Its memory value is **not** the RSS of a running hub or agent. Remote diagnostics require HTTPS unless explicitly using `--insecure-http`; doctor never follows redirects carrying authentication.
 
 CI checks gofmt, vet, race-tested Go unit/integration tests, the ES-module control-flow tests, and all three target builds. Development control-flow tests need Node; the installed hub and agents do not. Fake app-server/backend tests require no Codex account. Optional real daemon tests are excluded from normal CI:
 
