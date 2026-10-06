@@ -254,3 +254,41 @@ func (s *Store) Subscriptions() ([]PushSubscription, error) {
 	}
 	return out, rows.Err()
 }
+
+// ReplaceMachineState commits one accepted snapshot atomically. Only request
+// routing is durable; sensitive request context and transcript never enter SQLite.
+func (s *Store) ReplaceMachineState(m protocol.Machine, sessions []protocol.Session, requests []protocol.PendingRequest) error {
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	raw, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`INSERT INTO machines VALUES(?,?) ON CONFLICT(id) DO UPDATE SET metadata=excluded.metadata`, m.ID, string(raw)); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`DELETE FROM sessions WHERE machine_id=?`, m.ID); err != nil {
+		return err
+	}
+	for _, v := range sessions {
+		raw, err = json.Marshal(v)
+		if err != nil {
+			return err
+		}
+		if _, err = tx.Exec(`INSERT INTO sessions VALUES(?,?,?)`, v.ID, m.ID, string(raw)); err != nil {
+			return err
+		}
+	}
+	if _, err = tx.Exec(`DELETE FROM pending_requests WHERE machine_id=?`, m.ID); err != nil {
+		return err
+	}
+	for _, v := range requests {
+		if _, err = tx.Exec(`INSERT INTO pending_requests VALUES(?,?,?,?,?,?,?,?,?)`, v.ID, v.MachineID, v.SessionID, v.ThreadID, v.TurnID, v.Kind, v.CreatedAt.Format(time.RFC3339Nano), v.ExpiresAt.Format(time.RFC3339Nano), v.Status); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}

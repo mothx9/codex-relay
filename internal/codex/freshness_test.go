@@ -103,3 +103,19 @@ func TestSnapshotPagedLoadedAndPendingOutsideCatalogue(t *testing.T) {
 		})
 	}
 }
+
+func TestPendingReplayKeepsIncarnationAndOneShotReservation(t *testing.T) {
+	a := &Adapter{cfg: Config{MachineID: "m"}, sessions: map[string]protocol.Session{}, requests: map[string]pending{}, events: make(chan protocol.Event, 8), done: make(chan struct{})}
+	m := rpcMessage{ID: json.RawMessage(`7`), Method: "item/tool/requestUserInput", Params: json.RawMessage(`{"threadId":"old","turnId":"turn","questions":[{"id":"q","question":"Which?"}]}`)}
+	a.handle(m)
+	first := <-a.events
+	a.mu.Lock()
+	p := a.requests[first.Request.ID]
+	p.Sent = true
+	a.requests[first.Request.ID] = p
+	a.mu.Unlock()
+	a.handle(m)
+	if len(a.events) != 0 || !a.requests[first.Request.ID].Sent || !a.requests[first.Request.ID].Request.CreatedAt.Equal(first.Request.CreatedAt) {
+		t.Fatal("replay reset pending incarnation or answer reservation")
+	}
+}

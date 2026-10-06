@@ -202,3 +202,29 @@ func TestSnapshotRevisionRejectsEqualWatermarkReplay(t *testing.T) {
 		t.Fatal("older equal-watermark snapshot regressed state")
 	}
 }
+
+func TestSnapshotCommitFailureKeepsPreviousDurableState(t *testing.T) {
+	h, db, srv := testHub(t, filepath.Join(t.TempDir(), "db"))
+	defer srv.Close()
+	defer db.Close()
+	a := &agentPeer{}
+	h.agents["m"] = a
+	s := protocol.Session{ID: "m~t", MachineID: "m", ThreadID: "t", Status: protocol.Working}
+	r := protocol.PendingRequest{ID: "r", MachineID: "m", SessionID: s.ID, ThreadID: "t", Kind: "user_input"}
+	msg := protocol.Message{Version: protocol.Version, Machine: &protocol.Machine{ID: "m"}, Epoch: "e", Sequence: 1, Sessions: []protocol.Session{s}, Requests: []protocol.PendingRequest{r}}
+	if err := h.announce("m", a, msg); err != nil {
+		t.Fatal(err)
+	}
+	msg.Sequence = 2
+	msg.Sessions = append(msg.Sessions, s)
+	if h.announce("m", a, msg) == nil {
+		t.Fatal("duplicate session snapshot unexpectedly committed")
+	}
+	recovered, err := New(db, h.config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(recovered.requests) != 1 || len(recovered.sessions) != 1 || a.sequence != 1 {
+		t.Fatal("partial snapshot destroyed durable state")
+	}
+}

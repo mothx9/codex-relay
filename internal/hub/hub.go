@@ -93,6 +93,7 @@ func New(s *store.Store, c Config) (*Hub, error) {
 	}
 	for _, r := range snap.Requests {
 		h.requests[r.ID] = r
+		h.ensurePendingSession(r, "", time.Time{})
 	}
 	h.push = push.New(s, c.PushKeys, c.PushSubject)
 	h.push.APNS = c.APNS
@@ -258,18 +259,40 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	if m.Status != protocol.Degraded {
 		m.Status = protocol.Online
 	}
-	if e := h.store.SaveMachine(m); e != nil {
-		return e
+	incoming := make(map[string]protocol.PendingRequest, len(msg.Requests))
+	for _, r := range msg.Requests {
+		incoming[r.ID] = r
 	}
+	if a.epoch == msg.Epoch {
+		for rid, r := range h.requests {
+			if r.MachineID == id {
+				if _, exists := incoming[rid]; !exists {
+					incoming[rid] = r
+				}
+			}
+		}
+	}
+	knownSessions := map[string]bool{}
 	for i := range msg.Sessions {
 		msg.Sessions[i].ObservedAt = m.LastSeen
 		msg.Sessions[i].AgentEpoch = msg.Epoch
+		knownSessions[msg.Sessions[i].ID] = true
 	}
-	if e := h.store.ReplaceSessions(id, msg.Sessions); e != nil {
-		return e
+	pending := make([]protocol.PendingRequest, 0, len(incoming))
+	for _, r := range incoming {
+		pending = append(pending, r)
+		if !knownSessions[r.SessionID] {
+			s, ok := h.sessions[r.SessionID]
+			if !ok {
+				s = protocol.Session{ID: r.SessionID, MachineID: id, ThreadID: r.ThreadID, Title: "Thread " + protocol.Clip(r.ThreadID, 8), Cwd: r.Cwd, Status: protocol.NeedsYou, ReadOnly: true}
+			}
+			s.AgentEpoch, s.ObservedAt = msg.Epoch, m.LastSeen
+			msg.Sessions = append(msg.Sessions, s)
+			knownSessions[s.ID] = true
+		}
 	}
-	if e := h.store.ClearPending(id); e != nil {
-		return e
+	if err := h.store.ReplaceMachineState(m, msg.Sessions, pending); err != nil {
+		return err
 	}
 	for sid, s := range h.sessions {
 		if s.MachineID == id {
@@ -278,10 +301,6 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 				delete(h.liveActivities, sid)
 			}
 		}
-	}
-	incoming := make(map[string]protocol.PendingRequest, len(msg.Requests))
-	for _, r := range msg.Requests {
-		incoming[r.ID] = r
 	}
 	for rid, r := range h.requests {
 		if r.MachineID == id {
@@ -308,10 +327,6 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	}
 	for _, r := range incoming {
 		h.requests[r.ID] = r
-		h.ensurePendingSession(r, msg.Epoch, m.LastSeen)
-		if e := h.store.SavePending(r); e != nil {
-			return e
-		}
 		h.notifyRequest(r)
 	}
 	a.snapshotRevision = msg.SnapshotRevision
@@ -408,6 +423,9 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 		h.ensurePendingSession(r, a.epoch, a.lastSeen)
 		s = h.sessions[r.SessionID]
 		e.Session = &s
+		if err := h.store.SaveSession(s); err != nil {
+			return err
+		}
 		if err := h.store.SavePending(r); err != nil {
 			return err
 		}
@@ -506,9 +524,10 @@ func (h *Hub) ensurePendingSession(r protocol.PendingRequest, epoch string, obse
 	if !known {
 		s.Status = protocol.NeedsYou
 	}
-	s.AgentEpoch, s.ObservedAt = epoch, observed
+	if !observed.IsZero() {
+		s.AgentEpoch, s.ObservedAt = epoch, observed
+	}
 	h.sessions[s.ID] = s
-	_ = h.store.SaveSession(s)
 }
 
 // Transport acceptance immediately invalidates the previous live freshness.

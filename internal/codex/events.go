@@ -461,6 +461,12 @@ func (a *Adapter) handleRequest(m rpcMessage, threadID, turnID string) {
 		r.Description = strings.ReplaceAll(r.Kind, "_", " ")
 	}
 	a.mu.Lock()
+	if prior, exists := a.requests[r.ID]; exists && prior.Method == m.Method && prior.Request.ThreadID == threadID && prior.Request.TurnID == turnID {
+		// Replayed unresolved RPCs keep their incarnation and one-shot reservation.
+		// A duplicate must never blink the native form or permit a second answer.
+		a.mu.Unlock()
+		return
+	}
 	if len(a.requests) >= 128 {
 		a.mu.Unlock()
 		a.Close()
