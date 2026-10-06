@@ -228,3 +228,25 @@ func TestSnapshotCommitFailureKeepsPreviousDurableState(t *testing.T) {
 		t.Fatal("partial snapshot destroyed durable state")
 	}
 }
+
+func TestPeriodicSnapshotDoesNotTurnSyncTimingIntoUptime(t *testing.T) {
+	h, db, srv := testHub(t, filepath.Join(t.TempDir(), "db"))
+	defer srv.Close()
+	defer db.Close()
+	a := &agentPeer{}
+	h.agents["m"] = a
+	h.syncing("m", a)
+	msg := protocol.Message{Version: protocol.Version, Machine: &protocol.Machine{ID: "m"}, Epoch: "e", SnapshotRevision: 1}
+	if err := h.announce("m", a, msg); err != nil {
+		t.Fatal(err)
+	}
+	first := h.machines["m"].Freshness.SyncMS
+	a.connectedAt = time.Now().Add(-time.Hour)
+	msg.SnapshotRevision = 2
+	if err := h.announce("m", a, msg); err != nil {
+		t.Fatal(err)
+	}
+	if h.machines["m"].Freshness.SyncMS != first {
+		t.Fatal("periodic refresh reported uptime as reconnect time")
+	}
+}

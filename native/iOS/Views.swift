@@ -381,9 +381,6 @@ struct DevicesView: View {
                 }
                 SettingsFeedback(id: "devices")
             }
-            Section {
-                Link(destination: URL(string: "https://chatgpt.com/")!) { Label("Account ChatGPT", systemImage: "person.crop.circle") }
-            } footer: { Text("Gli account Codex sono visibili nei dettagli di ogni macchina. Le altre sessioni ChatGPT si gestiscono nelle impostazioni di sicurezza di ChatGPT.") }
             Section("Accesso") {
                 ForEach(relay.registry?.operators ?? []) { device in
                     NavigationLink {
@@ -434,6 +431,12 @@ private struct HubDetailsView: View {
         List {
             LabeledContent("Connessione", value: relay.online ? "Attiva" : relay.connection)
             Section("Hub") { Text(relay.credential?.hubUrl ?? "").font(.footnote).textSelection(.enabled) }
+            Section("Tempi osservati") {
+                LabeledContent("Campioni ricevuti", value: "\(relay.receiptTiming.samples)")
+                LabeledContent("Hub → iPhone", value: String(format: "%.1f ms", relay.receiptTiming.hubToNativeMs))
+                LabeledContent("Applicazione stato", value: String(format: "%.1f ms", relay.receiptTiming.reducerMs))
+                Text(relay.receiptTiming.clockSkew ? "Orologi non allineati: latenza non confrontabile." : "La stima tra dispositivi include lo scarto degli orologi. Non misura il tempo del modello né il rendering.").font(.caption).foregroundStyle(.secondary)
+            }
             Section { Text("La cronologia appartiene a Codex. Relay mantiene il contesto della conversazione soltanto in memoria.").font(.footnote).foregroundStyle(.secondary) }
         }.navigationTitle("Connessione").navigationBarTitleDisplayMode(.inline)
     }
@@ -449,6 +452,13 @@ private struct MachineSettingsView: View {
                 Section {
                     LabeledContent("Relay", value: relay.machineConnectionLabel(id))
                     LabeledContent("Codex", value: device.machine.codexVersion ?? "Non disponibile")
+                    if let machine = relay.machines[id], let freshness = machine.freshness {
+                        LabeledContent("Agent", value: machine.agentVersion ?? "Non disponibile")
+                        LabeledContent("Snapshot Codex", value: String(format: "%.1f ms", freshness.snapshotMs ?? 0))
+                        LabeledContent("Connessione → Online", value: String(format: "%.1f ms", freshness.syncMs ?? 0))
+                        LabeledContent("Riconnessioni", value: "\(freshness.reconnectCount ?? 0)")
+                        LabeledContent("Sequenza", value: "\(freshness.sequence ?? 0)")
+                    }
                     if let account = device.machine.account {
                         LabeledContent("Account", value: account.email ?? account.kind)
                         if let plan = account.plan { LabeledContent("Piano", value: plan) }

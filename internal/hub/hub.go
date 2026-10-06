@@ -248,7 +248,7 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	m.Freshness.LastSnapshot = time.Now().UTC()
 	m.Freshness.Sequence, m.Freshness.SnapshotSequence = msg.Sequence, msg.Sequence
 	m.Freshness.SnapshotMS = msg.Machine.Freshness.SnapshotMS
-	if !a.connectedAt.IsZero() {
+	if !a.connectedAt.IsZero() && h.machines[id].Status != protocol.Online {
 		m.Freshness.SyncMS = float64(time.Since(a.connectedAt).Microseconds()) / 1000
 	}
 	m.ID = id
