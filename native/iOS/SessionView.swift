@@ -28,7 +28,7 @@ struct SessionView: View {
         + relay.requests.values.filter { $0.sessionId == relay.selected }.map(\.id).sorted()
     }
     private func machineOnline(_ session: RelaySession) -> Bool {
-        relay.online && relay.machines[session.machineId]?.status == "ONLINE"
+        relay.online && relay.machines[session.machineId]?.status == "ONLINE" && session.fresh != false
     }
 
     var body: some View {
@@ -90,6 +90,7 @@ struct SessionView: View {
                                 .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("session.connection").accessibilityValue(machineOnline(session) ? "Live" : "Offline")
                             if machineOnline(session), session.status == "WORKING" { ElapsedLabel(start: session.turnStarted) }
                         }
+                        if !machineOnline(session) { LastKnownSession(session: session, machine: relay.machines[session.machineId]) }
                         if machineOnline(session), session.status == "WORKING", let activity = relay.liveActivities[session.id] {
                             Text(activity.detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                         }

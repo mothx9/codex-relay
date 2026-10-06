@@ -1,7 +1,15 @@
 import Foundation
 
 public struct Account: Codable, Sendable { public let kind: String; public let email: String?; public let plan: String? }
+public struct MachineFreshness: Codable, Sendable {
+    public let connectionId: String?; public let epoch: String?; public let protocolVersion: Int?
+    public let lastHeartbeat: String?; public let lastEvent: String?; public let lastSnapshot: String?
+    public let sequence: UInt64?; public let snapshotSequence: UInt64?
+    public let reconnectCount: UInt64?; public let snapshotMs: Double?; public let syncMs: Double?
+}
 public struct Machine: Codable, Identifiable, Sendable {
+    public var agentVersion: String? = nil
+    public var freshness: MachineFreshness? = nil
     public let id: String; public let name: String; public let status: String
     public let codexVersion: String?; public let adapter: String?; public let lastSeen: String
     public let account: Account?
@@ -11,6 +19,8 @@ public struct Machine: Codable, Identifiable, Sendable {
         if access == "REVOKED" { return "Accesso Relay revocato" }
         switch status {
         case "ONLINE": return "Relay collegato"
+        case "SYNCING": return "Sincronizzazione Codex…"
+        case "RECONNECTING": return "Riconnessione Relay…"
         case "DEGRADED": return "Codex non connesso"
         default: return "Relay non connesso"
         }
@@ -24,13 +34,18 @@ public struct Capabilities: Codable, Sendable {
     }
 }
 public struct RelaySession: Codable, Identifiable, Sendable {
+    public var fresh: Bool? = nil
+    public var observedAt: String? = nil
+    public var agentEpoch: String? = nil
     public let id: String; public let machineId: String; public let threadId: String
     public let title: String; public let project: String; public let cwd: String; public let branch: String?
     public var status: String; public let updatedAt: String; public var turnId: String?; public let turnStarted: String?
     public var readOnly: Bool; public var capabilities: Capabilities
     public var defaultCommand: String { status == "READY" ? "new_turn" : status == "WORKING" ? "follow_up" : status == "NEEDS_YOU" ? "answer" : "" }
     public func displayStatus(machine: Machine?, connected: Bool) -> String {
-        connected && machine?.status == "ONLINE" ? status : "OFFLINE"
+        guard connected, let machine else { return "OFFLINE" }
+        guard machine.status == "ONLINE" else { return machine.status }
+        return fresh == false ? "SYNCING" : status
     }
     public var canEditQueueAvailable: Bool { !readOnly && capabilities.canEditQueue == true }
     public func allows(_ kind: String) -> Bool {
@@ -97,6 +112,8 @@ public struct PendingRequest: Codable, Identifiable, Sendable {
 }
 public struct Snapshot: Decodable, Sendable { public let machines: [Machine]; public let sessions: [RelaySession]; public let requests: [PendingRequest]; public let liveActivities: [String: LiveActivity]? }
 public struct RelayEvent: Decodable, Sendable {
+    public var machineId: String? = nil; public var epoch: String? = nil; public var sequence: UInt64? = nil
+    public var hubObservedAt: String? = nil
     public let liveActivity: LiveActivity?
     public let eventId: String?; public let kind: String; public let sessionId: String; public let session: RelaySession?
     public let request: PendingRequest?; public let requestId: String?; public let activity: Activity?
@@ -253,5 +270,27 @@ public enum MCPResponse {
                 for (i,item) in array.enumerated() { try validate(item, schema: items, path: path+"[\(i)]", depth: depth+1) }
             }
         }
+    }
+}
+
+/// Additional client-side guard; transport generation and Hub admission remain authoritative.
+public struct EventFreshness: Sendable {
+    private var epochs: [String: String] = [:]
+    private var sequences: [String: UInt64] = [:]
+    public init() {}
+    public mutating func snapshot(_ machines: [Machine]) {
+        epochs = [:]; sequences = [:]
+        for machine in machines {
+            epochs[machine.id] = machine.freshness?.epoch
+            sequences[machine.id] = machine.freshness?.sequence
+        }
+    }
+    public mutating func accept(_ event: RelayEvent) -> Bool {
+        guard let machine = event.machineId, let epoch = event.epoch, !epoch.isEmpty,
+              let sequence = event.sequence, sequence > 0 else { return true }
+        if let current = epochs[machine], current != epoch { return false }
+        if let prior = sequences[machine], sequence <= prior { return false }
+        epochs[machine] = epoch; sequences[machine] = sequence
+        return true
     }
 }

@@ -44,6 +44,7 @@ import UIKit
     private var loop: Task<Void, Never>?
     private var generation = UUID()
     private var seen: [String] = []
+    private var eventFreshness = EventFreshness()
     private var paused = false
     private var commands: Set<String> = []
     private var lastBackground: Date?
@@ -104,6 +105,7 @@ import UIKit
         switch message.type {
         case "snapshot":
             guard let snapshot = message.snapshot else { return }
+            eventFreshness.snapshot(snapshot.machines)
             liveActivities = snapshot.liveActivities ?? [:]
             machines = Dictionary(uniqueKeysWithValues: snapshot.machines.map { ($0.id, $0) }); sessions = Dictionary(uniqueKeysWithValues: snapshot.sessions.map { ($0.id, $0) })
             requests = Dictionary(uniqueKeysWithValues: snapshot.requests.map { ($0.id, $0.retainingContext(from: requests[$0.id])) }); online = true; connection = "Live · \(machines.values.filter { $0.status == "ONLINE" }.count) macchine"
@@ -128,6 +130,7 @@ import UIKit
                 }
                 seen.append(id); if seen.count > 1024 { seen.removeFirst(seen.count - 1024) }
             }
+            guard eventFreshness.accept(event) else { return }
             if let session = event.session { sessions[session.id] = session }
             if let request = event.request { requests[request.id] = request.retainingContext(from: requests[request.id]) }
             if event.kind == "request_resolved", let id = event.requestId { requests.removeValue(forKey: id) }

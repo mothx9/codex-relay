@@ -164,6 +164,9 @@ struct FleetSessionRow: View {
                     Spacer(minLength: 4)
                     if status == "WORKING" { ElapsedLabel(start: session.turnStarted) }
                 }.font(.caption).foregroundStyle(.secondary)
+                if ["OFFLINE", "SYNCING", "RECONNECTING", "DEGRADED"].contains(status) {
+                    LastKnownSession(session: session, machine: relay.machines[session.machineId])
+                }
             }.padding(.vertical, RelaySpacing.compact).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
         }.buttonStyle(RelayRowPressStyle()).alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
@@ -181,6 +184,8 @@ struct SessionStatusMark: View {
         case "NEEDS_YOU": "exclamationmark.bubble.fill"
         case "FAILED": "exclamationmark.circle.fill"
         case "OFFLINE": "network.slash"
+        case "SYNCING", "RECONNECTING": "arrow.triangle.2.circlepath"
+        case "DEGRADED": "exclamationmark.triangle"
         case "INACTIVE": "moon"
         default: "checkmark.circle"
         }
@@ -514,7 +519,7 @@ private struct NotificationSettingsView: View {
         }.navigationTitle("Notifiche").navigationBarTitleDisplayMode(.inline).task { await relay.refreshNotificationPermission() }
     }
 }
-func statusLabel(_ status: String) -> String { ["OFFLINE": "Relay non connesso", "ALL": "Tutte", "NEEDS_YOU": "Serve una risposta", "WORKING": "In corso", "READY": "Pronta", "INACTIVE": "Inattiva", "FAILED": "Errore"][status] ?? status }
+func statusLabel(_ status: String) -> String { ["SYNCING": "Sincronizzazione Codex…", "RECONNECTING": "Riconnessione…", "DEGRADED": "Codex non connesso", "OFFLINE": "Relay non connesso", "ALL": "Tutte", "NEEDS_YOU": "Serve una risposta", "WORKING": "In corso", "READY": "Pronta", "INACTIVE": "Inattiva", "FAILED": "Errore"][status] ?? status }
 func statusColor(_ status: String) -> Color { status == "NEEDS_YOU" ? .orange : status == "WORKING" ? .green : status == "FAILED" ? .red : .secondary }
 
 #if DEBUG
@@ -587,3 +592,19 @@ func statusColor(_ status: String) -> Color { status == "NEEDS_YOU" ? .orange : 
 }
 #Preview("Chat · riferimento iPhone") { ConversationPreview() }
 #endif
+
+struct LastKnownSession: View {
+    let session: RelaySession
+    let machine: Machine?
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Ultimo stato: " + statusLabel(session.status))
+            if let value = machine?.lastSeen, let date = ISO8601DateFormatter().date(from: value) ?? Self.fractional.date(from: value) {
+                Text("Ultimo contatto: \(date, style: .relative) fa")
+            }
+        }.font(.caption).foregroundStyle(.secondary)
+    }
+    private static var fractional: ISO8601DateFormatter {
+        let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]; return formatter
+    }
+}
