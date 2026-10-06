@@ -26,8 +26,8 @@ func TestInstalledWaitingFlagsAndPendingOverride(t *testing.T) {
 }
 
 func TestSnapshotPagedLoadedAndPendingOutsideCatalogue(t *testing.T) {
-	for _, failAttach := range []bool{false, true} {
-		t.Run(fmt.Sprint(failAttach), func(t *testing.T) {
+	for _, mode := range []string{"normal", "unavailable", "idle_no_rollout", "active_no_rollout"} {
+		t.Run(fmt.Sprint(mode), func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				c, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
 				if err != nil {
@@ -55,12 +55,20 @@ func TestSnapshotPagedLoadedAndPendingOutsideCatalogue(t *testing.T) {
 							result = map[string]any{"data": []string{"a"}, "nextCursor": "second"}
 						}
 					case "thread/resume", "thread/read":
-						if failAttach {
-							_ = c.WriteJSON(map[string]any{"id": m.ID, "error": map[string]any{"code": -32000, "message": "unavailable"}})
+						if mode != "normal" && m.Method == "thread/resume" {
+							code, message := -32600, "no rollout found for thread id fixture"
+							if mode == "unavailable" {
+								code, message = -32000, "unavailable"
+							}
+							_ = c.WriteJSON(map[string]any{"id": m.ID, "error": map[string]any{"code": code, "message": message}})
 							continue
 						}
 						id := params["threadId"].(string)
-						result = map[string]any{"thread": map[string]any{"id": id, "status": map[string]any{"type": "active"}, "canAcceptDirectInput": true}}
+						state := "active"
+						if mode == "idle_no_rollout" {
+							state = "idle"
+						}
+						result = map[string]any{"thread": map[string]any{"id": id, "status": map[string]any{"type": state}, "canAcceptDirectInput": true}}
 					case "thread/turns/list", "thread/queue/list":
 						result = map[string]any{"data": []any{}}
 					}
@@ -79,7 +87,7 @@ func TestSnapshotPagedLoadedAndPendingOutsideCatalogue(t *testing.T) {
 			a.requests["r"] = pending{Request: protocol.PendingRequest{ID: "r", MachineID: "m", SessionID: "m~ancient", ThreadID: "ancient", Kind: "user_input"}}
 			a.mu.Unlock()
 			sessions, requests, err := a.Snapshot(context.Background())
-			if failAttach {
+			if mode == "unavailable" || mode == "active_no_rollout" {
 				if err == nil {
 					t.Fatal("incomplete replay admitted online")
 				}

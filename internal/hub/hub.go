@@ -219,7 +219,10 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 		}
 	}
 	for _, r := range msg.Requests {
-		if r.MachineID != id || r.SessionID != protocol.SessionID(id, r.ThreadID) || len(r.Payload) > 64<<10 {
+		if prior, exists := h.requests[r.ID]; exists && prior.MachineID != id {
+			return errors.New("cross-machine request identity")
+		}
+		if r.ID == "" || r.MachineID != id || r.SessionID != protocol.SessionID(id, r.ThreadID) || len(r.Payload) > 64<<10 {
 			return errors.New("invalid request")
 		}
 	}
@@ -348,6 +351,9 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 		r := e.Request
 		if r.ID == "" || r.MachineID != id || r.SessionID != e.SessionID || r.SessionID != protocol.SessionID(id, r.ThreadID) || len(r.Payload) > 64<<10 {
 			return errors.New("invalid pending request identity")
+		}
+		if prior, exists := h.requests[r.ID]; exists && (prior.MachineID != id || prior.SessionID != r.SessionID) {
+			return errors.New("cross-session request identity")
 		}
 		if _, exists := h.requests[r.ID]; !exists && len(h.requests) >= 128 {
 			return errors.New("pending capacity reached")

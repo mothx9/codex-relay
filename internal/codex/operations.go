@@ -82,7 +82,31 @@ func (a *Adapter) Snapshot(ctx context.Context) ([]protocol.Session, []protocol.
 		if !a.cfg.Private || sub {
 			s, err := a.attach(ctx, id)
 			if err != nil {
-				// Incomplete replay must not be published as a fresh snapshot.
+				// Codex can list an idle, never-materialized thread in memory.
+				// It has no rollout to resume. Verify its current idle state and
+				// retain read-only metadata; active or pending failures still fail sync.
+				var rpcErr *rpcError
+				if errors.As(err, &rpcErr) && rpcErr.Code == -32600 && strings.Contains(rpcErr.Message, "no rollout found for thread id") {
+					var view struct {
+						Thread thread `json:"thread"`
+					}
+					raw, readErr := a.rpc(ctx, "thread/read", map[string]any{"threadId": id, "includeTurns": false})
+					if readErr == nil && decode(raw, &view) == nil && view.Thread.Status.Type == "idle" {
+						a.mu.Lock()
+						pending := false
+						for _, r := range a.requests {
+							if r.Request.ThreadID == id {
+								pending = true
+							}
+						}
+						a.mu.Unlock()
+						if !pending {
+							threads[id] = view.Thread
+							delete(loadedSet, id)
+							continue
+						}
+					}
+				}
 				return nil, nil, err
 			}
 			_ = s
