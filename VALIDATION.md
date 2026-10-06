@@ -54,7 +54,7 @@ Model inference is excluded. Temporary measurement tooling is outside the produc
 
 ### Native extension acceptance
 
-The user requested a native Swift iPhone client, OTP pairing and device management after the canonical cutover. Physical iPhone installation, native notification receipt and notification tap remain acceptance requirements; no complete v0.1 release or push E2E PASS is claimed.
+The user requested a native Swift iPhone client, OTP pairing and device management after the canonical cutover. New Go/race/control tests, three cross builds, five Swift tests, an actual Xcode simulator build and implementation CI pass. The backend was also built/tested on macOS with Go 1.27.1. New pairing/device/APNs endpoints are **not deployed**; native app E2E, physical signing/install and real notification receipt/tap remain unverified. Native permission/MCP forms remain incomplete. No complete v0.1 release is claimed. The user closed this wave to move development to macOS; see [HANDOFF_MACOS.md](HANDOFF_MACOS.md).
 
 ## Historical MVP acceptance — v0.1.0-rc.1
 

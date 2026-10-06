@@ -101,6 +101,10 @@ codex-relay token revoke --data-dir "$HOME/.local/share/codex-relay/hub" --machi
 
 Revocation rejects new commands immediately and closes existing agent connections within 15 seconds. `token add` for an existing machine rotates its token; it never overwrites the output file. The operator bootstrap token grants full control; protect it as a privileged credential. Logout invalidates that browser session and closes its WebSockets. Operator sessions expire after 12 hours.
 
+## Continue development on macOS
+
+[HANDOFF_MACOS.md](HANDOFF_MACOS.md) records the implementation checkpoint, deployed/source distinction and verified development commands. The detailed operational prompt is kept private.
+
 ## Native iPhone client
 
 The SwiftUI project is [native/CodexRelay.xcodeproj](native/CodexRelay.xcodeproj). See [native/README.md](native/README.md) for build, pairing, signing, APNs configuration and the exact acceptance gaps. This client uses the same Hub as the PWA; it does not create another Fleet.
