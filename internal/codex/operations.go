@@ -160,6 +160,16 @@ func (a *Adapter) attach(ctx context.Context, id string) (protocol.Session, erro
 		// Keep newer live status/pending replay, but trust this metadata read's
 		// explicit direct-input permission rather than a provisional event view.
 		current.ReadOnly = s.ReadOnly
+		// A pending request may replay during resume before metadata arrives.
+		// Keep its live status without retaining the provisional empty context.
+		if current.Cwd == "" {
+			current.Cwd = s.Cwd
+			current.Project = s.Project
+			current.Branch = s.Branch
+		}
+		if current.Title == "Thread "+protocol.Clip(id, 8) {
+			current.Title = s.Title
+		}
 		s = current
 	}
 	s = a.capabilities(s)
@@ -388,4 +398,25 @@ func (a *Adapter) respond(c protocol.Command) error {
 	}
 	// Resolution is confirmed by serverRequest/resolved, never assumed on write.
 	return nil
+}
+
+// Subscribe promptly when a thread is loaded again. RPCs run outside the
+// socket reader so pending-request replay can be processed without deadlock.
+func (a *Adapter) subscribeLoop() {
+	for {
+		select {
+		case <-a.done:
+			return
+		case id := <-a.subscribeSignals:
+			a.mu.Lock()
+			subscribed := a.subscribed[id]
+			a.mu.Unlock()
+			if subscribed {
+				continue
+			}
+			if s, err := a.attach(context.Background(), id); err == nil {
+				a.emit(protocol.Event{Kind: "session", SessionID: s.ID, Session: &s})
+			}
+		}
+	}
 }

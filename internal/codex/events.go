@@ -174,6 +174,19 @@ func (a *Adapter) handle(m rpcMessage) {
 	if id == "" {
 		return
 	}
+	if m.Method == "thread/started" || m.Method == "thread/unarchived" || m.Method == "turn/started" {
+		a.mu.Lock()
+		subscribed := a.subscribed[id]
+		a.mu.Unlock()
+		if !subscribed && a.subscribeSignals != nil {
+			select {
+			case a.subscribeSignals <- id:
+			case <-a.done:
+			default:
+				a.Close()
+			}
+		}
+	}
 	a.mu.Lock()
 	s, known := a.sessions[id]
 	if m.Method == "thread/started" {
