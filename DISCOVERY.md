@@ -1,5 +1,15 @@
 # Codex compatibility discovery
 
+## Canonical asynchronous questions — 2026-10-06
+
+The installed macOS 0.160.0 experimental schema defines optional `AgentMessageThreadItem.questions` as nonblocking question titles with string options. A read-only `thread/turns/list` inspection of the existing Spark 0.160.1 daemon confirmed this canonical shape in a real working thread. Its rollout also contained a matching reply in the original client. Relay previously discarded the field; the adapter now transports bounded titles/options as activity context and the native chat renders them.
+
+This shape is distinct from the pending `item/tool/requestUserInput` server RPC and its structured response. No dedicated native asynchronous reply/resolution path has been qualified here. Display context cannot grant Answer, create a fake pending request or prove that the original question remains unresolved. The official [app-server documentation](https://learn.chatgpt.com/docs/app-server) remains the control reference; generated local schemas and runtime records stay private.
+
+The existing descending 40-raw-item history page worked through the real HTTPS Hub, returning 24 normalized activities but excluding the older question. Native display/contract tests therefore prove available-context handling, not delivery of that old question or a new physical question. Discovery outside the recent window/open chat, canonical replies/resolution and closed-app notifications are still open acceptance work.
+
+## Original discovery — 2026-10-04
+
 Installed CLI and existing managed daemon: **0.160.0**. Discovery and live acceptance performed on Linux amd64, 2026-10-04. The shared daemon was already serving local CLI/VS Code work and was not stopped or restarted.
 
 ## Local inspection before integration

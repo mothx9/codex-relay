@@ -1,12 +1,12 @@
 # Handoff: upgrade nativo iPhone, UI e feature
 
-Checkpoint: 6 ottobre 2026. Repository esistente: https://github.com/mothx9/codex-relay, branch `main`. Base funzionale della review: `1f4cf72`. Non ricreare il progetto.
+Checkpoint: 6 ottobre 2026. Repository esistente: https://github.com/mothx9/codex-relay, branch `main`. Base funzionale della review iniziale: `1f4cf72`; una prima implementazione successiva della chat iPhone è descritta sotto. Non ricreare il progetto.
 
 ## Richiesta attuale del proprietario
 
 L'app è stata firmata, installata, aperta e abbinata sul vero iPhone. Il proprietario considera l'interfaccia attuale provvisoria e chiede un'interfaccia pensata davvero per iPhone, insieme a un upgrade delle feature. La prossima wave deve progettare e implementare questo upgrade, preservando il sistema già collegato e distinguendo le funzioni presenti dalle acceptance ancora mancanti.
 
-Il controllo finale vede tutti e tre gli host ONLINE. Spark è tornato raggiungibile, ma il suo agent è ancora rc.3; APNs reale non è configurato. Il collegamento dell'iPhone non significa che ogni flusso nativo sia già verificato.
+Il nuovo controllo vede tutti e tre gli host ONLINE con agent rc.4 e metadata account. Spark è stato aggiornato separatamente. La chat iPhone del riferimento fornito dal proprietario è implementata; APNs reale non è configurato. Il collegamento dell'iPhone non significa che ogni flusso nativo sia già verificato.
 
 ## Stato verificato
 
@@ -16,15 +16,15 @@ Il controllo finale vede tutti e tre gli host ONLINE. Spark è tornato raggiungi
 | Rollback | Backup privato di binario, unità e SQLite. Un primo controllo di recovery fallito ha realmente ripristinato rc.3; il successivo upgrade rc.4 è riuscito. |
 | Exon | Agent rc.4 aggiornato separatamente, con snapshot e account metadata. Codex non è stato riavviato. |
 | MacBook | Agent rc.4 aggiornato separatamente attraverso il launchd esistente; credenziali e plist preservati. |
-| Spark | Era offline durante l'upgrade. Nel controllo finale è ONLINE sul Hub e raggiungibile via SSH: servizio agent attivo, binario rc.3 linux/arm64. Enrollment preservato; upgrade rc.4, account metadata e nuova recovery restano aperti. |
+| Spark | Era offline durante il primo upgrade. Ora agent rc.4 linux/arm64 aggiornato in place, adapter/Hub collegati e metadata account presenti. Token e unità preservati; daemon Codex condiviso non riavviato. |
 | Controlli PWA precedenti | New Turn, Follow-up con riconciliazione esatta, Answer e recovery agent/Hub erano passati su tutti e tre gli host attraverso questo stesso Hub. Steer e Interrupt erano passati su Exon. Sono prove storiche della base, non acceptance del nuovo client nativo. |
 | OTP sul Hub reale | Otto cifre, exchange riuscito, riuso rifiutato, scadenza reale dopo cinque minuti. Nessun token amministratore sul telefono. |
 | Revoca e dispositivi | Su enrollment usa-e-getta: revoca operatore chiude WSS e produce HTTP 401; rimozione client; aggiunta agent, conflitto, pausa/ripresa, revoca, re-enrollment e rimozione. Nessun enrollment reale revocato per le prove. |
 | App fisica | Personal Team del proprietario, Developer Mode confermata dopo il riavvio, profilo rigenerato per l'iPhone collegato, firma verificata, installazione e avvio riusciti. Il proprietario ha confermato pairing e apertura. |
-| Ultime correzioni sull'iPhone | La build con le correzioni finali di controlli/reconnect è stata nuovamente firmata, installata e avviata con successo. |
+| Ultime correzioni sull'iPhone | La nuova chat e le card delle domande asincrone sono state firmate, installate e avviate. Firma strict verificata. La ricezione di una nuova domanda reale sul telefono resta da osservare. |
 | Native E2E nel simulatore | Hub HTTPS reale: pairing, Fleet dei tre host registrati, Keychain dopo riavvio del processo, New Turn sul thread isolato, risposta Codex fresca, un solo messaggio utente canonico, nessun duplicato ottimistico, foreground reconnect. Suite ripassata dopo le ultime correzioni. |
 | Form native | Domande strutturate e approval comando/file; aggiunte review completa dei permessi e form MCP con campi tipizzati/schema/JSON. La live acceptance di queste form è ancora aperta. |
-| Preview | Sei preview SwiftUI isolate: pairing, Fleet, Ready, Follow-up accodato, Needs You e dispositivi. Canvas Xcode verificato; nessun accesso a Keychain/Hub/notifiche dalle fixture. |
+| Preview | Sette preview SwiftUI isolate, inclusa la chat di riferimento con domanda/opzioni. Test UI con cronologia lunga, composer/tastiera, dettaglio Terminale e draft conservato. Nessun accesso a Keychain/Hub/notifiche dalle fixture. |
 | APNs | Backend e client presenti; installer persistente completato e testato. Mancano team push-capable e chiavi del proprietario. Il Personal Team attuale non ha entitlement APNs. Nessuna prova di ricezione/tap reale. |
 | Release | Rimane rc.4 nel codice/build distribuita privatamente. Nessun tag/release rc.4 e nessuna v0.1 finale pubblicati. L'installer scarica ancora la release pubblicata rc.3 se non si passa `--binary`. |
 
@@ -38,15 +38,30 @@ Il controllo finale vede tutti e tre gli host ONLINE. Spark è tornato raggiungi
 | `d31b9ef` | Target XCUITest live, entitlement Keychain del simulatore e aggiornamento delle evidenze di deployment/installazione. |
 | `aa9e573` | `--apns-config FILE|none` persistente nell'installer Hub, migrazione esplicita delle unità manuali, quattro test isolati e CI. |
 | `1f4cf72` | Retry dei guasti temporanei del Hub, ritorno al pairing su 401/403, expected turn conservato nel retry Steer e nell'Interrupt prima della conferma. |
+| `259ae9b` | Titolo/opzioni delle domande canoniche asincrone conservati in adapter e protocollo; routing live/history e budget RAM Hub testati. |
+| `9323554` | Chat iPhone, Markdown, card tool/domande, composer fisso, preview di riferimento e test UI/core. |
+| `39e3b5f` | Testo e domande condividono il limite byte della singola attività. |
+| `d3c68c3` | Riga composer separata dal transcript, posizione iniziale sugli ultimi messaggi e test che esclude sovrapposizione con il messaggio accodato. |
+| `0e5422c` | Posizionamento iniziale dopo il layout della destinazione di navigazione; corretta la partenza intermittente lontano dagli ultimi messaggi. |
 
 ## Review dell'app attuale
 
+Aggiornamento successivo al report iniziale: il proprietario ha fornito un riferimento per la chat iPhone. È stato implementato in [SessionView.swift](native/iOS/SessionView.swift): header compatto titolo/macchina/progetto, messaggi Codex a sinistra e utente a destra, Markdown nativo, card Terminale/MCP apribili, badge Follow-up in coda e composer fisso sopra la tastiera. Il composer usa Liquid Glass su iOS 26+ con fallback material; Steer/Interrupt restano espliciti nel menu. La preview di riferimento e il test con cronologia lunga sono isolati dal Hub. I punti 1 e 2 della review iniziale qui sotto sono quindi già affrontati da questa prima wave; Fleet, dispositivi, richieste e gli altri gap rimangono nel backlog. Le card non mostrano «completati»: il protocollo attuale non espone l'esito di ogni tool.
+
 Questa è una review del codice e delle prove disponibili, non una certificazione visiva completa del vero iPhone. Il proprietario ha già espresso chiaramente che la UI va rifatta. I flussi non ancora provati fisicamente restano aperti anche quando il backend/PWA ha prove storiche positive.
+
+### Domanda YVEX su Spark non arrivata in Relay
+
+La lettura non invasiva del daemon Spark ha confermato una domanda canonica in `agentMessage.questions`. Adapter Go e DTO Swift ignoravano quel campo: ora preservano titolo/opzioni, mantengono anche i messaggi senza testo e mostrano una card nella chat. Il payload è limitato e il contenuto delle domande conta nei budget RAM del Hub e del client. Test adapter, routing Hub history/live e decodifica/presentazione Swift coprono il nuovo contratto. Hub e tre agent sono stati aggiornati in place, uno alla volta, preservando dati, token e servizi esistenti.
+
+Il rollout originale indica che quella domanda era già stata risposta dal client Codex. La verifica reale di history via Hub restituisce 24 attività normalizzate dal limite di 40 item grezzi, senza la vecchia domanda: è fuori dalla finestra recente. Nessun comando o risposta è stato inviato al thread YVEX. Non dichiarare che quella domanda sia ora pending o già visibile sul telefono.
+
+Questo intervento completa il trasporto/presentazione del contenuto disponibile, non la risposta asincrona. Le domande nonblocking non sono il server RPC `requestUserInput`: nello schema locale verificato non è stato qualificato un canale dedicato di risposta/risoluzione. Non creare un pending RPC o `CanAnswer` artificiale, né usare un Follow-up come se fosse una risposta canonica. Priorità per la prossima wave: qualificare il reply ufficiale, lo stato risolto da altro client e la scoperta di domande quando la sessione non è aperta o la domanda esce dalla finestra recente. APNs ad app chiusa è un'acceptance distinta, ancora bloccata sugli input Apple.
 
 | Priorità | Riscontro e conseguenza | Intervento richiesto |
 | --- | --- | --- |
-| Alta | [SessionView](native/iOS/Views.swift) mette composer e azioni sotto tutta la cronologia nello stesso ScrollView. Non ci sono scroll-to-latest, gestione dei nuovi messaggi o composer ancorato al bordo. | Composer nativo sempre raggiungibile, safe area/tastiera, scroll iniziale e streaming controllati, pulsante per tornare ai messaggi recenti. Non trascinare l'utente in fondo mentre legge la cronologia. |
-| Alta | Chat, output comandi, diff e metadata sono resi come testi prevalentemente monospaziati con etichette tecniche. Mancano gerarchia conversazionale, separazione degli eventi e presentazione dei contenuti. | Messaggi nativi leggibili, typography di sistema, codice/diff/output separati e collassabili, metadata secondari. Preservare selezione/copia e identità canoniche. |
+| Affrontata | La precedente chat metteva composer e azioni sotto tutta la cronologia. [SessionView](native/iOS/SessionView.swift) ora mantiene il composer in una riga fissa sotto il transcript, rispettando safe area e tastiera, con scroll iniziale, controllo degli aggiornamenti e ritorno ai messaggi recenti. | Test tastiera/cronologia lunga PASS; completare Dynamic Type, telefono piccolo, orientamento e uso fisico. |
+| Affrontata | Il monospazio generalizzato è stato sostituito da typography nativa e Markdown. Output/codice restano monospaziati e le attività sono in card con dettagli selezionabili. | Preview e test dettagli PASS; completare la review visiva fisica e la copertura dei diversi tipi di attività reali. |
 | Alta | La Fleet è una lista piatta con filtri orizzontali e ricerca. Il nativo non implementa il grouping descritto per la PWA e non ha una inbox autonoma delle richieste. | Navigazione progettata per iPhone: Fleet, attenzione/Needs You e impostazioni/dispositivi; priorità alle richieste actionable, distinzione immediata fra host offline e stato del turno. |
 | Alta | [logout](native/iOS/RelayController.swift) ignora il fallimento della richiesta server e dimentica comunque la credenziale locale. La UI promette «Esci e revoca» anche senza conferma di revoca. | Distinguere uscita locale e revoca confermata; non dichiarare revoca riuscita quando il Hub è irraggiungibile. Recovery esplicita e test del caso offline. |
 | Media | `busy` copre soprattutto pairing; varie mutazioni dispositivi non hanno loading/disabled/error contestuali. I codici mostrano «valido 5 minuti» statico, senza usare la scadenza per lo stato della UI. | Stato per operazione, prevenzione dei doppi tap, esito leggibile, countdown/scadenza reale e generazione di un nuovo codice. |
@@ -56,7 +71,7 @@ Questa è una review del codice e delle prove disponibili, non una certificazion
 | Media | Il tema è forzato scuro, varie superfici usano il bianco fisso e molte label sono tecniche o mescolano lingue. | Tema/adattamento di sistema, contrasto, Dynamic Type, VoiceOver, touch target, stati di focus, testo coerente e comprensibile. Verificare telefono piccolo, orientamento e tastiera. |
 | Media | [Notifications.swift](native/iOS/Notifications.swift) inoltra il tap a un callback opzionale senza un buffer esplicito; il controller apre l'ID anche prima di avere la snapshot. | Verificare cold start, autenticazione mancante, sessione assente e sheet già aperta. Routing centralizzato, destinazione valida e stato di caricamento, senza perdita del tap. Il rischio viene dalla lettura del codice; il bug non è ancora riprodotto su APNs reale. |
 | Media | Stato notifiche e token sono in parte RAM; non viene ricostruito interamente lo stato del consenso/registrazione a ogni avvio. | Leggere lo stato iOS, separare consenso da configurazione Hub e registrazione del device, gestire rinnovo token/riavvio e rendere visibile lo stato effettivo. |
-| Media | View, fixture e flussi sono concentrati in [Views.swift](native/iOS/Views.swift); routing, transport e mutazioni condividono un controller unico. | Separare schermate/componenti e modelli di presentazione quanto serve al redesign, senza creare un framework o un nuovo orchestratore. Conservare RelayCore e i contratti esistenti. |
+| Media | Il dettaglio chat è stato separato in [SessionView.swift](native/iOS/SessionView.swift). Fleet, dispositivi, richieste e fixture restano in [Views.swift](native/iOS/Views.swift); routing, transport e mutazioni condividono un controller unico. | Continuare la separazione quanto serve al redesign, senza creare un framework o un nuovo orchestratore. Conservare RelayCore e i contratti esistenti. |
 
 Il link account apre ChatGPT e spiega di usare le impostazioni di sicurezza. Non esiste qui un'integrazione capace di gestire tutti i dispositivi/account ChatGPT: non trasformare quel link in una promessa di API che il sistema non ha.
 
@@ -88,6 +103,8 @@ Nuove feature come creazione/rinomina/archiviazione di thread o selezione di pro
 | New Turn + risposta canonica | PASS su thread isolato | Aperta |
 | Follow-up immediato, accodato, eseguito una volta, senza duplicati | Aperta | Aperta |
 | Answer live, richiesta risolta da altro client | Aperta | Aperta |
+| Domanda asincrona: titolo/opzioni nel contesto | Contratto Go/Hub/Swift e fixture UI PASS; vecchia domanda Spark fuori dalla finestra recente | Build installata; nuova domanda reale da osservare |
+| Domanda asincrona: reply, risoluzione e attenzione fuori dalla chat aperta | Aperta, distinto da Answer RPC | Aperta |
 | Permissions/MCP live | Aperta; core/contratti non sono E2E | Aperta |
 | Steer, stale TURN_CHANGED, Interrupt | Aperta; intent retention corretta e testata nel core | Aperta |
 | Foreground reconnect | PASS | Aperta |
@@ -100,7 +117,7 @@ Usare soltanto i thread di validation isolati indicati nell'handoff operativo pr
 
 ### 4. Spark e APNs
 
-Spark è ora raggiungibile: la prossima wave deve ricontrollarne lo stato e aggiornare soltanto l'agent Relay da rc.3 a rc.4 con backup/rollback, conservando il token. Confermare di nuovo le tre macchine e i metadata account. Non occorre chiedere al proprietario di riaccenderlo sulla base del vecchio checkpoint; nessuna modifica di rete e nessun restart del daemon Codex condiviso.
+Spark è stato aggiornato a rc.4 con backup/rollback e token conservato. Tutte e tre le macchine hanno adapter/Hub collegati e metadata account; il controllo reale vede i tre host ONLINE. Ricontrollare lo stato prima della prossima wave. Nessuna modifica di rete e nessun restart del daemon Codex condiviso.
 
 Per APNs servono un team Apple push-capable, provisioning coerente e la chiave del proprietario. Non avviare iscrizioni a pagamento o creare chiavi senza gli accessi/autorizzazioni necessari. Config e `.p8` restano private con mode 0600; il solo Hub usa la chiave. L'installer rc.4 ora conserva `--apns-config` fra upgrade; un servizio già avviato richiede il restart per applicare una nuova unità. Verificare ricezione con app chiusa e tap sulla sessione corretta, senza contenuti sensibili sul lock screen.
 
@@ -124,13 +141,13 @@ Progetto [native/CodexRelay.xcodeproj](native/CodexRelay.xcodeproj), schema `Cod
 
 Il watcher locale già esistente è stato riavviato come unico processo con firma ad hoc e Keychain entitlement del simulatore. Ogni salvataggio in `native/` compila, installa e riavvia **solo il simulatore**. Non aggiorna automaticamente il telefono fisico. Non avviare watcher duplicati o cancellare dati/Keychain. Sospendere il watcher durante debug/XCUITest e ripristinarlo alla fine. L'iPhone riceve una nuova versione dopo build/install da Xcode; non è hot reload e la RAM viene azzerata mentre l'abbinamento resta nel Keychain.
 
-Verifiche eseguite sulla base funzionale:
+Verifiche eseguite, incluse la nuova chat e il trasporto delle domande:
 
 - `GOTOOLCHAIN=go1.27.1 make check build cross`: gofmt/vet, Go/race, nove test browser, quattro test installer, build e tre cross-build PASS.
-- `swift test --package-path native`: dieci test core PASS.
+- `swift test --package-path native`: quattordici test core PASS.
 - Build simulatore con firma locale, build-for-testing e live XCUITest contro il Hub reale PASS. Il test usa configurazione privata nel bundle di test costruito, mai nel repository; CI senza config non prova il live E2E.
 - Build iPhone firmata, verifica strict della firma, installazione e avvio dell'ultima build PASS.
-- Controllo finale del runtime: Hub attivo rc.4, SQLite `quick_check` OK, Exon/Spark/MacBook ONLINE e enrollment iPhone attivo. Controllo SSH separato: servizio Spark attivo, binario ancora rc.3. Nessun servizio riavviato per questo controllo.
+- Controllo runtime: Hub attivo rc.4, SQLite `quick_check` OK, Exon/Spark/MacBook aggiornati separatamente a rc.4, ONLINE e con metadata account. Tutti gli enrollment, incluso un ulteriore enrollment già presente, sono stati conservati; nessun record sconosciuto rimosso.
 - CI Go/native verde sulla base funzionale `1f4cf72` ([run verificato](https://github.com/mothx9/codex-relay/actions/runs/37492369716)); ricontrollare comunque HEAD prima della prossima wave. Il Native job compila anche il target UI test con `build-for-testing`.
 
 Comandi e dettagli completi sono in [native/README.md](native/README.md), [DEPLOYMENT.md](DEPLOYMENT.md) e [VALIDATION.md](VALIDATION.md). Leggere anche README, ARCHITECTURE, DISCOVERY, SECURITY e HANDOFF_MACOS. L'handoff operativo privato contiene accessi e thread autorizzati; il suo stato rc.3 iniziale è storico e viene superato dal checkpoint rc.4 attuale.
