@@ -70,7 +70,7 @@ func TestAsyncQuestionContextIsBoundedAndMarkedPartial(t *testing.T) {
 			bytes += len(o)
 		}
 	}
-	if !v.Truncated || bytes > protocol.MaxText || len(v.Questions) > 8 || len(v.Text) > protocol.MaxText {
+	if !v.Truncated || bytes+len(v.Text) > protocol.MaxText || len(v.Questions) > 8 {
 		t.Fatal("question display escaped bounds", bytes, len(v.Questions))
 	}
 }

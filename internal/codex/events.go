@@ -62,14 +62,23 @@ func activity(raw json.RawMessage) protocol.Activity {
 	default:
 		return v
 	}
-	v.Truncated = v.Truncated || len(v.Text) > protocol.MaxText
-	v.Text = protocol.Clip(v.Text, protocol.MaxText)
+	textBudget := protocol.MaxText
+	for _, q := range v.Questions {
+		textBudget -= len(q.Title)
+		for _, option := range q.Options {
+			textBudget -= len(option)
+		}
+	}
+	v.Truncated = v.Truncated || len(v.Text) > textBudget
+	v.Text = protocol.Clip(v.Text, textBudget)
 	return v
 }
 
 func clipAsyncQuestions(in []protocol.AsyncQuestion) ([]protocol.AsyncQuestion, bool) {
 	var out []protocol.AsyncQuestion
-	budget, truncated := protocol.MaxText, false
+	// Leave room for canonical assistant text (or fallback question titles),
+	// keeping the combined activity context within the existing byte limit.
+	budget, truncated := protocol.MaxText/2, false
 	clip := func(text string, max int) string {
 		if max > budget {
 			max = budget
