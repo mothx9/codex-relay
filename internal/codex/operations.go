@@ -168,20 +168,25 @@ func (a *Adapter) attach(ctx context.Context, id string) (protocol.Session, erro
 	_, _ = a.nativeQueue(ctx, id)
 	return s, nil
 }
-func (a *Adapter) history(ctx context.Context, id string) ([]protocol.Activity, error) {
+func (a *Adapter) history(ctx context.Context, id, cursor string) ([]protocol.Activity, string, error) {
 	var r struct {
-		Data []struct {
+		NextCursor string `json:"nextCursor"`
+		Data       []struct {
 			Item        json.RawMessage `json:"item"`
 			TurnID      string          `json:"turnId"`
 			StartedAtMs *int64          `json:"startedAtMs"`
 		} `json:"data"`
 	}
-	raw, e := a.rpc(ctx, "thread/items/list", map[string]any{"threadId": id, "limit": 40, "sortDirection": "desc"})
+	params := map[string]any{"threadId": id, "limit": 40, "sortDirection": "desc"}
+	if cursor != "" {
+		params["cursor"] = cursor
+	}
+	raw, e := a.rpc(ctx, "thread/items/list", params)
 	if e != nil {
-		return nil, e
+		return nil, "", e
 	}
 	if e = decode(raw, &r); e != nil {
-		return nil, e
+		return nil, "", e
 	}
 	out := make([]protocol.Activity, 0, 40)
 	for i := len(r.Data) - 1; i >= 0; i-- {
@@ -196,7 +201,7 @@ func (a *Adapter) history(ctx context.Context, id string) ([]protocol.Activity, 
 		}
 		out = append(out, v)
 	}
-	return out, nil
+	return out, r.NextCursor, nil
 }
 func (a *Adapter) Execute(ctx context.Context, c protocol.Command) protocol.Result {
 	c.Kind = protocol.CommandKind(c.Kind)
@@ -217,7 +222,7 @@ func (a *Adapter) Execute(ctx context.Context, c protocol.Command) protocol.Resu
 	var err error
 	switch c.Kind {
 	case "history":
-		result.History, err = a.history(ctx, c.ThreadID)
+		result.History, result.HistoryCursor, err = a.history(ctx, c.ThreadID, c.HistoryCursor)
 		if err == nil {
 			result.FollowUps, _ = a.nativeQueue(ctx, c.ThreadID)
 		}

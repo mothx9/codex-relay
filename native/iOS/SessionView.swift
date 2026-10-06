@@ -71,13 +71,29 @@ struct SessionView: View {
         GeometryReader { viewport in
             ScrollViewReader { proxy in
                 ScrollView {
-                    // RecentChat is bounded. Keep rows laid out so the bottom
-                    // anchor remains stable across foreground rehydration.
+                    // Keep stable geometry when reading older history and returning
+                    // from the keyboard; the selected-session memory is bounded.
                     VStack(alignment: .leading, spacing: 24) {
                         HStack(spacing: 6) {
                             Circle().fill(machineOnline(session) ? statusColor(session.status) : .secondary).frame(width: 6, height: 6)
                             Text("\(conversationStatus(session.status)) · \(machineOnline(session) ? relay.connection : "Macchina offline")")
                                 .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("session.connection")
+                        }
+                        if relay.historyLoading {
+                            ProgressView("Caricamento cronologia…").font(.caption).frame(maxWidth: .infinity)
+                        } else if relay.historyCursor != nil && !relay.chat.atCapacity {
+                            Button("Carica messaggi precedenti") {
+                                nearBottom = false
+                                Task { await relay.loadOlderHistory() }
+                            }.frame(minHeight: 44).frame(maxWidth: .infinity).accessibilityIdentifier("history.older")
+                                .disabled(!machineOnline(session))
+                        }
+                        if let error = relay.historyError {
+                            Text(error).font(.caption).foregroundStyle(.secondary)
+                        }
+                        if relay.chat.atCapacity || relay.chat.trimmed {
+                            Text("Finestra in memoria limitata. La cronologia completa rimane in Codex.")
+                                .font(.caption).foregroundStyle(.secondary)
                         }
                         ForEach(TranscriptGroup.make(relay.chat.items)) { group in
                             if group.kind == .message, let activity = group.items.first {

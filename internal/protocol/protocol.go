@@ -137,27 +137,29 @@ type Event struct {
 	ClientID  string          `json:"client_id,omitempty"`
 }
 type Command struct {
-	ID        string              `json:"id"`
-	Kind      string              `json:"kind"`
-	SessionID string              `json:"session_id"`
-	ThreadID  string              `json:"thread_id,omitempty"`
-	Text      string              `json:"text,omitempty"`
-	TurnID    string              `json:"turn_id,omitempty"`
-	RequestID string              `json:"request_id,omitempty"`
-	Decision  string              `json:"decision,omitempty"`
-	Answers   map[string][]string `json:"answers,omitempty"`
-	Content   json.RawMessage     `json:"content,omitempty"`
+	HistoryCursor string              `json:"history_cursor,omitempty"`
+	ID            string              `json:"id"`
+	Kind          string              `json:"kind"`
+	SessionID     string              `json:"session_id"`
+	ThreadID      string              `json:"thread_id,omitempty"`
+	Text          string              `json:"text,omitempty"`
+	TurnID        string              `json:"turn_id,omitempty"`
+	RequestID     string              `json:"request_id,omitempty"`
+	Decision      string              `json:"decision,omitempty"`
+	Answers       map[string][]string `json:"answers,omitempty"`
+	Content       json.RawMessage     `json:"content,omitempty"`
 }
 type Result struct {
-	ID        string     `json:"id"`
-	OK        bool       `json:"ok"`
-	Error     string     `json:"error,omitempty"`
-	History   []Activity `json:"history,omitempty"`
-	SessionID string     `json:"session_id,omitempty"`
-	ErrorCode string     `json:"error_code,omitempty"`
-	Retryable bool       `json:"retryable"`
-	QueueID   string     `json:"queue_id,omitempty"`
-	FollowUps []FollowUp `json:"follow_ups,omitempty"`
+	HistoryCursor string     `json:"history_cursor,omitempty"`
+	ID            string     `json:"id"`
+	OK            bool       `json:"ok"`
+	Error         string     `json:"error,omitempty"`
+	History       []Activity `json:"history,omitempty"`
+	SessionID     string     `json:"session_id,omitempty"`
+	ErrorCode     string     `json:"error_code,omitempty"`
+	Retryable     bool       `json:"retryable"`
+	QueueID       string     `json:"queue_id,omitempty"`
+	FollowUps     []FollowUp `json:"follow_ups,omitempty"`
 }
 type Snapshot struct {
 	Machines []Machine        `json:"machines"`
@@ -165,18 +167,19 @@ type Snapshot struct {
 	Requests []PendingRequest `json:"requests"`
 }
 type Message struct {
-	Version   int              `json:"version,omitempty"`
-	Type      string           `json:"type"`
-	Machine   *Machine         `json:"machine,omitempty"`
-	Sessions  []Session        `json:"sessions,omitempty"`
-	Requests  []PendingRequest `json:"requests,omitempty"`
-	Snapshot  *Snapshot        `json:"snapshot,omitempty"`
-	Event     *Event           `json:"event,omitempty"`
-	Command   *Command         `json:"command,omitempty"`
-	Result    *Result          `json:"result,omitempty"`
-	Epoch     string           `json:"epoch,omitempty"`
-	Sequence  uint64           `json:"sequence,omitempty"`
-	SessionID string           `json:"session_id,omitempty"`
+	HistoryRequestID string           `json:"history_request_id,omitempty"`
+	Version          int              `json:"version,omitempty"`
+	Type             string           `json:"type"`
+	Machine          *Machine         `json:"machine,omitempty"`
+	Sessions         []Session        `json:"sessions,omitempty"`
+	Requests         []PendingRequest `json:"requests,omitempty"`
+	Snapshot         *Snapshot        `json:"snapshot,omitempty"`
+	Event            *Event           `json:"event,omitempty"`
+	Command          *Command         `json:"command,omitempty"`
+	Result           *Result          `json:"result,omitempty"`
+	Epoch            string           `json:"epoch,omitempty"`
+	Sequence         uint64           `json:"sequence,omitempty"`
+	SessionID        string           `json:"session_id,omitempty"`
 }
 
 func ID() string {

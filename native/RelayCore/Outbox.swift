@@ -46,19 +46,56 @@ public struct Outbox: Sendable {
     public mutating func prune(active: String, now: Date = Date()) { items.removeAll { $0.sessionId != active && now.timeIntervalSince($0.created) > 300 } }
     private mutating func update(_ id: String, _ action: (inout Outgoing) -> Void) { if let index = items.firstIndex(where: { $0.id == id }) { action(&items[index]) } }
 }
+/// Ephemeral, selected-session memory. Canonical history is paged from Codex;
+/// Relay never writes this window to disk. The Hub retains its smaller buffer.
 public struct RecentChat: Sendable {
+    public static let maxItems = 2048
+    public static let maxBytes = 8 * 1024 * 1024
     public private(set) var items: [Activity] = []
+    public private(set) var trimmed = false
+    private var changedDuringHistory: Set<String> = []
+    private var readingHistory = false
     public init() {}
+    public var atCapacity: Bool { items.count >= Self.maxItems - 40 || items.reduce(0) { $0 + $1.contextBytes } >= Self.maxBytes - 40 * 16384 }
+    public mutating func beginHistory() { changedDuringHistory.removeAll(keepingCapacity: true); readingHistory = true }
+    public mutating func endHistory() { readingHistory = false; changedDuringHistory.removeAll(keepingCapacity: true) }
     public mutating func put(_ activity: Activity) {
         var a = activity; a.text = String(a.text.prefix(16384))
         if let i = items.firstIndex(where: { $0.id == a.id || (a.clientId != nil && $0.clientId == a.clientId) }) { items[i] = a } else { items.append(a) }
-        while items.count > 50 || items.reduce(0, { $0 + $1.contextBytes }) > 131072 { items.removeFirst() }
+        trim()
+    }
+    /// Prepend missing canonical items while preserving any newer live version.
+    /// Exact IDs, never text matching, reconcile history, deltas and the outbox.
+    public mutating func mergeHistory(_ history: [Activity]) {
+        func same(_ a: Activity, _ b: Activity) -> Bool { a.id == b.id || (a.clientId != nil && a.clientId == b.clientId) }
+        for (position, item) in history.enumerated() {
+            if let i = items.firstIndex(where: { same($0, item) }) {
+                if !changedDuringHistory.contains(items[i].id) { items[i] = item }
+            } else if let next = history.dropFirst(position + 1).first(where: { entry in items.contains { same($0, entry) } }),
+                      let index = items.firstIndex(where: { same($0, next) }) {
+                items.insert(item, at: index)
+            } else if position > 0, let previous = items.firstIndex(where: { same($0, history[position - 1]) }) {
+                items.insert(item, at: previous + 1)
+            } else {
+                items.insert(item, at: 0)
+            }
+        }
+        endHistory()
+        trim()
+    }
+    private mutating func trim() {
+        var bytes = items.reduce(0) { $0 + $1.contextBytes }
+        while items.count > Self.maxItems || bytes > Self.maxBytes {
+            bytes -= items.removeFirst().contextBytes; trimmed = true
+        }
     }
     public mutating func apply(_ event: RelayEvent) {
-        if let activity = event.activity { put(activity); return }
+        if let activity = event.activity { if readingHistory { changedDuringHistory.insert(activity.id) }; put(activity); return }
         guard ["delta", "command_output", "diff"].contains(event.kind) else { return }
         let id = event.itemId ?? "\(event.turnId ?? "")/\(event.kind)"
-        let prior = items.first { $0.id == id }
-        put(Activity(id: id, kind: event.kind, text: (event.kind == "diff" ? "" : prior?.text ?? "") + (event.text ?? ""), timestamp: prior?.timestamp ?? event.timestamp))
+        if readingHistory { changedDuringHistory.insert(id) }
+        var item = items.first { $0.id == id } ?? Activity(id: id, kind: event.kind == "delta" ? "agentMessage" : event.kind, text: "", timestamp: event.timestamp)
+        item.text = (event.kind == "diff" ? "" : item.text) + (event.text ?? "")
+        put(item)
     }
 }

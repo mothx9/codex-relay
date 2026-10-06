@@ -44,15 +44,16 @@ struct FleetView: View {
             } }.padding(.horizontal) }
             List {
                 ForEach(visible) { session in
+                    let displayStatus = session.displayStatus(machine: relay.machines[session.machineId], connected: relay.online)
                     Button { relay.open(session.id) } label: {
                         HStack(alignment: .top) {
-                            Text(session.status == "NEEDS_YOU" ? "!" : "●").foregroundStyle(statusColor(session.status))
+                            Image(systemName: displayStatus == "OFFLINE" ? "network.slash" : displayStatus == "NEEDS_YOU" ? "exclamationmark.circle.fill" : "circle.fill").font(.caption).foregroundStyle(statusColor(displayStatus)).accessibilityHidden(true)
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(relay.machines[session.machineId]?.name ?? session.machineId).font(.caption.monospaced()).foregroundStyle(.secondary)
                                 Text(session.title).font(.headline).lineLimit(2)
                                 Text(session.project).font(.caption).foregroundStyle(.secondary)
                             }
-                            Spacer(); Text(relay.machines[session.machineId]?.status == "ONLINE" ? statusLabel(session.status) : "Offline").font(.caption).foregroundStyle(statusColor(session.status))
+                            Spacer(); Text(statusLabel(displayStatus)).font(.caption).foregroundStyle(statusColor(displayStatus))
                         }.foregroundStyle(.primary).padding(.vertical, 4)
                     }.accessibilityIdentifier("session." + session.id)
                 }
@@ -214,7 +215,7 @@ struct DevicesView: View {
             .confirmationDialog("Eliminare \(removing?.machine.name ?? "") dal Hub? La credenziale verrà revocata; Codex continuerà localmente.", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) { Button("Elimina e revoca", role: .destructive) { if let id = removing?.id { Task { await relay.manageMachine(id, action: "remove") } }; removing = nil } }
     }
 }
-func statusLabel(_ status: String) -> String { ["ALL": "All", "NEEDS_YOU": "Needs you", "WORKING": "Working", "READY": "Ready", "INACTIVE": "Inactive", "FAILED": "Failed"][status] ?? status }
+func statusLabel(_ status: String) -> String { ["OFFLINE": "Offline", "ALL": "All", "NEEDS_YOU": "Needs you", "WORKING": "Working", "READY": "Ready", "INACTIVE": "Inactive", "FAILED": "Failed"][status] ?? status }
 func statusColor(_ status: String) -> Color { status == "NEEDS_YOU" ? .orange : status == "WORKING" ? .green : status == "FAILED" ? .red : .secondary }
 
 #if DEBUG

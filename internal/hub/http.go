@@ -329,7 +329,11 @@ func (h *Hub) ui(w http.ResponseWriter, r *http.Request) {
 						p.Enqueue(protocol.Message{Type: "pending", Event: &protocol.Event{SessionID: o.session, Kind: "request", Request: &v}})
 					}
 				}
-				h.route(o, protocol.Command{ID: protocol.ID(), Kind: "history", SessionID: o.session})
+				id := msg.HistoryRequestID
+				if id == "" {
+					id = protocol.ID()
+				}
+				h.route(o, protocol.Command{ID: id, Kind: "history", SessionID: o.session})
 			}
 		case "command":
 			if msg.Command == nil {
@@ -350,7 +354,7 @@ func (h *Hub) route(o *operator, c protocol.Command) {
 		r := protocol.Failure(c, code)
 		o.peer.Enqueue(protocol.Message{Type: "result", Result: &r})
 	}
-	if len(c.ID) < 16 || len(c.ID) > 128 || len(c.Text) > protocol.MaxText || len(c.Content) > 64<<10 {
+	if len(c.ID) < 16 || len(c.ID) > 128 || len(c.Text) > protocol.MaxText || len(c.Content) > 64<<10 || len(c.HistoryCursor) > 8192 {
 		fail(protocol.CodexRejected)
 		return
 	}
@@ -430,6 +434,7 @@ func (h *Hub) result(machine string, r protocol.Result) {
 		}
 	} else {
 		r.History = nil
+		r.HistoryCursor = ""
 		r.FollowUps = nil
 	}
 	if f.operator.session == f.session || f.kind != "history" {

@@ -9,6 +9,15 @@ final class ControlTests: XCTestCase {
         session.turnId = "active"; XCTAssertTrue(session.allows("steer")); session.capabilities.canSteer = false; XCTAssertFalse(session.allows("steer"))
         session.status = "NEEDS_YOU"; XCTAssertEqual(session.defaultCommand, "answer"); XCTAssertFalse(session.allows("follow_up"))
     }
+    func testConnectivityOverridesStaleWorkingStatus() throws {
+        let session: RelaySession = try decode(#"{"id":"m~t","machine_id":"m","thread_id":"t","title":"test","project":"test","cwd":"/tmp","status":"WORKING","updated_at":"2026-10-06T00:00:00Z","read_only":false,"capabilities":{"can_send":false,"can_follow_up":true,"can_steer":true,"can_interrupt":true,"can_answer":false}}"#)
+        let offline: Machine = try decode(#"{"id":"m","name":"Machine","status":"OFFLINE","last_seen":"2026-10-06T00:00:00Z"}"#)
+        let online: Machine = try decode(#"{"id":"m","name":"Machine","status":"ONLINE","last_seen":"2026-10-06T00:00:00Z"}"#)
+        XCTAssertEqual(session.displayStatus(machine: offline, connected: true), "OFFLINE")
+        XCTAssertEqual(session.displayStatus(machine: online, connected: false), "OFFLINE")
+        XCTAssertEqual(session.displayStatus(machine: nil, connected: true), "OFFLINE")
+        XCTAssertEqual(session.displayStatus(machine: online, connected: true), "WORKING")
+    }
     func testQueueAckDoesNotCompleteAndCanonicalIdentityReconciles() throws {
         var box = Outbox(); let id = try box.add(id: "client", session: "m~t", kind: "follow_up", text: "later")
         XCTAssertEqual(box.items[0].phase, .local); box.sending(id); XCTAssertEqual(box.items[0].phase, .sending)
@@ -32,8 +41,8 @@ final class ControlTests: XCTestCase {
     func testBoundedMemoryAndTTL() throws {
         var box = Outbox(); for _ in 0..<32 { _ = try box.add(session: "m~t", kind: "follow_up", text: "pending", now: Date(timeIntervalSince1970: 1)) }
         XCTAssertThrowsError(try box.add(session: "m~t", kind: "follow_up", text: "overflow")); box.prune(active: "", now: Date(timeIntervalSince1970: 302)); XCTAssertTrue(box.items.isEmpty)
-        var chat = RecentChat(); for i in 0..<200 { chat.put(Activity(id: "\(i)", kind: "agentMessage", text: String(repeating: "x", count: 16384))) }
-        XCTAssertLessThanOrEqual(chat.items.count, 50); XCTAssertLessThanOrEqual(chat.items.reduce(0) { $0 + $1.text.utf8.count }, 131072)
+        var chat = RecentChat(); for i in 0..<2200 { chat.put(Activity(id: "\(i)", kind: "agentMessage", text: String(repeating: "x", count: 16384))) }
+        XCTAssertLessThanOrEqual(chat.items.count, RecentChat.maxItems); XCTAssertLessThanOrEqual(chat.items.reduce(0) { $0 + $1.text.utf8.count }, RecentChat.maxBytes); XCTAssertTrue(chat.trimmed)
     }
     func testPairingRequestAndHTTPSBoundary() throws {
         XCTAssertThrowsError(try HubAPI(url: "http://relay.local")); XCTAssertThrowsError(try HubAPI(url: "https://token@relay.local")); XCTAssertThrowsError(try HubAPI(url: "https://relay.local/path"))

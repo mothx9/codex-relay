@@ -10,6 +10,13 @@ import UIKit
     @Published var sessions: [String: RelaySession] = [:]
     @Published var requests: [String: PendingRequest] = [:]
     @Published var chat = RecentChat()
+    @Published var historyCursor: String?
+    @Published var historyLoading = false
+    @Published var historyError: String?
+    private var historyRequestID: String?
+    private var restoredWatch = false
+    private var historyCorrelated = false
+    private var issuedHistoryIDs: [String] = []
     @Published var outbox = Outbox()
     @Published var selected: String = ""
     @Published var online = false
@@ -70,7 +77,7 @@ import UIKit
                     }
                 } catch {
                     guard self.generation == generation, !Task.isCancelled else { return }
-                    self.online = false; self.outbox.disconnected(); self.commands.removeAll(); self.socket?.cancel(with: .goingAway, reason: nil); self.transport?.invalidateAndCancel()
+                    self.online = false; self.restoredWatch = false; self.historyLoading = false; self.historyRequestID = nil; self.outbox.disconnected(); self.commands.removeAll(); self.socket?.cancel(with: .goingAway, reason: nil); self.transport?.invalidateAndCancel()
                     self.connection = "Offline · riconnessione"
                     if let hubError = error as? HubFailure {
                         if hubError.authenticationRequired { self.forget(); self.error = hubError.localizedDescription; return }
@@ -88,9 +95,9 @@ import UIKit
             guard let snapshot = message.snapshot else { return }
             machines = Dictionary(uniqueKeysWithValues: snapshot.machines.map { ($0.id, $0) }); sessions = Dictionary(uniqueKeysWithValues: snapshot.sessions.map { ($0.id, $0) })
             requests = Dictionary(uniqueKeysWithValues: snapshot.requests.map { ($0.id, $0) }); online = true; connection = "Live · \(machines.values.filter { $0.status == "ONLINE" }.count) macchine"
-            if !selected.isEmpty { _ = await send(["type": "watch", "session_id": selected]) }
-            await loadDevices()
-        case "devices_changed": await loadDevices()
+            if !selected.isEmpty && !restoredWatch { await watchSelected() }
+            Task { await loadDevices() }
+        case "devices_changed": Task { await loadDevices() }
         case "event", "pending":
             guard let event = message.event else { return }
             if let id = event.eventId, !id.isEmpty { if seen.contains(id) { return }; seen.append(id); if seen.count > 1024 { seen.removeFirst(seen.count - 1024) } }
@@ -106,15 +113,52 @@ import UIKit
         case "result":
             guard let result = message.result else { return }; commands.remove(result.id); outbox.result(result)
             if result.sessionId == selected {
-                for activity in result.history ?? [] { outbox.materialize(session: selected, activity: activity); chat.put(activity) }
+                // New Hubs echo the watch's history ID. Legacy Hubs return an
+                // uncorrelated first page, accepted only during watch hydration.
+                let historyReply = result.id == historyRequestID || (!historyCorrelated && restoredWatch && historyLoading && result.history != nil && !issuedHistoryIDs.contains(result.id))
+                if historyReply {
+                    if result.id == historyRequestID { historyCorrelated = true }
+                    historyLoading = false; historyRequestID = nil
+                    if result.ok {
+                        for activity in result.history ?? [] { outbox.materialize(session: selected, activity: activity) }
+                        chat.mergeHistory(result.history ?? [])
+                        historyCursor = result.historyCursor
+                        historyError = nil
+                    } else { chat.endHistory(); historyError = result.error ?? "Cronologia non disponibile." }
+                }
                 outbox.queue(session: selected, entries: result.followUps ?? [])
             }
             if !result.ok { error = result.error ?? "Comando rifiutato." }
         default: break
         }
     }
-    func open(_ id: String) { selected = id; chat = RecentChat(); outbox.prune(active: id); Task { await send(["type": "watch", "session_id": id]) } }
-    func closeDetail() { selected = ""; chat = RecentChat(); Task { await send(["type": "watch", "session_id": ""]) } }
+    private func watchSelected() async {
+        guard !selected.isEmpty, online else { return }
+        let id = UUID().uuidString
+        issuedHistoryIDs.append(id); if issuedHistoryIDs.count > 128 { issuedHistoryIDs.removeFirst() }
+        historyRequestID = id; historyLoading = true; historyError = nil; chat.beginHistory()
+        restoredWatch = await send(["type": "watch", "session_id": selected, "history_request_id": id])
+        if !restoredWatch { historyLoading = false; historyRequestID = nil }
+    }
+    func loadOlderHistory() async {
+        guard !previewOnly, !historyLoading, !chat.atCapacity, let cursor = historyCursor, !cursor.isEmpty,
+              let current, online, machines[current.machineId]?.status == "ONLINE" else { return }
+        let id = UUID().uuidString
+        issuedHistoryIDs.append(id); if issuedHistoryIDs.count > 128 { issuedHistoryIDs.removeFirst() }
+        historyRequestID = id; historyLoading = true; historyError = nil; chat.beginHistory()
+        if !(await sendCommand(["id": id, "kind": "history", "session_id": selected, "history_cursor": cursor])) {
+            historyLoading = false; historyRequestID = nil; historyError = "Connessione interrotta. Riprova."
+        }
+    }
+    func open(_ id: String) {
+        guard id != selected else { return }
+        selected = id; chat = RecentChat(); historyCursor = nil; historyError = nil; historyLoading = false
+        restoredWatch = false; outbox.prune(active: id); Task { await watchSelected() }
+    }
+    func closeDetail() {
+        selected = ""; chat = RecentChat(); historyCursor = nil; historyRequestID = nil; historyLoading = false; restoredWatch = false
+        Task { await send(["type": "watch", "session_id": ""]) }
+    }
     @discardableResult func submit(_ text: String, kind: String? = nil, expectedTurn: String? = nil) async -> Bool {
         guard let session = current, online, machines[session.machineId]?.status == "ONLINE", session.allows(kind ?? session.defaultCommand), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { error = "Controllo non disponibile per questa sessione."; return false }
         let kind = kind ?? session.defaultCommand
@@ -161,8 +205,8 @@ import UIKit
     }
     func logout() async { if let api { _ = try? await api.fetch("api/logout", body: [:], as: Ack.self) }; forget() }
     func forget() { guard !previewOnly else { return }; stop(); CredentialVault.clear(); credential = nil; machines = [:]; sessions = [:]; requests = [:]; registry = nil; pairCode = nil; selected = ""; chat = RecentChat(); outbox = Outbox(); connection = "Accesso richiesto" }
-    func background() { paused = true; lastBackground = Date(); stop(); chat = RecentChat() }
-    func foreground() { paused = false; outbox.prune(active: ""); if let lastBackground, Date().timeIntervalSince(lastBackground) > 300 { outbox = Outbox() }; connect() }
-    private func stop() { generation = UUID(); loop?.cancel(); loop = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; transport?.invalidateAndCancel(); transport = nil; online = false; commands.removeAll(); outbox.disconnected() }
+    func background() { guard !previewOnly else { return }; paused = true; lastBackground = Date(); stop() }
+    func foreground() { guard !previewOnly else { return }; paused = false; outbox.prune(active: ""); if let lastBackground, Date().timeIntervalSince(lastBackground) > 300 { outbox = Outbox(); chat = RecentChat(); historyCursor = nil }; connect() }
+    private func stop() { chat.endHistory(); restoredWatch = false; historyLoading = false; historyRequestID = nil; generation = UUID(); loop?.cancel(); loop = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; transport?.invalidateAndCancel(); transport = nil; online = false; commands.removeAll(); outbox.disconnected() }
 }
 private struct AckBootstrap: Decodable, Sendable { let version: Int; let secure: Bool; let nativePush: Bool? }

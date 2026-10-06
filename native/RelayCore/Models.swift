@@ -18,6 +18,9 @@ public struct RelaySession: Codable, Identifiable, Sendable {
     public var status: String; public let updatedAt: String; public var turnId: String?; public let turnStarted: String?
     public var readOnly: Bool; public var capabilities: Capabilities
     public var defaultCommand: String { status == "READY" ? "new_turn" : status == "WORKING" ? "follow_up" : status == "NEEDS_YOU" ? "answer" : "" }
+    public func displayStatus(machine: Machine?, connected: Bool) -> String {
+        connected && machine?.status == "ONLINE" ? status : "OFFLINE"
+    }
     public func allows(_ kind: String) -> Bool {
         if kind == "answer" { return capabilities.canAnswer }
         if readOnly { return false }
@@ -58,7 +61,7 @@ public struct RelayEvent: Decodable, Sendable {
 }
 public struct CommandResult: Decodable, Sendable {
     public let id: String; public let ok: Bool; public let error: String?; public let errorCode: String?; public let sessionId: String?
-    public let history: [Activity]?; public let followUps: [FollowUp]?
+    public let history: [Activity]?; public let historyCursor: String?; public let followUps: [FollowUp]?
 }
 public struct WireMessage: Decodable, Sendable { public let type: String; public let snapshot: Snapshot?; public let event: RelayEvent?; public let result: CommandResult? }
 public struct OperatorDevice: Decodable, Identifiable, Sendable { public let id: String; public let name: String; public let createdAt: String; public let expiresAt: String; public let lastSeen: String; public let revoked: Bool }

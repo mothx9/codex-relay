@@ -125,7 +125,15 @@ func TestAdapterRoutingAndApproval(t *testing.T) {
 				_ = json.Unmarshal(m.Params, &params)
 				result = map[string]any{"queuedSubmission": map[string]any{"id": "queue-id", "clientUserMessageId": params.ClientID}}
 			case "thread/items/list":
-				result = map[string]any{"data": []any{map[string]any{"turnId": "turn", "item": map[string]any{"type": "agentMessage", "id": "i", "text": "real protocol fixture"}}}}
+				var params struct {
+					Cursor string `json:"cursor"`
+				}
+				_ = json.Unmarshal(m.Params, &params)
+				if params.Cursor == "older-page" {
+					result = map[string]any{"data": []any{map[string]any{"turnId": "old-turn", "item": map[string]any{"type": "agentMessage", "id": "old", "text": "previous canonical page"}}}}
+				} else {
+					result = map[string]any{"data": []any{map[string]any{"turnId": "turn", "item": map[string]any{"type": "agentMessage", "id": "i", "text": "real protocol fixture"}}}, "nextCursor": "older-page"}
+				}
 			}
 			if c.WriteJSON(map[string]any{"id": m.ID, "result": result}) != nil {
 				return
@@ -167,6 +175,13 @@ func TestAdapterRoutingAndApproval(t *testing.T) {
 	r = a.Execute(ctx, protocol.Command{ID: "history", Kind: "history", ThreadID: "t"})
 	if !r.OK || len(r.History) != 1 || r.History[0].Text != "real protocol fixture" {
 		t.Fatal(r)
+	}
+	if r.HistoryCursor != "older-page" {
+		t.Fatal("canonical history cursor lost", r.HistoryCursor)
+	}
+	r = a.Execute(ctx, protocol.Command{ID: "older-history", Kind: "history", ThreadID: "t", HistoryCursor: r.HistoryCursor})
+	if !r.OK || len(r.History) != 1 || r.History[0].ID != "old" || r.HistoryCursor != "" {
+		t.Fatal("history pagination failed", r)
 	}
 	r = a.Execute(ctx, protocol.Command{ID: "answer", Kind: "respond", ThreadID: "t", RequestID: req.ID, Decision: "approve"})
 	if !r.OK {

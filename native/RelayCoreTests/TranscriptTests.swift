@@ -45,10 +45,48 @@ final class TranscriptTests: XCTestCase {
         XCTAssertEqual(item.questions?.first?.options, ["Minimal", "Complete"])
         var chat = RecentChat(); chat.put(item)
         XCTAssertEqual(TranscriptGroup.make(chat.items).first?.items.first?.questions?.count, 1)
-        for i in 0..<50 {
+        for i in 0..<600 {
             chat.put(Activity(id: "large-\(i)", kind: "agentMessage", text: "Question", questions: [AsyncQuestion(title: String(repeating: "q", count: 16384))]))
         }
-        XCTAssertLessThanOrEqual(chat.items.reduce(0) { $0 + $1.contextBytes }, 131072)
-        XCTAssertLessThan(chat.items.count, 50)
+        XCTAssertLessThanOrEqual(chat.items.reduce(0) { $0 + $1.contextBytes }, RecentChat.maxBytes)
+        XCTAssertLessThan(chat.items.count, 600)
     }
+    func testLongConversationRetainsMessagesBeyondOldWindow() {
+        var chat = RecentChat()
+        for i in 0..<180 { chat.put(Activity(id: "item-\(i)", kind: "agentMessage", text: "Message \(i)")) }
+        XCTAssertEqual(chat.items.count, 180)
+        XCTAssertEqual(chat.items.first?.id, "item-0")
+    }
+    func testOlderHistoryPrependsWithoutDuplicatingCanonicalItems() {
+        var chat = RecentChat()
+        chat.put(Activity(id: "recent", kind: "userMessage", text: "New", clientId: "client"))
+        chat.beginHistory()
+        chat.mergeHistory([Activity(id: "old", kind: "agentMessage", text: "Older"), Activity(id: "recent", kind: "userMessage", text: "New", clientId: "client")])
+        XCTAssertEqual(chat.items.map(\.id), ["old", "recent"])
+        chat.mergeHistory([Activity(id: "old", kind: "agentMessage", text: "Older")])
+        XCTAssertEqual(chat.items.count, 2)
+    }
+    func testHistoryCannotOverwriteNewerStreamingContentOrIdentity() throws {
+        var chat = RecentChat()
+        chat.put(Activity(id: "a", kind: "agentMessage", text: "Start", clientId: "identity"))
+        chat.beginHistory()
+        let delta = try RelayJSON.decoder().decode(RelayEvent.self, from: Data(#"{"kind":"delta","session_id":"m~t","item_id":"a","text":" continued"}"#.utf8))
+        chat.apply(delta)
+        chat.mergeHistory([Activity(id: "a", kind: "agentMessage", text: "Start")])
+        XCTAssertEqual(chat.items[0].text, "Start continued")
+        XCTAssertEqual(chat.items[0].kind, "agentMessage")
+        XCTAssertEqual(chat.items[0].clientId, "identity")
+        chat.beginHistory()
+        chat.mergeHistory([Activity(id: "a", kind: "agentMessage", text: "Canonical after reconnect")])
+        XCTAssertEqual(chat.items[0].text, "Canonical after reconnect")
+    }
+
+    func testReconnectMergesOlderAndNewerHistoryAroundExistingAnchor() {
+        var chat = RecentChat()
+        chat.put(Activity(id: "middle", kind: "agentMessage", text: "Before reconnect"))
+        chat.beginHistory()
+        chat.mergeHistory(["old", "middle", "new"].map { Activity(id: $0, kind: "agentMessage", text: $0) })
+        XCTAssertEqual(chat.items.map(\.id), ["old", "middle", "new"])
+    }
+
 }
