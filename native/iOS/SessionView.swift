@@ -14,6 +14,7 @@ struct SessionView: View {
     @State private var submitting = false
     @State private var scrollRequest = 0
     @State private var visibleItem: String? = "transcript.bottom"
+    @State private var initialScroll = false
     @FocusState private var composing: Bool
     private let bottomID = "transcript.bottom"
 
@@ -103,6 +104,15 @@ struct SessionView: View {
                 .scrollPosition(id: $visibleItem, anchor: .bottom)
                 .coordinateSpace(name: "transcript")
                 .scrollDismissesKeyboard(.interactively)
+                .onChange(of: viewport.size, initial: true) { _, size in
+                    guard !initialScroll, size.height > 0 else { return }
+                    // Navigation may lay out the destination after its first
+                    // appearance. Position only once, after that layout pass.
+                    DispatchQueue.main.async {
+                        proxy.scrollTo(bottomID, anchor: .bottom)
+                        initialScroll = true
+                    }
+                }
                 .onPreferenceChange(TranscriptBottom.self) { value in
                     nearBottom = value <= viewport.size.height + 80
                     if nearBottom { unread = false }
