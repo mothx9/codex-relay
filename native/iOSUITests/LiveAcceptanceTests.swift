@@ -57,6 +57,30 @@ import XCTest
         XCTAssertTrue(composer.isHittable)
         XCTAssertEqual(composer.value as? String, "Mantieni il testo corrente.")
     }
+    func testLiveCataloguePaginationIsReadOnly() throws {
+        guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires the configured live fleet.") }
+        let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
+        guard !config.machineIDs.isEmpty else { throw XCTSkip("Requires configured machines.") }
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launch()
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 20))
+        search.tap(); search.typeText("RELAY_NONEXISTENT_" + UUID().uuidString)
+        app.swipeUp()
+        for machine in config.machineIDs {
+            let load = app.buttons["catalogue.load." + machine]
+            XCTAssertTrue(load.waitForExistence(timeout: 10))
+            for _ in 0..<8 {
+                wait(15) { load.isEnabled }
+                if load.label.contains("Rileggi cronologia") { break }
+                load.tap()
+                // Wait for the response without racing the next page's cursor.
+                sleep(1)
+            }
+            wait(15) { load.label.contains("Rileggi cronologia") }
+        }
+        let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Live Codex catalogue pages completed"; capture.lifetime = .keepAlways; add(capture)
+    }
     func testOwnedLiveTerminalAndQueueEdit() throws {
         guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires one owned validation thread.") }
         let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
@@ -120,6 +144,13 @@ import XCTest
         wait(90) { !question.exists }
         app.navigationBars.buttons.element(boundBy: 0).tap()
         wait(10) { !inbox.exists }
+        app.tabBars.buttons["Impostazioni"].tap()
+        app.buttons["Connessione e diagnostica"].tap()
+        for id in ["diagnostics.transport", "diagnostics.reducer"] {
+            let timing = app.descendants(matching: .any).matching(identifier: id).firstMatch
+            XCTAssertTrue(timing.waitForExistence(timeout: 5))
+            print("M1_PENDING_NATIVE_TIMING", timing.label)
+        }
         app.terminate(); app.launch()
         XCTAssertTrue(app.tabBars.buttons["Needs You"].waitForExistence(timeout: 15))
         app.tabBars.buttons["Needs You"].tap()
@@ -137,7 +168,7 @@ import XCTest
         wait(20) { connection.value as? String == "Live" }
         print("M1_AGENT_SILENCE_READY")
         wait(120) { connection.value as? String == "Offline" }
-        XCTAssertTrue(app.staticTexts["Ultimo stato: In corso"].exists)
+        XCTAssertTrue(app.staticTexts["Ultimo stato: In corso"].isHittable, "Stale state must remain visible at the recent end of a long conversation")
         let stale = XCTAttachment(screenshot: app.screenshot()); stale.name = "M1 offline last-known Working"; stale.lifetime = .keepAlways; add(stale)
         print("M1_OFFLINE_LAST_KNOWN_CONFIRMED")
         wait(45) { connection.value as? String == "Live" }
@@ -207,6 +238,13 @@ import XCTest
         app.tabBars.buttons["Impostazioni"].tap()
         XCTAssertTrue(app.buttons["Connessione e diagnostica"].waitForExistence(timeout: 10))
         let settings = XCTAttachment(screenshot: app.screenshot()); settings.name = "Live Settings"; settings.lifetime = .keepAlways; add(settings)
+        app.buttons["Connessione e diagnostica"].tap()
+        for id in ["diagnostics.transport", "diagnostics.reducer"] {
+            let row = app.descendants(matching: .any).matching(identifier: id).firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 5))
+            print("M1_NATIVE_TIMING", id, row.label, row.value ?? "")
+        }
+        app.navigationBars.buttons.firstMatch.tap()
         app.buttons["Notifiche"].tap()
         XCTAssertTrue(app.staticTexts["Permesso iOS"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Registrazione Relay"].exists)

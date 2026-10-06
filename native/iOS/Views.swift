@@ -453,8 +453,8 @@ private struct HubDetailsView: View {
             Section("Hub") { Text(relay.credential?.hubUrl ?? "").font(.footnote).textSelection(.enabled) }
             Section("Tempi osservati") {
                 LabeledContent("Campioni ricevuti", value: "\(relay.receiptTiming.samples)")
-                LabeledContent("Hub → iPhone", value: String(format: "%.1f ms", relay.receiptTiming.hubToNativeMs))
-                LabeledContent("Applicazione stato", value: String(format: "%.1f ms", relay.receiptTiming.reducerMs))
+                LabeledContent("Hub → iPhone", value: relay.receiptTiming.clockSkew ? "Orologi non allineati" : relay.receiptTiming.samples == 0 ? "In attesa di campioni" : String(format: "%.1f ms", relay.receiptTiming.hubToNativeMs)).accessibilityIdentifier("diagnostics.transport")
+                LabeledContent("Applicazione stato", value: String(format: "%.1f ms", relay.receiptTiming.reducerMs)).accessibilityIdentifier("diagnostics.reducer")
                 Text(relay.receiptTiming.clockSkew ? "Orologi non allineati: latenza non confrontabile." : "La stima tra dispositivi include lo scarto degli orologi. Non misura il tempo del modello né il rendering.").font(.caption).foregroundStyle(.secondary)
             }
             Section { Text("La cronologia appartiene a Codex. Relay mantiene il contesto della conversazione soltanto in memoria.").font(.footnote).foregroundStyle(.secondary) }

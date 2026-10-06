@@ -39,4 +39,17 @@ final class FreshnessTests: XCTestCase {
         XCTAssertFalse(catalogue.completed.contains("m"))
         XCTAssertNil(catalogue.cursors["m"])
     }
+    func testReceiptTimingIgnoresAbsentTimestampAndFlagsRealClockSkew() throws {
+        let formatter = ISO8601DateFormatter()
+        let received = try XCTUnwrap(formatter.date(from: "2026-10-07T00:00:01Z"))
+        var timing = ReceiptTiming()
+        timing.observe(hub: "0001-01-01T00:00:00Z", received: received, reduced: received)
+        XCTAssertFalse(timing.clockSkew); XCTAssertEqual(timing.samples, 0)
+        let event: RelayEvent = try decode(#"{"kind":"session","session_id":"m~t","hub_observed_at":"2026-10-07T00:00:00.750000000Z"}"#)
+        timing.observe(hub: event.hubObservedAt, received: received, reduced: received.addingTimeInterval(0.002))
+        XCTAssertEqual(timing.samples, 1); XCTAssertEqual(timing.hubToNativeMs, 250, accuracy: 0.1)
+        XCTAssertEqual(timing.reducerMs, 2, accuracy: 0.1)
+        timing.observe(hub: "2026-10-07T00:00:02Z", received: received, reduced: received)
+        XCTAssertTrue(timing.clockSkew); XCTAssertEqual(timing.samples, 1)
+    }
 }

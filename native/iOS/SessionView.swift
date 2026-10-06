@@ -35,6 +35,13 @@ struct SessionView: View {
         if let session = relay.current {
             VStack(spacing: 0) {
                 transcript(session)
+                if !machineOnline(session) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(relay.machineConnectionLabel(session.machineId)).font(.caption.weight(.semibold))
+                        LastKnownSession(session: session, machine: relay.machines[session.machineId])
+                    }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16)
+                        .accessibilityIdentifier("session.stale")
+                }
                 composer(session).padding(.horizontal, 16).padding(.vertical, 8)
             }
                 .navigationBarTitleDisplayMode(.inline)
@@ -90,7 +97,6 @@ struct SessionView: View {
                                 .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("session.connection").accessibilityValue(machineOnline(session) ? "Live" : "Offline")
                             if machineOnline(session), session.status == "WORKING" { ElapsedLabel(start: session.turnStarted) }
                         }
-                        if !machineOnline(session) { LastKnownSession(session: session, machine: relay.machines[session.machineId]) }
                         if machineOnline(session), session.status == "WORKING", let activity = relay.liveActivities[session.id] {
                             Text(activity.detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                         }

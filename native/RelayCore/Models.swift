@@ -307,7 +307,7 @@ public struct ReceiptTiming: Sendable {
         reducerMs = max(0, reduced.timeIntervalSince(received) * 1000)
         guard let hub else { return }
         let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        guard let date = formatter.date(from: hub) ?? ISO8601DateFormatter().date(from: hub) else { return }
+        guard let date = formatter.date(from: hub) ?? ISO8601DateFormatter().date(from: hub), date.timeIntervalSince1970 > 0 else { return }
         let ms = received.timeIntervalSince(date) * 1000
         guard ms >= 0, ms < 300_000 else { clockSkew = true; return }
         samples = min(samples + 1, 1024); hubToNativeMs = ms
