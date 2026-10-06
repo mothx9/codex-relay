@@ -18,8 +18,10 @@ xcodebuild -project native/CodexRelay.xcodeproj -scheme CodexRelay \
 open native/CodexRelay.xcodeproj
 ```
 
-Go/race/control tests, three cross builds, nine Swift core tests and actual simulator builds pass. Live simulator pairing, Fleet, Keychain restart, isolated New Turn/canonical reply, no optimistic duplicate and foreground reconnect pass. The physical app is signed, installed, trusted and paired on the owner's iPhone. Permission/MCP native forms are implemented; live approval and remaining native controls still need acceptance. Real APNs receipt/tap remains pending. The backend passed `make check build cross` on macOS with stable Go 1.27.1.
+Go/race/control tests, three cross builds, ten Swift core tests, four installer tests and actual simulator builds pass. Live simulator pairing, Fleet, Keychain restart, isolated New Turn/canonical reply, no optimistic duplicate and foreground reconnect pass. The physical app is signed, installed, trusted and paired on the owner's iPhone. Permission/MCP native forms are implemented; live approval and remaining native controls still need acceptance. Real APNs receipt/tap remains pending. The backend passed `make check build cross` on macOS with stable Go 1.27.1.
 
 Continue with Spark recovery when the owner reports it online, remaining isolated native control/recovery tests, live permission/MCP acceptance, and owner-provided push-capable Apple team/APNs configuration. The owner's Personal Team permits the current physical install but does not supply APNs. Preserve New Turn/Follow-up/Answer/explicit Steer semantics and bounded ephemeral state. Do not equate command ACK with turn completion or fake push tests with actual delivery.
+
+The owner's latest request is now a full iPhone UI/feature upgrade. Read [HANDOFF_IPHONE_UI_FEATURES.md](HANDOFF_IPHONE_UI_FEATURES.md) for the complete progress report, code review, product priorities and acceptance backlog. The native interface is explicitly considered provisional; preserve the connected runtime while redesigning it.
 
 Do not modify network settings or unrelated Codex workloads. Keep credentials, account identifiers, private network details and runtime data outside Git. Retain RC status until the actual acceptance flow passes. This wave was closed by the owner to move development, not because the native client was already fully accepted.
