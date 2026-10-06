@@ -187,7 +187,7 @@ func (a *Adapter) history(ctx context.Context, id string) ([]protocol.Activity, 
 	for i := len(r.Data) - 1; i >= 0; i-- {
 		entry := r.Data[i]
 		v := activity(entry.Item)
-		if v.Text == "" {
+		if v.Text == "" && len(v.Questions) == 0 {
 			continue
 		}
 		v.TurnID = entry.TurnID

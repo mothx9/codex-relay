@@ -64,13 +64,21 @@ type Capabilities struct {
 	CanAnswer    bool `json:"can_answer"`
 }
 type Activity struct {
-	Truncated bool      `json:"truncated,omitempty"`
-	ID        string    `json:"id"`
-	TurnID    string    `json:"turn_id,omitempty"`
-	Kind      string    `json:"kind"`
-	Text      string    `json:"text"`
-	Timestamp time.Time `json:"timestamp"`
-	ClientID  string    `json:"client_id,omitempty"`
+	Truncated bool            `json:"truncated,omitempty"`
+	ID        string          `json:"id"`
+	TurnID    string          `json:"turn_id,omitempty"`
+	Kind      string          `json:"kind"`
+	Text      string          `json:"text"`
+	Timestamp time.Time       `json:"timestamp"`
+	ClientID  string          `json:"client_id,omitempty"`
+	Questions []AsyncQuestion `json:"questions,omitempty"`
+}
+
+// Canonical nonblocking questions carried by an app-server agentMessage. They
+// are display context, not a pending server RPC or an approval capability.
+type AsyncQuestion struct {
+	Title   string   `json:"title"`
+	Options []string `json:"options,omitempty"`
 }
 
 // FollowUp is an ephemeral view of the queue owned by the backend.

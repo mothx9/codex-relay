@@ -25,6 +25,55 @@ func TestNormalize(t *testing.T) {
 		}
 	}
 }
+
+func TestAsyncQuestionAgentMessagePreservesCanonicalDisplayContext(t *testing.T) {
+	for _, text := range []string{"", "Review the options below."} {
+		raw, _ := json.Marshal(map[string]any{"type": "agentMessage", "id": "canonical-question", "text": text, "questions": []map[string]any{{"title": "Which scope?", "options": []string{"Minimal", "Complete"}}}})
+		v := activity(raw)
+		if v.ID != "canonical-question" || v.Kind != "agentMessage" || len(v.Questions) != 1 || v.Questions[0].Title != "Which scope?" || len(v.Questions[0].Options) != 2 || v.Truncated {
+			t.Fatal("canonical async question context lost", v)
+		}
+		if text == "" && v.Text != "Which scope?" {
+			t.Fatal("question-only messages would be dropped")
+		}
+		if text != "" && v.Text != text {
+			t.Fatal("assistant text replaced")
+		}
+		wire, _ := json.Marshal(v)
+		var decoded protocol.Activity
+		if json.Unmarshal(wire, &decoded) != nil || len(decoded.Questions) != 1 {
+			t.Fatal("question lost at Relay JSON boundary")
+		}
+	}
+	a := &Adapter{cfg: Config{MachineID: "m"}, sessions: map[string]protocol.Session{"t": {ID: "m~t", ThreadID: "t", Status: protocol.Working, TurnID: "active"}}, requests: map[string]pending{}, events: make(chan protocol.Event, 8), done: make(chan struct{}), queue: true}
+	a.handle(rpcMessage{Method: "item/completed", Params: json.RawMessage(`{"threadId":"t","turnId":"active","item":{"type":"agentMessage","id":"question","text":"","questions":[{"title":"Which scope?","options":["Minimal","Complete"]}]}}`)})
+	ev := <-a.Events()
+	if ev.Kind != "activity" || ev.Activity == nil || len(ev.Activity.Questions) != 1 {
+		t.Fatal("question-only live event dropped")
+	}
+	if len(a.requests) != 0 || a.sessions["t"].Status != protocol.Working || a.sessions["t"].Capabilities.CanAnswer {
+		t.Fatal("display question invented a pending RPC or changed turn state")
+	}
+}
+
+func TestAsyncQuestionContextIsBoundedAndMarkedPartial(t *testing.T) {
+	questions := make([]protocol.AsyncQuestion, 30)
+	for i := range questions {
+		questions[i] = protocol.AsyncQuestion{Title: strings.Repeat("é", 2048), Options: []string{strings.Repeat("x", 1024), strings.Repeat("y", 1024)}}
+	}
+	raw, _ := json.Marshal(map[string]any{"type": "agentMessage", "id": "bounded-question", "questions": questions})
+	v := activity(raw)
+	bytes := 0
+	for _, q := range v.Questions {
+		bytes += len(q.Title)
+		for _, o := range q.Options {
+			bytes += len(o)
+		}
+	}
+	if !v.Truncated || bytes > protocol.MaxText || len(v.Questions) > 8 || len(v.Text) > protocol.MaxText {
+		t.Fatal("question display escaped bounds", bytes, len(v.Questions))
+	}
+}
 func TestAdapterRoutingAndApproval(t *testing.T) {
 	calls := make(chan rpcMessage, 32)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

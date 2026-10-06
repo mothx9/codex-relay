@@ -107,8 +107,11 @@ func TestRealtimeAuthOrderingAndPending(t *testing.T) {
 	readUntil(t, ui, func(m protocol.Message) bool { return m.Type == "snapshot" && len(m.Snapshot.Sessions) == 1 })
 	_ = ui.WriteJSON(protocol.Message{Type: "watch", SessionID: session.ID})
 	cmd := readUntil(t, a, func(m protocol.Message) bool { return m.Type == "command" })
-	_ = a.WriteJSON(protocol.Message{Type: "result", Result: &protocol.Result{ID: cmd.Command.ID, OK: true, History: []protocol.Activity{{ID: "a", Kind: "agentMessage", Text: "EPHEMERAL_CANARY"}}}})
-	readUntil(t, ui, func(m protocol.Message) bool { return m.Type == "result" })
+	_ = a.WriteJSON(protocol.Message{Type: "result", Result: &protocol.Result{ID: cmd.Command.ID, OK: true, History: []protocol.Activity{{ID: "a", Kind: "agentMessage", Text: "EPHEMERAL_CANARY", Questions: []protocol.AsyncQuestion{{Title: "EPHEMERAL_CANARY question", Options: []string{"Minimal", "Complete"}}}}}}})
+	history := readUntil(t, ui, func(m protocol.Message) bool { return m.Type == "result" })
+	if len(history.Result.History) != 1 || len(history.Result.History[0].Questions) != 1 {
+		t.Fatal("async question lost while routing history")
+	}
 	session.Status = protocol.Working
 	ev := protocol.Event{ID: "event-2", MachineID: "m", SessionID: session.ID, Sequence: 2, Epoch: "epoch", Kind: "session", Session: &session, Timestamp: time.Now()}
 	_ = a.WriteJSON(protocol.Message{Type: "event", Event: &ev})
@@ -143,6 +146,17 @@ func TestRealtimeAuthOrderingAndPending(t *testing.T) {
 		t.Error("dedupe/order/resolution failed")
 	}
 	h.mu.Unlock()
+	ev = protocol.Event{ID: "event-5", MachineID: "m", SessionID: session.ID, Sequence: 5, Epoch: "epoch", Kind: "activity", Activity: &protocol.Activity{ID: "question", Kind: "agentMessage", Text: "EPHEMERAL_CANARY", Questions: []protocol.AsyncQuestion{{Title: "EPHEMERAL_CANARY question", Options: []string{"Minimal", "Complete"}}}}, Timestamp: time.Now()}
+	_ = a.WriteJSON(protocol.Message{Type: "event", Event: &ev})
+	question := readUntil(t, ui, func(m protocol.Message) bool { return m.Type == "event" && m.Event.Sequence == 5 })
+	if question.Event.Activity == nil || len(question.Event.Activity.Questions) != 1 || len(question.Event.Activity.Questions[0].Options) != 2 {
+		t.Fatal("async question lost on live WebSocket")
+	}
+	h.mu.Lock()
+	if len(h.requests) != 0 || h.sessions[session.ID].Status != protocol.Working {
+		t.Error("display question created a pending approval")
+	}
+	h.mu.Unlock()
 	a.Close()
 	readUntil(t, ui, func(m protocol.Message) bool {
 		return m.Type == "snapshot" && m.Snapshot.Machines[0].Status == protocol.Offline
@@ -167,6 +181,13 @@ func TestRecentBounded(t *testing.T) {
 	r.Apply(protocol.Event{Kind: "delta", ItemID: "same", Text: "two"})
 	if r.Items[len(r.Items)-1].Text != "onetwo" {
 		t.Fatal("delta merge")
+	}
+	r = Recent{}
+	for i := 0; i < 50; i++ {
+		r.Put(protocol.Activity{ID: protocol.ID(), Text: "question", Questions: []protocol.AsyncQuestion{{Title: strings.Repeat("q", 2048), Options: []string{strings.Repeat("o", 4096)}}}})
+	}
+	if r.bytes() > 128<<10 || len(r.Items) >= 50 {
+		t.Fatal("question context escaped the byte budget")
 	}
 }
 

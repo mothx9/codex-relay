@@ -35,6 +35,12 @@ func (r *Recent) bytes() int {
 	n := 0
 	for _, v := range r.Items {
 		n += len(v.Text)
+		for _, q := range v.Questions {
+			n += len(q.Title)
+			for _, option := range q.Options {
+				n += len(option)
+			}
+		}
 	}
 	return n
 }

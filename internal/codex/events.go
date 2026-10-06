@@ -6,17 +6,19 @@ import (
 	"github.com/mothx9/codex-relay/internal/protocol"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 func activity(raw json.RawMessage) protocol.Activity {
 	var item struct {
-		ID       string `json:"id"`
-		ClientID string `json:"clientId"`
-		Type     string `json:"type"`
-		Text     string `json:"text"`
-		Command  string `json:"command"`
-		Output   string `json:"aggregatedOutput"`
-		Changes  []struct {
+		ID        string                   `json:"id"`
+		ClientID  string                   `json:"clientId"`
+		Type      string                   `json:"type"`
+		Text      string                   `json:"text"`
+		Command   string                   `json:"command"`
+		Output    string                   `json:"aggregatedOutput"`
+		Questions []protocol.AsyncQuestion `json:"questions"`
+		Changes   []struct {
 			Path string          `json:"path"`
 			Kind json.RawMessage `json:"kind"`
 			Diff string          `json:"diff"`
@@ -31,6 +33,14 @@ func activity(raw json.RawMessage) protocol.Activity {
 	switch item.Type {
 	case "agentMessage":
 		v.Text = item.Text
+		v.Questions, v.Truncated = clipAsyncQuestions(item.Questions)
+		if strings.TrimSpace(v.Text) == "" && len(v.Questions) > 0 {
+			var titles []string
+			for _, q := range v.Questions {
+				titles = append(titles, q.Title)
+			}
+			v.Text = strings.Join(titles, "\n\n")
+		}
 	case "userMessage":
 		for _, c := range item.Content {
 			if c.Type == "text" {
@@ -52,9 +62,45 @@ func activity(raw json.RawMessage) protocol.Activity {
 	default:
 		return v
 	}
-	v.Truncated = len(v.Text) > protocol.MaxText
+	v.Truncated = v.Truncated || len(v.Text) > protocol.MaxText
 	v.Text = protocol.Clip(v.Text, protocol.MaxText)
 	return v
+}
+
+func clipAsyncQuestions(in []protocol.AsyncQuestion) ([]protocol.AsyncQuestion, bool) {
+	var out []protocol.AsyncQuestion
+	budget, truncated := protocol.MaxText, false
+	clip := func(text string, max int) string {
+		if max > budget {
+			max = budget
+		}
+		v := text
+		if len(v) > max {
+			v = v[:max]
+			for !utf8.ValidString(v) {
+				v = v[:len(v)-1]
+			}
+		}
+		truncated = truncated || len(v) < len(text)
+		budget -= len(v)
+		return v
+	}
+	for i, q := range in {
+		if i >= 8 || budget == 0 {
+			truncated = true
+			break
+		}
+		v := protocol.AsyncQuestion{Title: clip(q.Title, 2048)}
+		for j, option := range q.Options {
+			if j >= 16 || budget == 0 {
+				truncated = true
+				break
+			}
+			v.Options = append(v.Options, clip(option, 512))
+		}
+		out = append(out, v)
+	}
+	return out, truncated
 }
 func (a *Adapter) handle(m rpcMessage) {
 	var p struct {
@@ -163,7 +209,7 @@ func (a *Adapter) handle(m rpcMessage) {
 		ev.Text = protocol.Clip(p.Diff, protocol.MaxText)
 	case "item/started", "item/completed":
 		v := activity(p.Item)
-		if v.Text == "" {
+		if v.Text == "" && len(v.Questions) == 0 {
 			a.mu.Unlock()
 			return
 		}
