@@ -1,5 +1,17 @@
 # Validation record
 
+## Native and rc.4 deployment checkpoint — 2026-10-06
+
+Upgraded the existing Zima Hub in place to the verified rc.4 build. The binary, service definition, online SQLite backup and private credential files were retained for rollback; an initial failed recovery check actually restored rc.3 before the successful upgrade. The existing DB passed quick_check and bootstrap, VAPID, installed agent credentials and the operator cookie were preserved. Exon and MacBook recovered, then their Relay agents were upgraded separately without restarting Codex. Both now report only account kind/email/plan. Spark was already unreachable and remains pending; its credential and service were preserved. The earlier three-host PWA acceptance below is historical evidence, not a claim that Spark is currently online.
+
+On the actual HTTPS Hub, an eight-digit operator OTP exchanged once, reuse returned 401 and a separate code expired after five minutes. Revocation closed the paired WSS socket immediately and subsequent HTTP returned 401; the disposable operator was removed. Disposable agent enrollment, conflict rejection, pause/resume, revoke, re-enrollment with a new credential and removal passed without touching real agent enrollments.
+
+The native XCUITest ran against that same Hub on an iOS 27 simulator. OTP pairing, Fleet enumeration of the three enrolled hosts, Keychain recovery after app termination, isolated New Turn, a fresh canonical Codex reply and foreground reconnect passed. The submitted text appeared exactly once as the canonical user item, with no remaining optimistic duplicate. This run uses local simulator signing and simulator-only Keychain entitlements; the original unsigned app compiled but could not access Keychain. The test configuration and artifacts remain private.
+
+The owner's Personal Team signed the physical-device build, strict signature verification passed, and a regenerated profile included the connected iPhone. Installation passed. The owner confirmed developer trust, app opening and pairing. Physical New Turn/Follow-up/Answer/Steer/Interrupt acceptance and actual APNs receipt/tap have not passed yet. Personal Team signing has no APNs entitlement.
+
+Nine Swift core tests pass, including MCP property-name preservation, typed fields, required values, enums, bounds, nested schemas and unsupported-schema rejection. Native permission and MCP forms compile, show full payload/schema and require an online machine and current request. Isolated SwiftUI previews render without loading Keychain or connecting to the Hub. Live native approval and the remaining control/recovery tests are pending. The default remains a release candidate; no final release or new rc.4 tag is claimed.
+
 ## Canonical deployment acceptance — 2026-10-06
 
 Zima Debian 12 amd64 now boots normally with zero failed units. A missing optional HDD mount was made nonfatal; an invalid legacy NFS entry was disabled. The obsolete bridge/DHCP server was removed on Zima only. Root/data filesystems were not reformatted; private backups are retained locally. Exon's network configuration was not modified during this recovery.
@@ -52,7 +64,7 @@ All three agents used Tailscale direct peers. Five metadata-only official `threa
 
 Model inference is excluded. Temporary measurement tooling is outside the production runtime. Private network endpoints/topology identifiers are not published.
 
-### Native extension acceptance
+### Native extension handoff before the macOS continuation
 
 The user requested a native Swift iPhone client, OTP pairing and device management after the canonical cutover. New Go/race/control tests, three cross builds, five Swift tests, an actual Xcode simulator build and implementation CI pass. The backend was also built/tested on macOS with Go 1.27.1. New pairing/device/APNs endpoints are **not deployed**; native app E2E, physical signing/install and real notification receipt/tap remain unverified. Native permission/MCP forms remain incomplete. No complete v0.1 release is claimed. The user closed this wave to move development to macOS; see [HANDOFF_MACOS.md](HANDOFF_MACOS.md).
 

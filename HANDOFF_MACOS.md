@@ -6,7 +6,7 @@ The owner has requested a native SwiftUI iPhone client, short one-time pairing, 
 
 Implementation checkpoint: `cfc2c9f` adds device pairing/revocation and native push backend; `02a2a83` adds the SwiftUI client and native CI. Use current main HEAD, including subsequent test/documentation commits.
 
-**New source code is not a production deployment.** The repository prepares rc.4; the installed deployment still uses rc.3. No rc.4 tag/release has been created. The installer defaults to the last published release. Deploy a verified build through the existing persistent service, preserving metadata and credentials, before testing new pairing/device endpoints. Do not start a second production Hub.
+The macOS continuation upgraded the existing Hub to rc.4 and then upgraded Exon and MacBook agents separately, preserving DB, bootstrap, VAPID and installed credentials. Spark was already offline and remains pending. No rc.4 tag/release has been created; the installer still defaults to the last published release, so use a verified `--binary` for rc.4. Do not start a second production Hub. See the latest [validation checkpoint](VALIDATION.md) for current evidence; earlier three-host PWA results do not prove current Spark reachability or native controls.
 
 ```sh
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"
@@ -14,12 +14,12 @@ GOTOOLCHAIN=go1.27.1 make check build cross
 swift test --package-path native
 xcodebuild -project native/CodexRelay.xcodeproj -scheme CodexRelay \
   -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-  -derivedDataPath /tmp/relay-ios-build CODE_SIGNING_ALLOWED=NO build
+  -derivedDataPath /tmp/relay-ios-build CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- build
 open native/CodexRelay.xcodeproj
 ```
 
-Go/race/control tests, three cross builds, five Swift tests, an actual Xcode simulator build and implementation CI pass. Native pairing/control E2E, physical device signing/install and APNs receipt/tap remain unverified. Permission/MCP native forms remain incomplete. The full backend also passed `make check build cross` on macOS with the stable Go 1.27.1 toolchain.
+Go/race/control tests, three cross builds, nine Swift core tests and actual simulator builds pass. Live simulator pairing, Fleet, Keychain restart, isolated New Turn/canonical reply, no optimistic duplicate and foreground reconnect pass. The physical app is signed, installed, trusted and paired on the owner's iPhone. Permission/MCP native forms are implemented; live approval and remaining native controls still need acceptance. Real APNs receipt/tap remains pending. The backend passed `make check build cross` on macOS with stable Go 1.27.1.
 
-Continue with safe deployment, real OTP/Keychain/revocation checks, isolated native control E2E, complete request forms, owner-provided Apple signing/APNs configuration, then actual physical notification acceptance. Preserve New Turn/Follow-up/Answer/explicit Steer semantics and bounded ephemeral state. Do not equate command ACK with turn completion or fake push tests with actual delivery.
+Continue with Spark recovery when the owner reports it online, remaining isolated native control/recovery tests, live permission/MCP acceptance, and owner-provided push-capable Apple team/APNs configuration. The owner's Personal Team permits the current physical install but does not supply APNs. Preserve New Turn/Follow-up/Answer/explicit Steer semantics and bounded ephemeral state. Do not equate command ACK with turn completion or fake push tests with actual delivery.
 
 Do not modify network settings or unrelated Codex workloads. Keep credentials, account identifiers, private network details and runtime data outside Git. Retain RC status until the actual acceptance flow passes. This wave was closed by the owner to move development, not because the native client was already fully accepted.

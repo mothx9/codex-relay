@@ -15,6 +15,7 @@
 		0000000000000000000000CD /* iOS/RelayController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000069 /* iOS/RelayController.swift */; };
 		0000000000000000000000CE /* iOS/Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000006A /* iOS/Views.swift */; };
 		0000000000000000000000D0 /* iOS/Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000006C /* iOS/Notifications.swift */; };
+		000000000000000000000201 = {isa = PBXBuildFile; fileRef = 000000000000000000000202; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,8 @@
 		000000000000000000000069 /* iOS/RelayController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/RelayController.swift; sourceTree = SOURCE_ROOT; };
 		00000000000000000000006A /* iOS/Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/Views.swift; sourceTree = SOURCE_ROOT; };
 		00000000000000000000006C /* iOS/Notifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/Notifications.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000202 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSUITests/LiveAcceptanceTests.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000203 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = CodexRelayUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -38,12 +41,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		000000000000000000000207 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		000000000000000000000003 = {
 			isa = PBXGroup;
 			children = (
+				000000000000000000000202 /* LiveAcceptanceTests.swift */,
+				000000000000000000000070 /* Signing.xcconfig */,
 				00000000000000000000006C /* iOS/Notifications.swift */,
 				000000000000000000000064 /* RelayCore/HubAPI.swift */,
 				000000000000000000000065 /* RelayCore/Keychain.swift */,
@@ -60,6 +66,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000006 /* CodexRelay.app */,
+				000000000000000000000203 /* CodexRelayUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -84,7 +91,22 @@
 			productReference = 000000000000000000000006 /* CodexRelay.app */;
 			productType = "com.apple.product-type.application";
 		};
+		000000000000000000000204 /* CodexRelayUITests */ = {
+            isa = PBXNativeTarget; buildConfigurationList = 000000000000000000000205;
+            buildPhases = (000000000000000000000206, 000000000000000000000207, 000000000000000000000208);
+            buildRules = (); dependencies = (000000000000000000000209);
+            name = CodexRelayUITests; productName = CodexRelayUITests;
+            productReference = 000000000000000000000203;
+            productType = "com.apple.product-type.bundle.ui-testing";
+        };
 /* End PBXNativeTarget section */
+
+/* Begin PBXContainerItemProxy section */
+        00000000000000000000020A = {isa = PBXContainerItemProxy; containerPortal = 000000000000000000000001; proxyType = 1; remoteGlobalIDString = 000000000000000000000005; remoteInfo = CodexRelay; };
+/* End PBXContainerItemProxy section */
+/* Begin PBXTargetDependency section */
+        000000000000000000000209 = {isa = PBXTargetDependency; target = 000000000000000000000005; targetProxy = 00000000000000000000020A; };
+/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		000000000000000000000001 /* Project object */ = {
@@ -105,6 +127,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				000000000000000000000204 /* CodexRelayUITests */,
 				000000000000000000000005 /* CodexRelay */,
 			);
 		};
@@ -118,6 +141,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		000000000000000000000208 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -136,6 +160,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		000000000000000000000206 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000201); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
@@ -165,6 +190,7 @@
 			buildSettings = {
 				APS_ENVIRONMENT = development;
 				CODE_SIGN_STYLE = Automatic;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = iOS/Simulator.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Codex Relay";
@@ -188,6 +214,7 @@
 			buildSettings = {
 				APS_ENVIRONMENT = production;
 				CODE_SIGN_STYLE = Automatic;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = iOS/Simulator.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Codex Relay";
@@ -204,6 +231,10 @@
 			};
 			name = Release;
 		};
+        00000000000000000000020B = {isa = XCBuildConfiguration; baseConfigurationReference = 000000000000000000000070;
+            buildSettings = { CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = "net.codex-relay.iphone.uitests"; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; TARGETED_DEVICE_FAMILY = "1,2"; TEST_TARGET_NAME = CodexRelay; }; name = Debug; };
+        00000000000000000000020C = {isa = XCBuildConfiguration; baseConfigurationReference = 000000000000000000000070;
+            buildSettings = { CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = "net.codex-relay.iphone.uitests"; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; TARGETED_DEVICE_FAMILY = "1,2"; TEST_TARGET_NAME = CodexRelay; }; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -225,6 +256,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+        000000000000000000000205 = {isa = XCConfigurationList; buildConfigurations = (00000000000000000000020B, 00000000000000000000020C); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
 /* End XCConfigurationList section */
 	};
 	rootObject = 000000000000000000000001 /* Project object */;

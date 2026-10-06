@@ -73,7 +73,7 @@ struct SessionView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     Text("\(relay.machines[session.machineId]?.name ?? session.machineId) · \(session.project)").font(.caption.monospaced()).foregroundStyle(.secondary)
                     Text(session.title).font(.title2)
-                    Text("\(statusLabel(session.status)) · \(relay.connection)").font(.caption).foregroundStyle(statusColor(session.status))
+                    Text("\(statusLabel(session.status)) · \(relay.connection)").font(.caption).foregroundStyle(statusColor(session.status)).accessibilityIdentifier("session.connection")
                     DisclosureGroup("Contesto") { VStack(alignment: .leading) { Text(session.cwd); Text(session.branch ?? ""); Text(session.threadId) }.font(.caption.monospaced()).textSelection(.enabled) }
                     ForEach(relay.requests.values.filter { $0.sessionId == session.id }.sorted { $0.id < $1.id }) { PendingView(request: $0) }
                     ForEach(relay.chat.items) { activity in

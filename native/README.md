@@ -8,11 +8,13 @@ SwiftUI iOS 17+ client of the same Relay Hub. No embedded Codex runtime, transcr
 swift test --package-path native
 xcodebuild -project native/CodexRelay.xcodeproj -scheme CodexRelay \
   -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-  -derivedDataPath /tmp/relay-ios-build CODE_SIGNING_ALLOWED=NO build
+  -derivedDataPath /tmp/relay-ios-build CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- build
 open native/CodexRelay.xcodeproj
 ```
 
 Select an installed iPhone simulator and Run, or connect your iPhone and configure your own signing team. Simulator compilation is not proof of physical device installation, account signing or push delivery.
+
+Simulator execution uses ad hoc local signing and simulator-only Keychain entitlements. `CODE_SIGNING_ALLOWED=NO` is sufficient for compilation checks, but the unsigned app cannot pair because iOS Simulator rejects Keychain access. Physical builds use Apple's generated device provisioning profile. Simulator entitlements do not enable APNs.
 
 The target includes `Signing.xcconfig`, which optionally loads the ignored `LocalSigning.xcconfig`. Keep owner-specific `DEVELOPMENT_TEAM` and provisioning overrides in that local file. Never commit Apple account identifiers, team values, certificates or profiles. Xcode may write a team directly into the project when you select it; move that value into the local configuration before committing.
 
@@ -44,6 +46,8 @@ After deployment and signing, enable notifications from Dispositivi on the physi
 
 ## Current verification and gaps
 
-Go tests, race tests, nine browser control tests, nine Swift core tests and a real Xcode 27 simulator build pass. Native permission/MCP forms compile and their schema handling is covered by core tests; live native approval acceptance remains pending. A physical-device build signed with the owner's local Personal Team passes signature verification, but installation has not succeeded. Live Hub OTP exchange, one-use rejection, five-minute expiry and immediate device revocation pass independently of the native UI. Native Fleet/chat/Follow-up E2E and real APNs receipt/tap remain unverified. The native project has no app-store packaging.
+Go tests, race tests, nine browser control tests, nine Swift core tests and a real Xcode 27 simulator build pass. Live simulator acceptance passed OTP pairing to the existing HTTPS Hub, Fleet from the three enrolled hosts, Keychain recovery after process restart, an isolated New Turn, a fresh Codex reply, one canonical user bubble with no optimistic duplicate, and foreground reconnect. The physical app was signed, installed, trusted and opened on the owner's iPhone; the owner also confirmed pairing. Physical control E2E and real APNs receipt/tap remain pending. Native permission/MCP forms compile and schema handling is covered by core tests; live approval acceptance, Follow-up, Steer/Interrupt and recovery coverage remain pending.
+
+`CodexRelayUITests` is an opt-in live acceptance target. It skips without `AcceptanceConfig.json` in the built test bundle. The private configuration supplies `origin`, `code`, `machineIDs`, `sessionID`, `sessionTitle` and `sendTurn`. Use a freshly generated OTP and a dedicated isolated thread, never an unrelated working session. Build for testing with local simulator signing, place the configuration in the built test bundle, then run `test-without-building` with parallel testing disabled on the intended simulator. Keep configurations, screenshots and result bundles outside Git. Suspend any rebuild watcher while the test runs and restore it afterwards. CI compiles the test target without private configuration and does not claim a live acceptance run.
 
 There is deliberately no automatic transcript/outbox persistence and no background WebSocket service. Foreground reconnect reconstructs current state from the Hub/Codex. A queued Follow-up remains owned by Codex even if the app is terminated.
