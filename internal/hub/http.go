@@ -10,6 +10,7 @@ import (
 	"github.com/mothx9/codex-relay/internal/store"
 	"github.com/mothx9/codex-relay/web"
 	"io"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strings"
@@ -246,6 +247,13 @@ func (h *Hub) agent(w http.ResponseWriter, r *http.Request) {
 		}
 		h.mu.Unlock()
 		if e != nil {
+			// Never log payloads, commands, credentials, or arbitrary storage errors.
+			reason := "storage_or_internal"
+			switch e.Error() {
+			case "invalid announcement", "machine capacity reached", "fleet session capacity reached", "invalid session", "invalid request", "missing event", "missing result", "invalid agent message", "invalid session update", "invalid pending request":
+				reason = e.Error()
+			}
+			slog.Warn("agent message rejected", "machine", id, "type", msg.Type, "reason", reason)
 			return
 		}
 	}

@@ -68,7 +68,16 @@ public struct PendingRequest: Codable, Identifiable, Sendable {
     public var id: String { requestId }; public let requestId: String; public let sessionId: String; public let machineId: String
     public let kind: String; public let description: String; public let operation: String?; public let cwd: String?
     public let questions: [Question]?; public let expiresAt: String; public let canApprove: Bool
-    public let payload: RequestPayload?
+    public var payload: RequestPayload?
+    public let turnId: String?; public let createdAt: String?
+    /// A request RPC ID can be reused after a daemon restart. Form state belongs
+    /// to one incarnation, while wire commands continue to use requestId.
+    public var presentationID: String { [machineId, sessionId, requestId, kind, turnId ?? "", createdAt ?? expiresAt].joined(separator: "|") }
+    public func retainingContext(from prior: PendingRequest?) -> PendingRequest {
+        var value = self
+        if let prior, presentationID == prior.presentationID, value.payload == nil { value.payload = prior.payload }
+        return value
+    }
 }
 public struct Snapshot: Decodable, Sendable { public let machines: [Machine]; public let sessions: [RelaySession]; public let requests: [PendingRequest]; public let liveActivities: [String: LiveActivity]? }
 public struct RelayEvent: Decodable, Sendable {

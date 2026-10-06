@@ -112,7 +112,7 @@ struct SessionView: View {
                             OutgoingMessageView(item: item, session: session)
                         }
                         ForEach(relay.requests.values.filter { $0.sessionId == session.id }.sorted { $0.id < $1.id }) { request in
-                            PendingView(request: request)
+                            PendingView(request: request).id(request.presentationID)
                         }
                         if relay.chat.items.isEmpty && relay.outbox.visible(session: session.id).isEmpty {
                             Text("Il contesto recente di Codex apparirà qui.").font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 24)

@@ -188,8 +188,8 @@ struct PendingView: View {
     @State private var answers: [String: String] = [:]
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("NEEDS YOU · \(request.kind)").font(.headline).foregroundStyle(.orange)
-            Text("\(request.machineId) · \(relay.current?.project ?? "") · \(request.cwd ?? relay.current?.cwd ?? "")").font(.caption.monospaced())
+            Text(request.kind == "user_input" ? "Codex ha bisogno del tuo input" : request.kind == "command_approval" ? "Codex vuole eseguire" : request.kind == "file_approval" ? "Codex vuole modificare dei file" : request.kind == "permissions_approval" ? "Codex richiede un permesso" : "Codex richiede una decisione").font(.headline)
+            Text("\(relay.machines[request.machineId]?.name ?? request.machineId) · \(relay.current?.project ?? "")").font(.caption).foregroundStyle(.secondary)
             Text(request.description).textSelection(.enabled)
             if let operation = request.operation { Text(operation).font(.body.monospaced()).textSelection(.enabled) }
             ForEach(request.questions ?? []) { question in
@@ -215,7 +215,14 @@ struct PendingView: View {
                 Button(request.kind == "user_input" ? "Rispondi" : "Approva una volta") { Task { await relay.answer(request, decision: "approve", answers: answers.mapValues { [$0] }) } }.buttonStyle(.bordered).disabled(!relay.online || relay.current?.capabilities.canAnswer != true || (request.kind == "user_input" && (request.questions ?? []).contains { (answers[$0.id] ?? "").isEmpty }))
             }
             if request.kind != "unsupported" { Button("Rifiuta", role: .destructive) { Task { await relay.answer(request, decision: "reject") } }.disabled(!relay.online || relay.machines[request.machineId]?.status != "ONLINE" || relay.current?.capabilities.canAnswer != true) }
-        }.padding().background(Color.orange.opacity(0.07)).clipShape(RoundedRectangle(cornerRadius: 6))
+            if let progress = relay.requestProgress[request.presentationID] {
+                Text(progress).font(.caption).foregroundStyle(.secondary)
+            }
+            if let error = relay.requestErrors[request.presentationID] {
+                Text(error).font(.caption).foregroundStyle(.orange)
+            }
+        }.padding().background(Color.orange.opacity(0.07)).clipShape(RoundedRectangle(cornerRadius: 12))
+            .disabled(relay.requestProgress[request.presentationID] != nil)
     }
 }
 struct MCPRequestForm: View {

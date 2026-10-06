@@ -184,6 +184,10 @@ func (h *Hub) broadcast(m protocol.Message, session string) {
 		}
 	}
 }
+func samePending(a, b protocol.PendingRequest) bool {
+	return a.ID == b.ID && a.MachineID == b.MachineID && a.SessionID == b.SessionID && a.Kind == b.Kind && a.TurnID == b.TurnID && a.CreatedAt.Equal(b.CreatedAt)
+}
+
 func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	if msg.Version != protocol.Version || msg.Machine == nil || msg.Machine.ID != id || len(msg.Sessions) > protocol.MaxSessions || len(msg.Requests) > 128 || msg.Epoch == "" {
 		return errors.New("invalid announcement")
@@ -244,10 +248,18 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 			}
 		}
 	}
+	incoming := make(map[string]protocol.PendingRequest, len(msg.Requests))
+	for _, r := range msg.Requests {
+		incoming[r.ID] = r
+	}
 	for rid, r := range h.requests {
 		if r.MachineID == id {
+			next, exists := incoming[rid]
+			// Periodic announcements must not release an in-flight approval.
+			if !exists || a.epoch != msg.Epoch || !samePending(r, next) {
+				delete(h.answering, rid)
+			}
 			delete(h.requests, rid)
-			delete(h.answering, rid)
 		}
 	}
 	h.machines[id] = m
@@ -381,7 +393,6 @@ func (h *Hub) offline(id string, a *agentPeer) {
 	_ = h.store.SaveMachine(m)
 	for rid, r := range h.requests {
 		if r.MachineID == id {
-			delete(h.requests, rid)
 			delete(h.answering, rid)
 		}
 	}

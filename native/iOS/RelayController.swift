@@ -10,6 +10,9 @@ import UIKit
     var sessions: [String: RelaySession] = [:]
     var liveActivities: [String: LiveActivity] = [:]
     var requests: [String: PendingRequest] = [:]
+    var requestProgress: [String: String] = [:]
+    var requestErrors: [String: String] = [:]
+    private var requestCommands: [String: String] = [:]
     var chat = RecentChat()
     var historyCursor: String?
     var historyLoading = false
@@ -96,16 +99,30 @@ import UIKit
             guard let snapshot = message.snapshot else { return }
             liveActivities = snapshot.liveActivities ?? [:]
             machines = Dictionary(uniqueKeysWithValues: snapshot.machines.map { ($0.id, $0) }); sessions = Dictionary(uniqueKeysWithValues: snapshot.sessions.map { ($0.id, $0) })
-            requests = Dictionary(uniqueKeysWithValues: snapshot.requests.map { ($0.id, $0) }); online = true; connection = "Live · \(machines.values.filter { $0.status == "ONLINE" }.count) macchine"
+            requests = Dictionary(uniqueKeysWithValues: snapshot.requests.map { ($0.id, $0.retainingContext(from: requests[$0.id])) }); online = true; connection = "Live · \(machines.values.filter { $0.status == "ONLINE" }.count) macchine"
+            let activeRequests = Set(requests.values.map(\.presentationID))
+            requestProgress = requestProgress.filter { activeRequests.contains($0.key) }
+            requestErrors = requestErrors.filter { activeRequests.contains($0.key) }
             if !selected.isEmpty && !restoredWatch { await watchSelected() }
             Task { await loadDevices() }
         case "devices_changed": Task { await loadDevices() }
         case "event", "pending":
             guard let event = message.event else { return }
             if event.kind == "live_activity" { liveActivities[event.sessionId] = event.liveActivity; return }
-            if let id = event.eventId, !id.isEmpty { if seen.contains(id) { return }; seen.append(id); if seen.count > 1024 { seen.removeFirst(seen.count - 1024) } }
+            if let id = event.eventId, !id.isEmpty {
+                if seen.contains(id) {
+                    // The Hub sends a stripped fleet event, then the same event
+                    // ID with private form context to this session's watcher.
+                    if message.type == "pending", let incoming = event.request,
+                       let prior = requests[incoming.id], incoming.presentationID == prior.presentationID {
+                        requests[incoming.id] = incoming.retainingContext(from: prior)
+                    }
+                    return
+                }
+                seen.append(id); if seen.count > 1024 { seen.removeFirst(seen.count - 1024) }
+            }
             if let session = event.session { sessions[session.id] = session }
-            if let request = event.request { requests[request.id] = request }
+            if let request = event.request { requests[request.id] = request.retainingContext(from: requests[request.id]) }
             if event.kind == "request_resolved", let id = event.requestId { requests.removeValue(forKey: id) }
             if event.sessionId == selected {
                 if event.kind == "follow_up_queue" { outbox.queue(session: selected, entries: event.followUps ?? []) }
@@ -115,6 +132,13 @@ import UIKit
             }
         case "result":
             guard let result = message.result else { return }; commands.remove(result.id); outbox.result(result)
+            if let identity = requestCommands.removeValue(forKey: result.id) {
+                if result.ok { requestProgress[identity] = "Risposta inviata · attendo Codex" }
+                else {
+                    requestProgress[identity] = result.errorCode == "UNKNOWN_OUTCOME" ? "Esito da verificare in Codex" : nil
+                    requestErrors[identity] = result.error ?? "Risposta non riuscita."
+                }
+            }
             if result.sessionId == selected {
                 // New Hubs echo the watch's history ID. Legacy Hubs return an
                 // uncorrelated first page, accepted only during watch hydration.
@@ -188,11 +212,19 @@ import UIKit
         _ = await sendCommand(["id": UUID().uuidString, "kind": kind, "session_id": current.id, "turn_id": expectedTurn ?? current.turnId ?? ""])
     }
     func answer(_ request: PendingRequest, decision: String? = nil, answers: [String: [String]]? = nil, content: JSONValue? = nil) async {
-        guard requests[request.id] != nil, request.sessionId == selected, online, machines[request.machineId]?.status == "ONLINE", current?.capabilities.canAnswer == true else { error = "La richiesta è cambiata."; return }
-        var command: [String: Any] = ["id": UUID().uuidString, "kind": "answer", "session_id": request.sessionId, "request_id": request.id]
+        guard requests[request.id]?.presentationID == request.presentationID, requestProgress[request.presentationID] == nil, request.sessionId == selected, online, machines[request.machineId]?.status == "ONLINE", current?.capabilities.canAnswer == true else { error = "La richiesta è cambiata."; return }
+        let commandID = UUID().uuidString
+        requestProgress[request.presentationID] = "Invio della risposta…"
+        requestErrors[request.presentationID] = nil
+        requestCommands[commandID] = request.presentationID
+        var command: [String: Any] = ["id": commandID, "kind": "answer", "session_id": request.sessionId, "request_id": request.id]
         if let decision { command["decision"] = decision }; if let answers { command["answers"] = answers }
         if let content { command["content"] = content.foundation }
-        _ = await sendCommand(command)
+        if !(await sendCommand(command)) {
+            requestCommands.removeValue(forKey: commandID)
+            requestProgress[request.presentationID] = "Esito da verificare in Codex"
+            requestErrors[request.presentationID] = "Connessione interrotta durante l’invio. Verifica la richiesta prima di riprovare."
+        }
     }
     private func sendCommand(_ command: [String: Any]) async -> Bool {
         guard commands.count < 128, let id = command["id"] as? String else { error = "Troppe richieste in corso."; return false }
