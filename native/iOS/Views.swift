@@ -59,7 +59,7 @@ struct FleetView: View {
     @State private var filter = "ALL"
     @State private var search = ""
     private var browsingAll: Bool { !search.isEmpty || filter != "ALL" }
-    private var sorted: [RelaySession] { relay.sessions.values.sorted { $0.updatedAt == $1.updatedAt ? $0.id < $1.id : $0.updatedAt > $1.updatedAt } }
+    private var sorted: [RelaySession] { relay.fleetSessions.values.sorted { $0.updatedAt == $1.updatedAt ? $0.id < $1.id : $0.updatedAt > $1.updatedAt } }
     private func state(_ session: RelaySession) -> String { session.displayStatus(machine: relay.machines[session.machineId], connected: relay.online) }
     private var visible: [RelaySession] { sorted.filter { (filter == "ALL" || filter == "HISTORY" || state($0) == filter) && (search.isEmpty || "\($0.title) \($0.project) \($0.machineId)".localizedCaseInsensitiveContains(search)) } }
     var body: some View {
@@ -80,12 +80,32 @@ struct FleetView: View {
                 sessionSection("In corso", sessions: sorted.filter { state($0) == "WORKING" })
                 sessionSection("Recenti", sessions: Array(sorted.filter { !["WORKING", "NEEDS_YOU"].contains(state($0)) }.prefix(12)))
                 Section {
-                    Button { filter = "HISTORY" } label: { Label("Tutte le sessioni · \(relay.sessions.count)", systemImage: "clock.arrow.circlepath") }
+                    Button { filter = "HISTORY" } label: { Label("Tutte le sessioni · \(relay.fleetSessions.count)", systemImage: "clock.arrow.circlepath") }
                 }
             } else {
                 Section(filter == "HISTORY" || filter == "ALL" ? "Sessioni" : statusLabel(filter)) {
                     ForEach(visible) { session in FleetSessionRow(session: session) }
                     if visible.isEmpty && filter != "HISTORY" { ContentUnavailableView.search(text: search) }
+                }
+                if filter == "HISTORY" || !search.isEmpty {
+                    Section("Cronologia su Codex") {
+                        ForEach(relay.machines.values.sorted { $0.name < $1.name }) { machine in
+                            Group {
+                                Button {
+                                    if relay.catalogue.completed.contains(machine.id) { relay.catalogue.restart(machine: machine.id) }
+                                    Task { await relay.loadCatalogue(machine: machine.id) }
+                                } label: {
+                                    HStack {
+                                        Text((relay.catalogue.completed.contains(machine.id) ? "Rileggi cronologia · " : "Carica altre sessioni · ") + machine.name)
+                                        Spacer()
+                                        if relay.catalogueLoading.contains(machine.id) { ProgressView() }
+                                    }
+                                }.disabled(!relay.online || machine.status != "ONLINE" || relay.catalogueLoading.contains(machine.id))
+                                    .accessibilityIdentifier("catalogue.load." + machine.id)
+                            }
+                            if let error = relay.catalogueErrors[machine.id] { Text(error).font(.caption).foregroundStyle(.red) }
+                        }
+                    }
                 }
             }
         }

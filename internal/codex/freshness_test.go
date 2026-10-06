@@ -47,7 +47,11 @@ func TestSnapshotPagedLoadedAndPendingOutsideCatalogue(t *testing.T) {
 					result := any(map[string]any{})
 					switch m.Method {
 					case "thread/list":
-						result = map[string]any{"data": []any{}}
+						cold := make([]any, protocol.MaxSessions)
+						for i := range cold {
+							cold[i] = map[string]any{"id": fmt.Sprintf("cold-%03d", i), "updatedAt": 1, "status": map[string]any{"type": "notLoaded"}}
+						}
+						result = map[string]any{"data": cold}
 					case "thread/loaded/list":
 						if params["cursor"] == "second" {
 							result = map[string]any{"data": []string{"b"}}
@@ -96,7 +100,7 @@ func TestSnapshotPagedLoadedAndPendingOutsideCatalogue(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(sessions) != 3 || len(requests) != 1 {
+			if len(sessions) != protocol.MaxSessions || len(requests) != 1 {
 				t.Fatalf("lost live or pending thread: %d %d", len(sessions), len(requests))
 			}
 			found := false
@@ -107,6 +111,17 @@ func TestSnapshotPagedLoadedAndPendingOutsideCatalogue(t *testing.T) {
 			}
 			if !found {
 				t.Fatal("pending outside catalogue not hot")
+			}
+			if mode == "normal" {
+				live := 0
+				for _, session := range sessions {
+					if session.Status == protocol.Working {
+						live++
+					}
+				}
+				if live != 2 {
+					t.Fatal("history capacity evicted live sessions")
+				}
 			}
 		})
 	}

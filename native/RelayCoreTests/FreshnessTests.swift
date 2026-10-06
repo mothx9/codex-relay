@@ -23,4 +23,20 @@ final class FreshnessTests: XCTestCase {
         XCTAssertFalse(gate.accept(try event("new", 5)))
         XCTAssertFalse(gate.accept(try event("new", 6)))
     }
+    func testCatalogueIsBoundedAndCannotReplaceCanonicalPending() throws {
+        func session(_ i: Int, status: String = "INACTIVE") throws -> RelaySession {
+            try decode("{\"id\":\"m~\(i)\",\"machine_id\":\"m\",\"thread_id\":\"\(i)\",\"title\":\"test\",\"project\":\"test\",\"cwd\":\"/tmp\",\"status\":\"\(status)\",\"updated_at\":\"2026-10-07T00:00:00Z\",\"read_only\":true,\"capabilities\":{\"can_send\":false,\"can_follow_up\":false,\"can_steer\":false,\"can_interrupt\":false,\"can_answer\":false}}")
+        }
+        var catalogue = SessionCatalogue()
+        for page in 0..<12 {
+            catalogue.apply(machine: "m", page: try (page*100..<(page+1)*100).map { try session($0) }, cursor: page == 11 ? nil : "next")
+        }
+        XCTAssertEqual(catalogue.sessions.count, 1024)
+        XCTAssertTrue(catalogue.completed.contains("m"))
+        let live = try session(1199, status: "NEEDS_YOU")
+        XCTAssertEqual(catalogue.merged(canonical: [live.id: live])[live.id]?.status, "NEEDS_YOU")
+        catalogue.restart(machine: "m")
+        XCTAssertFalse(catalogue.completed.contains("m"))
+        XCTAssertNil(catalogue.cursors["m"])
+    }
 }

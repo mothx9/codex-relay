@@ -327,7 +327,7 @@ func (h *Hub) ui(w http.ResponseWriter, r *http.Request) {
 				delete(h.buffers, old)
 			}
 			if o.session != "" {
-				if _, known := h.sessions[o.session]; !known {
+				if _, known := h.discoverySession(o.session); !known {
 					o.session = ""
 					break
 				}
@@ -365,7 +365,7 @@ func (h *Hub) route(o *operator, c protocol.Command) {
 		r := protocol.Failure(c, code)
 		o.peer.Enqueue(protocol.Message{Type: "result", Result: &r})
 	}
-	if len(c.ID) < 16 || len(c.ID) > 128 || len(c.Text) > protocol.MaxText || len(c.Content) > 64<<10 || len(c.HistoryCursor) > 8192 || len(c.QueueID) > 256 || len(c.QueueClientID) > 128 || len(c.QueueRevision) > 64 {
+	if len(c.ID) < 16 || len(c.ID) > 128 || len(c.Text) > protocol.MaxText || len(c.Content) > 64<<10 || len(c.CatalogueCursor) > 8192 || len(c.HistoryCursor) > 8192 || len(c.QueueID) > 256 || len(c.QueueClientID) > 128 || len(c.QueueRevision) > 64 {
 		fail(protocol.CodexRejected)
 		return
 	}
@@ -378,6 +378,13 @@ func (h *Hub) route(o *operator, c protocol.Command) {
 		return
 	}
 	s, ok := h.sessions[c.SessionID]
+	if c.Kind == "catalogue" {
+		_, ok = h.machines[c.MachineID]
+		s = protocol.Session{MachineID: c.MachineID}
+		c.SessionID = ""
+	} else if !ok && (c.Kind == "history" || c.Kind == "attach") {
+		s, ok = h.discoverySession(c.SessionID)
+	}
 	if !ok {
 		fail(protocol.SessionReadOnly)
 		return
@@ -394,7 +401,7 @@ func (h *Hub) route(o *operator, c protocol.Command) {
 	}
 	c.ThreadID = s.ThreadID
 	switch c.Kind {
-	case "history", "attach":
+	case "history", "attach", "catalogue":
 	case protocol.QueueUpdate, protocol.NewTurn, protocol.Steer, protocol.FollowUpCommand, protocol.Interrupt:
 		if code := protocol.CheckControl(s, c); code != "" {
 			fail(code)
@@ -436,6 +443,20 @@ func (h *Hub) result(machine string, r protocol.Result) {
 	// Only allowlisted canonical codes and safe messages reach the operator.
 	if !r.OK {
 		r = protocol.Failure(protocol.Command{ID: r.ID, SessionID: r.SessionID}, r.ErrorCode)
+	}
+	if f.kind == "catalogue" && r.OK {
+		if !validCatalogue(machine, r) {
+			r = protocol.Failure(protocol.Command{ID: r.ID}, protocol.CodexRejected)
+		}
+		for i := range r.Sessions {
+			r.Sessions[i].ReadOnly = true
+			r.Sessions[i].Fresh = false
+			r.Sessions[i].Capabilities = protocol.Capabilities{}
+		}
+	} else {
+		r.Sessions = nil
+		r.CatalogueCursor = ""
+		r.MachineID = ""
 	}
 	if f.kind == "history" {
 		if b := h.buffers[f.session]; b != nil {
@@ -529,4 +550,30 @@ func (h *Hub) testPush(w http.ResponseWriter, r *http.Request) {
 	}
 	h.push.Enqueue(push.Notice{Key: "test/" + protocol.ID(), Kind: "test", SessionID: input.SessionID})
 	jsonResponse(w, map[string]bool{"queued": true})
+}
+
+// Unknown canonical identities may be read/attached, never controlled directly.
+func (h *Hub) discoverySession(id string) (protocol.Session, bool) {
+	if s, ok := h.sessions[id]; ok {
+		return s, true
+	}
+	machine, thread, ok := strings.Cut(id, "~")
+	_, known := h.machines[machine]
+	if !ok || !known || thread == "" || len(thread) > 256 || strings.ContainsAny(thread, "~\r\n\x00") {
+		return protocol.Session{}, false
+	}
+	return protocol.Session{ID: id, MachineID: machine, ThreadID: thread, ReadOnly: true}, true
+}
+func validCatalogue(machine string, r protocol.Result) bool {
+	if r.MachineID != machine || len(r.Sessions) > 100 || len(r.CatalogueCursor) > 8192 {
+		return false
+	}
+	seen := map[string]bool{}
+	for _, s := range r.Sessions {
+		if s.MachineID != machine || s.ThreadID == "" || len(s.ThreadID) > 256 || s.ID != protocol.SessionID(machine, s.ThreadID) || seen[s.ID] || len(s.Title) > 128 || len(s.Cwd) > 1024 {
+			return false
+		}
+		seen[s.ID] = true
+	}
+	return true
 }

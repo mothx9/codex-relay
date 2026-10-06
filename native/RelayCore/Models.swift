@@ -121,6 +121,7 @@ public struct RelayEvent: Decodable, Sendable {
     public let timestamp: String?; public let followUps: [FollowUp]?
 }
 public struct CommandResult: Decodable, Sendable {
+    public let machineId: String?; public let catalogueCursor: String?; public let sessions: [RelaySession]?
     public let id: String; public let ok: Bool; public let error: String?; public let errorCode: String?; public let sessionId: String?
     public let history: [Activity]?; public let historyCursor: String?; public let followUps: [FollowUp]?
 }
@@ -310,5 +311,27 @@ public struct ReceiptTiming: Sendable {
         let ms = received.timeIntervalSince(date) * 1000
         guard ms >= 0, ms < 300_000 else { clockSkew = true; return }
         samples = min(samples + 1, 1024); hubToNativeMs = ms
+    }
+}
+
+/// Bounded discovery cache. Canonical live sessions always win over catalogue pages.
+public struct SessionCatalogue: Sendable {
+    public private(set) var sessions: [String: RelaySession] = [:]
+    public private(set) var cursors: [String: String] = [:]
+    public private(set) var completed: Set<String> = []
+    public init() {}
+    public mutating func apply(machine: String, page: [RelaySession], cursor: String?) {
+        for session in page where session.machineId == machine { sessions[session.id] = session }
+        cursors[machine] = cursor
+        if cursor == nil || cursor == "" { completed.insert(machine) }
+        if sessions.count > 1024 {
+            let incoming = Set(page.map(\.id))
+            let oldest = sessions.values.filter { !incoming.contains($0.id) }.sorted { $0.updatedAt < $1.updatedAt }
+            for session in oldest.prefix(sessions.count - 1024) { sessions.removeValue(forKey: session.id) }
+        }
+    }
+    public mutating func restart(machine: String) { cursors[machine] = nil; completed.remove(machine) }
+    public func merged(canonical: [String: RelaySession]) -> [String: RelaySession] {
+        sessions.merging(canonical) { _, current in current }
     }
 }

@@ -214,7 +214,7 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 					continue
 				}
 				r := b.Execute(ctx, cmd)
-				if cmd.Kind != "history" {
+				if cmd.Kind != "history" && cmd.Kind != "catalogue" {
 					cache[cmd.ID] = r
 					*order = append(*order, cmd.ID)
 					if len(*order) > 1024 {

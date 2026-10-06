@@ -193,32 +193,37 @@ type Event struct {
 	ClientID      string          `json:"client_id,omitempty"`
 }
 type Command struct {
-	QueueID       string              `json:"queue_id,omitempty"`
-	QueueClientID string              `json:"queue_client_id,omitempty"`
-	QueueRevision string              `json:"queue_revision,omitempty"`
-	HistoryCursor string              `json:"history_cursor,omitempty"`
-	ID            string              `json:"id"`
-	Kind          string              `json:"kind"`
-	SessionID     string              `json:"session_id"`
-	ThreadID      string              `json:"thread_id,omitempty"`
-	Text          string              `json:"text,omitempty"`
-	TurnID        string              `json:"turn_id,omitempty"`
-	RequestID     string              `json:"request_id,omitempty"`
-	Decision      string              `json:"decision,omitempty"`
-	Answers       map[string][]string `json:"answers,omitempty"`
-	Content       json.RawMessage     `json:"content,omitempty"`
+	MachineID       string              `json:"machine_id,omitempty"`
+	CatalogueCursor string              `json:"catalogue_cursor,omitempty"`
+	QueueID         string              `json:"queue_id,omitempty"`
+	QueueClientID   string              `json:"queue_client_id,omitempty"`
+	QueueRevision   string              `json:"queue_revision,omitempty"`
+	HistoryCursor   string              `json:"history_cursor,omitempty"`
+	ID              string              `json:"id"`
+	Kind            string              `json:"kind"`
+	SessionID       string              `json:"session_id"`
+	ThreadID        string              `json:"thread_id,omitempty"`
+	Text            string              `json:"text,omitempty"`
+	TurnID          string              `json:"turn_id,omitempty"`
+	RequestID       string              `json:"request_id,omitempty"`
+	Decision        string              `json:"decision,omitempty"`
+	Answers         map[string][]string `json:"answers,omitempty"`
+	Content         json.RawMessage     `json:"content,omitempty"`
 }
 type Result struct {
-	HistoryCursor string     `json:"history_cursor,omitempty"`
-	ID            string     `json:"id"`
-	OK            bool       `json:"ok"`
-	Error         string     `json:"error,omitempty"`
-	History       []Activity `json:"history,omitempty"`
-	SessionID     string     `json:"session_id,omitempty"`
-	ErrorCode     string     `json:"error_code,omitempty"`
-	Retryable     bool       `json:"retryable"`
-	QueueID       string     `json:"queue_id,omitempty"`
-	FollowUps     []FollowUp `json:"follow_ups,omitempty"`
+	MachineID       string     `json:"machine_id,omitempty"`
+	CatalogueCursor string     `json:"catalogue_cursor,omitempty"`
+	Sessions        []Session  `json:"sessions,omitempty"`
+	HistoryCursor   string     `json:"history_cursor,omitempty"`
+	ID              string     `json:"id"`
+	OK              bool       `json:"ok"`
+	Error           string     `json:"error,omitempty"`
+	History         []Activity `json:"history,omitempty"`
+	SessionID       string     `json:"session_id,omitempty"`
+	ErrorCode       string     `json:"error_code,omitempty"`
+	Retryable       bool       `json:"retryable"`
+	QueueID         string     `json:"queue_id,omitempty"`
+	FollowUps       []FollowUp `json:"follow_ups,omitempty"`
 }
 type Snapshot struct {
 	LiveActivities map[string]LiveActivity `json:"live_activities,omitempty"`

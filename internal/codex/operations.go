@@ -287,9 +287,31 @@ func (a *Adapter) Execute(ctx context.Context, c protocol.Command) protocol.Resu
 		return protocol.Failure(c, protocol.CodexDisconnected)
 	default:
 	}
+	if c.Kind == "catalogue" {
+		return a.catalogue(ctx, c)
+	}
 	a.mu.Lock()
 	s, exists := a.sessions[c.ThreadID]
 	a.mu.Unlock()
+	if !exists && (c.Kind == "history" || c.Kind == "attach") {
+		// Reading a cold thread must not resume it or grant control implicitly.
+		var view struct {
+			Thread thread `json:"thread"`
+		}
+		raw, err := a.rpc(ctx, "thread/read", map[string]any{"threadId": c.ThreadID, "includeTurns": false})
+		if err != nil || decode(raw, &view) != nil || view.Thread.ID != c.ThreadID {
+			return protocol.Failure(c, protocol.CodexRejected)
+		}
+		a.mu.Lock()
+		s, exists = a.sessions[c.ThreadID]
+		if !exists {
+			s = a.session(view.Thread, false)
+			a.sessions[c.ThreadID] = s
+		}
+		a.mu.Unlock()
+		a.emit(protocol.Event{Kind: "session", SessionID: s.ID, Session: &s})
+		exists = true
+	}
 	if !exists {
 		return protocol.Failure(c, protocol.SessionReadOnly)
 	}
@@ -485,4 +507,33 @@ func (a *Adapter) subscribeLoop() {
 			}
 		}
 	}
+}
+
+// Catalogue pages are ephemeral discovery metadata, independent of live snapshots.
+func (a *Adapter) catalogue(ctx context.Context, c protocol.Command) protocol.Result {
+	if c.MachineID != a.cfg.MachineID || len(c.CatalogueCursor) > 8192 {
+		return protocol.Failure(c, protocol.CodexRejected)
+	}
+	params := map[string]any{"limit": 100, "sortKey": "updated_at", "sourceKinds": []string{"cli", "vscode", "appServer", "exec"}, "useStateDbOnly": true}
+	if c.CatalogueCursor != "" {
+		params["cursor"] = c.CatalogueCursor
+	}
+	var page struct {
+		Data       []thread `json:"data"`
+		NextCursor string   `json:"nextCursor"`
+	}
+	raw, err := a.rpc(ctx, "thread/list", params)
+	if err != nil || decode(raw, &page) != nil || len(page.Data) > 100 || len(page.NextCursor) > 8192 || (page.NextCursor != "" && page.NextCursor == c.CatalogueCursor) {
+		return protocol.Failure(c, protocol.CodexRejected)
+	}
+	result := protocol.Result{ID: c.ID, OK: true, MachineID: a.cfg.MachineID, CatalogueCursor: page.NextCursor}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, t := range page.Data {
+		s := a.session(t, false)
+		s.ReadOnly = true
+		s.Capabilities = protocol.Capabilities{}
+		result.Sessions = append(result.Sessions, s)
+	}
+	return result
 }

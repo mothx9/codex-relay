@@ -8,6 +8,11 @@ import UIKit
     var credential: Credential?
     var machines: [String: Machine] = [:]
     var sessions: [String: RelaySession] = [:]
+    var catalogue = SessionCatalogue()
+    var catalogueLoading: Set<String> = []
+    var catalogueErrors: [String: String] = [:]
+    private var catalogueCommands: [String: (machine: String, epoch: String?)] = [:]
+    var fleetSessions: [String: RelaySession] { catalogue.merged(canonical: sessions) }
     var liveActivities: [String: LiveActivity] = [:]
     var requests: [String: PendingRequest] = [:]
     var requestProgress: [String: String] = [:]
@@ -56,7 +61,7 @@ import UIKit
         if !previewOnly { credential = CredentialVault.load(); if credential != nil { connect() } }
     }
     var api: HubAPI? { previewOnly ? nil : credential.flatMap { try? HubAPI(url: $0.hubUrl, token: $0.token) } }
-    var current: RelaySession? { sessions[selected] }
+    var current: RelaySession? { sessions[selected] ?? catalogue.sessions[selected] }
     func pair(url: String, code: String) async {
         guard !previewOnly else { return }
         guard !busy else { return }; busy = true; defer { busy = false }
@@ -90,7 +95,7 @@ import UIKit
                     }
                 } catch {
                     guard self.generation == generation, !Task.isCancelled else { return }
-                    self.online = false; self.restoredWatch = false; self.historyLoading = false; self.historyRequestID = nil; self.outbox.disconnected(); for id in Array(self.queueWaiters.keys) { self.finishQueueEditUnknown(id) }; self.commands.removeAll(); self.socket?.cancel(with: .goingAway, reason: nil); self.transport?.invalidateAndCancel()
+                    self.online = false; self.restoredWatch = false; self.historyLoading = false; self.historyRequestID = nil; self.outbox.disconnected(); for id in Array(self.queueWaiters.keys) { self.finishQueueEditUnknown(id) }; self.commands.removeAll(); self.catalogueCommands.removeAll(); self.catalogueLoading.removeAll(); self.socket?.cancel(with: .goingAway, reason: nil); self.transport?.invalidateAndCancel()
                     self.connection = "Offline · riconnessione"
                     if let hubError = error as? HubFailure {
                         if hubError.authenticationRequired { self.forget(); self.error = hubError.localizedDescription; return }
@@ -145,6 +150,15 @@ import UIKit
             }
         case "result":
             guard let result = message.result else { return }; commands.remove(result.id); outbox.result(result)
+            if let page = catalogueCommands.removeValue(forKey: result.id) {
+                catalogueLoading.remove(page.machine)
+                guard machines[page.machine]?.freshness?.epoch == page.epoch else { return }
+                if result.ok, result.machineId == page.machine {
+                    catalogue.apply(machine: page.machine, page: result.sessions ?? [], cursor: result.catalogueCursor)
+                    catalogueErrors[page.machine] = nil
+                } else { catalogueErrors[page.machine] = result.error ?? "Cronologia non disponibile." }
+                return
+            }
             if let identity = requestCommands.removeValue(forKey: result.id) {
                 if result.ok { requestProgress[identity] = "Risposta inviata · attendo Codex" }
                 else {
@@ -179,6 +193,17 @@ import UIKit
                 waiter.resume(returning: result.ok)
             } else if !result.ok && !handledHistory { error = result.error ?? "Comando rifiutato." }
         default: break
+        }
+    }
+    func loadCatalogue(machine: String) async {
+        guard online, machines[machine]?.status == "ONLINE", !catalogueLoading.contains(machine), !catalogue.completed.contains(machine) else { return }
+        let id = UUID().uuidString
+        catalogueLoading.insert(machine); catalogueErrors[machine] = nil
+        catalogueCommands[id] = (machine, machines[machine]?.freshness?.epoch)
+        let sent = await sendCommand(["id": id, "kind": "catalogue", "machine_id": machine, "session_id": "", "catalogue_cursor": catalogue.cursors[machine] ?? ""])
+        if !sent {
+            catalogueCommands.removeValue(forKey: id); catalogueLoading.remove(machine)
+            catalogueErrors[machine] = "Hub non connesso. Riprova quando torna online."
         }
     }
     private func watchSelected() async {
@@ -333,9 +358,9 @@ import UIKit
         do { let _: Ack = try await api.fetch("api/logout", body: [:]); forget() }
         catch { settingsErrors["logout"] = "Accesso non revocato. " + error.localizedDescription }
     }
-    func forget() { guard !previewOnly else { return }; stop(); CredentialVault.clear(); credential = nil; pushRegistered = false; settingsErrors = [:]; machines = [:]; sessions = [:]; liveActivities = [:]; requests = [:]; registry = nil; pairCode = nil; selected = ""; chat = RecentChat(); outbox = Outbox(); connection = "Accesso richiesto" }
+    func forget() { guard !previewOnly else { return }; stop(); CredentialVault.clear(); credential = nil; pushRegistered = false; settingsErrors = [:]; machines = [:]; sessions = [:]; catalogue = SessionCatalogue(); catalogueErrors = [:]; liveActivities = [:]; requests = [:]; registry = nil; pairCode = nil; selected = ""; chat = RecentChat(); outbox = Outbox(); connection = "Accesso richiesto" }
     func background() { guard !previewOnly else { return }; paused = true; lastBackground = Date(); stop() }
     func foreground() { guard !previewOnly else { return }; paused = false; outbox.prune(active: ""); if let lastBackground, Date().timeIntervalSince(lastBackground) > 300 { outbox = Outbox(); chat = RecentChat(); historyCursor = nil }; connect() }
-    private func stop() { for id in Array(queueWaiters.keys) { finishQueueEditUnknown(id) }; chat.endHistory(); restoredWatch = false; historyLoading = false; historyRequestID = nil; generation = UUID(); loop?.cancel(); loop = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; transport?.invalidateAndCancel(); transport = nil; online = false; commands.removeAll(); outbox.disconnected() }
+    private func stop() { for id in Array(queueWaiters.keys) { finishQueueEditUnknown(id) }; chat.endHistory(); restoredWatch = false; historyLoading = false; historyRequestID = nil; generation = UUID(); loop?.cancel(); loop = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; transport?.invalidateAndCancel(); transport = nil; online = false; commands.removeAll(); catalogueCommands.removeAll(); catalogueLoading.removeAll(); outbox.disconnected() }
 }
 private struct AckBootstrap: Decodable, Sendable { let version: Int; let secure: Bool; let nativePush: Bool? }
