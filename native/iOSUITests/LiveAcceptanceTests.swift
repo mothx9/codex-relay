@@ -31,7 +31,9 @@ import XCTest
         XCTAssertTrue(composer.waitForExistence(timeout: 10))
         XCTAssertTrue(composer.isHittable)
         XCTAssertTrue(app.staticTexts["question.preview-question.0"].exists)
-        wait(10) { app.staticTexts["FOLLOW-UP · IN CODA"].isHittable }
+        let queued = app.staticTexts["FOLLOW-UP · IN CODA"]
+        wait(10) { queued.isHittable }
+        XCTAssertLessThanOrEqual(queued.frame.maxY, composer.frame.minY, "queued=\(queued.frame) composer=\(composer.frame) type=\(composer.elementType.rawValue)")
         let send = app.buttons["composer.send"]
         XCTAssertEqual(send.label, "Invia follow-up")
         XCTAssertFalse(send.isEnabled)

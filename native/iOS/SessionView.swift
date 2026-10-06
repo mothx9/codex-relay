@@ -13,6 +13,7 @@ struct SessionView: View {
     @State private var unread = false
     @State private var submitting = false
     @State private var scrollRequest = 0
+    @State private var visibleItem: String? = "transcript.bottom"
     @FocusState private var composing: Bool
     private let bottomID = "transcript.bottom"
 
@@ -27,8 +28,10 @@ struct SessionView: View {
 
     var body: some View {
         if let session = relay.current {
-            transcript(session)
-                .safeAreaInset(edge: .bottom, spacing: 0) { composer(session).padding(.horizontal, 16).padding(.vertical, 8) }
+            VStack(spacing: 0) {
+                transcript(session)
+                composer(session).padding(.horizontal, 16).padding(.vertical, 8)
+            }
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .principal) {
@@ -95,9 +98,9 @@ struct SessionView: View {
                             .background(GeometryReader { geometry in
                                 Color.clear.preference(key: TranscriptBottom.self, value: geometry.frame(in: .named("transcript")).maxY)
                             })
-                    }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
+                    }.scrollTargetLayout().padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
                 }
-                .modifier(InitialTranscriptAnchor())
+                .scrollPosition(id: $visibleItem, anchor: .bottom)
                 .coordinateSpace(name: "transcript")
                 .scrollDismissesKeyboard(.interactively)
                 .onPreferenceChange(TranscriptBottom.self) { value in
@@ -189,16 +192,6 @@ struct SessionView: View {
 private struct TranscriptBottom: PreferenceKey {
     static let defaultValue: CGFloat = .greatestFiniteMagnitude
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-}
-
-private struct InitialTranscriptAnchor: ViewModifier {
-    @ViewBuilder func body(content: Content) -> some View {
-        if #available(iOS 18.0, *) {
-            content.defaultScrollAnchor(.bottom, for: .initialOffset)
-        } else {
-            content.defaultScrollAnchor(.bottom)
-        }
-    }
 }
 
 private struct ComposerSurface: ViewModifier {
