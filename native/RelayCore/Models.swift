@@ -41,6 +41,7 @@ public struct PendingRequest: Codable, Identifiable, Sendable {
     public var id: String { requestId }; public let requestId: String; public let sessionId: String; public let machineId: String
     public let kind: String; public let description: String; public let operation: String?; public let cwd: String?
     public let questions: [Question]?; public let expiresAt: String; public let canApprove: Bool
+    public let payload: RequestPayload?
 }
 public struct Snapshot: Decodable, Sendable { public let machines: [Machine]; public let sessions: [RelaySession]; public let requests: [PendingRequest] }
 public struct RelayEvent: Decodable, Sendable {
@@ -63,4 +64,141 @@ public struct Ack: Decodable, Sendable { public let ok: Bool }
 public enum RelayJSON {
     public static func decoder() -> JSONDecoder { let d = JSONDecoder(); d.keyDecodingStrategy = .convertFromSnakeCase; return d }
     public static func encoder() -> JSONEncoder { let e = JSONEncoder(); e.keyEncodingStrategy = .convertToSnakeCase; return e }
+}
+
+// Arbitrary MCP keys must never pass through snake-case conversion.
+public indirect enum JSONValue: Codable, Equatable, Sendable {
+    case object([String: JSONValue]), array([JSONValue]), string(String), number(Double), bool(Bool), null
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        if c.decodeNil() { self = .null }
+        else if let v = try? c.decode(Bool.self) { self = .bool(v) }
+        else if let v = try? c.decode(String.self) { self = .string(v) }
+        else if let v = try? c.decode(Double.self) { self = .number(v) }
+        else if let v = try? c.decode([String: JSONValue].self) { self = .object(v) }
+        else { self = .array(try c.decode([JSONValue].self)) }
+    }
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.singleValueContainer()
+        switch self {
+        case .object(let v): try c.encode(v)
+        case .array(let v): try c.encode(v)
+        case .string(let v): try c.encode(v)
+        case .number(let v): try c.encode(v)
+        case .bool(let v): try c.encode(v)
+        case .null: try c.encodeNil()
+        }
+    }
+    public var object: [String: JSONValue]? { if case .object(let v) = self { return v }; return nil }
+    public var array: [JSONValue]? { if case .array(let v) = self { return v }; return nil }
+    public var string: String? { if case .string(let v) = self { return v }; return nil }
+    public var number: Double? { if case .number(let v) = self { return v }; return nil }
+    public var pretty: String {
+        let e = JSONEncoder(); e.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        return (try? e.encode(self)).flatMap { String(data: $0, encoding: .utf8) } ?? "null"
+    }
+    public var foundation: Any {
+        switch self {
+        case .object(let v): return v.mapValues { $0.foundation }
+        case .array(let v): return v.map { $0.foundation }
+        case .string(let v): return v
+        case .number(let v): return v
+        case .bool(let v): return v
+        case .null: return NSNull()
+        }
+    }
+}
+public struct RequestPayload: Codable, Sendable {
+    public let permissions: JSONValue?
+    public let inputSchema: JSONValue?
+}
+public enum MCPResponse {
+    public static func parse(_ text: String, schema: JSONValue) throws -> JSONValue {
+        guard text.utf8.count <= 65_536 else { throw HubFailure.message("Risposta troppo grande (massimo 64 KiB).") }
+        let value: JSONValue
+        do { value = try JSONDecoder().decode(JSONValue.self, from: Data(text.utf8)) }
+        catch { throw HubFailure.message("Inserisci una risposta JSON valida.") }
+        guard value.object != nil else { throw HubFailure.message("La risposta MCP deve essere un oggetto JSON.") }
+        try validate(value, schema: schema, path: "Risposta", depth: 0)
+        return value
+    }
+    public static func fields(_ values: [String: String], schema: JSONValue) throws -> JSONValue {
+        guard let properties = schema.object?["properties"]?.object else { return try parse("{}", schema: schema) }
+        var content: [String: JSONValue] = [:]
+        for (key, property) in properties {
+            guard let text = values[key], !text.isEmpty else { continue }
+            if let choices = property.object?["enum"]?.array {
+                guard let choice = choices.first(where: { ($0.string ?? $0.pretty) == text }) else { throw HubFailure.message("\(key): scegli un valore previsto.") }
+                content[key] = choice
+            } else if property.object?["type"]?.string == "string" { content[key] = .string(text) }
+            else {
+                do { content[key] = try JSONDecoder().decode(JSONValue.self, from: Data(text.utf8)) }
+                catch { throw HubFailure.message("\(key): inserisci un valore valido per il tipo richiesto.") }
+            }
+        }
+        return try parse(JSONValue.object(content).pretty, schema: schema)
+    }
+    private static func validate(_ value: JSONValue, schema: JSONValue, path: String, depth: Int) throws {
+        func fail(_ reason: String) throws { throw HubFailure.message("\(path): \(reason)") }
+        guard depth < 20 else { try fail("schema troppo annidato; usa Codex locale."); return }
+        if schema == .bool(true) { return }
+        if schema == .bool(false) { try fail("valore non consentito."); return }
+        guard let s = schema.object else { try fail("schema non valido."); return }
+        let unsupported = ["$ref", "$dynamicRef", "patternProperties", "dependentSchemas", "dependentRequired", "if", "then", "else", "prefixItems", "contains", "unevaluatedProperties", "unevaluatedItems"]
+        if unsupported.contains(where: { s[$0] != nil }) { try fail("schema avanzato: risolvi questa richiesta da Codex locale.") }
+        if let choices = s["enum"]?.array, !choices.contains(value) { try fail("valore non previsto dallo schema.") }
+        if let constant = s["const"], constant != value { try fail("valore diverso da quello richiesto.") }
+        if let types = s["type"] {
+            let allowed = types.array?.compactMap(\.string) ?? types.string.map { [$0] } ?? []
+            let type: String
+            switch value { case .object: type = "object"; case .array: type = "array"; case .string: type = "string"; case .number: type = "number"; case .bool: type = "boolean"; case .null: type = "null" }
+            let integer = value.number.map { $0.isFinite && $0.rounded() == $0 } ?? false
+            if !allowed.contains(type) && !(integer && allowed.contains("integer")) { try fail("tipo richiesto: \(allowed.joined(separator: ", ")).") }
+        }
+        for sub in s["allOf"]?.array ?? [] { try validate(value, schema: sub, path: path, depth: depth+1) }
+        for key in ["anyOf", "oneOf"] {
+            if let alternatives = s[key]?.array {
+                let matches = alternatives.filter { (try? validate(value, schema: $0, path: path, depth: depth+1)) != nil }.count
+                if matches == 0 || (key == "oneOf" && matches != 1) { try fail("risposta non conforme alle alternative dello schema.") }
+            }
+        }
+        if let negation = s["not"], (try? validate(value, schema: negation, path: path, depth: depth+1)) != nil { try fail("valore escluso dallo schema.") }
+        if let object = value.object {
+            for key in s["required"]?.array?.compactMap(\.string) ?? [] where object[key] == nil { try fail("manca il campo \(key).") }
+            let properties = s["properties"]?.object ?? [:]
+            for (key, field) in object {
+                if let property = properties[key] { try validate(field, schema: property, path: path+"."+key, depth: depth+1) }
+                else if s["additionalProperties"] == .bool(false) { try fail("campo non previsto: \(key).") }
+                else if let extra = s["additionalProperties"], extra.object != nil { try validate(field, schema: extra, path: path+"."+key, depth: depth+1) }
+            }
+            if let min = s["minProperties"]?.number, Double(object.count) < min { try fail("troppi pochi campi.") }
+            if let max = s["maxProperties"]?.number, Double(object.count) > max { try fail("troppi campi.") }
+        }
+        if let text = value.string {
+            if let min = s["minLength"]?.number, Double(text.unicodeScalars.count) < min { try fail("testo troppo corto.") }
+            if let max = s["maxLength"]?.number, Double(text.unicodeScalars.count) > max { try fail("testo troppo lungo.") }
+            if let pattern = s["pattern"]?.string {
+                guard let regex = try? NSRegularExpression(pattern: pattern) else { try fail("pattern non compatibile; usa Codex locale."); return }
+                if regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) == nil { try fail("testo non conforme al pattern.") }
+            }
+        }
+        if let number = value.number {
+            if let min = s["minimum"]?.number, number < min { try fail("valore inferiore al minimo.") }
+            if let max = s["maximum"]?.number, number > max { try fail("valore superiore al massimo.") }
+            if let min = s["exclusiveMinimum"]?.number, number <= min { try fail("valore inferiore o uguale al limite.") }
+            if let max = s["exclusiveMaximum"]?.number, number >= max { try fail("valore superiore o uguale al limite.") }
+            if let step = s["multipleOf"]?.number {
+                if step <= 0 || abs(number/step - (number/step).rounded()) > 1e-9 { try fail("valore non multiplo del passo richiesto.") }
+            }
+        }
+        if let array = value.array {
+            if let min = s["minItems"]?.number, Double(array.count) < min { try fail("troppi pochi elementi.") }
+            if let max = s["maxItems"]?.number, Double(array.count) > max { try fail("troppi elementi.") }
+            if s["uniqueItems"] == .bool(true), Set(array.map(\.pretty)).count != array.count { try fail("elementi duplicati.") }
+            if let items = s["items"] {
+                guard items.object != nil || items == .bool(true) || items == .bool(false) else { try fail("schema degli elementi non compatibile."); return }
+                for (i,item) in array.enumerated() { try validate(item, schema: items, path: path+"[\(i)]", depth: depth+1) }
+            }
+        }
+    }
 }

@@ -22,9 +22,9 @@ struct PairingView: View {
         Form {
             Section("Collega questo iPhone") {
                 Text("Sul computer genera un codice dal Hub, oppure da Dispositivi su un client già abbinato. È valido per 5 minuti.").foregroundStyle(.secondary)
-                TextField("https://tuo-hub", text: $url).textContentType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
-                TextField("Codice di 8 cifre", text: $code).textContentType(.oneTimeCode)
-                Button(relay.busy ? "Abbinamento…" : "Abbina") { Task { await relay.pair(url: url, code: code); code = "" } }.disabled(relay.busy || code.filter(\.isNumber).count != 8)
+                TextField("https://tuo-hub", text: $url).textContentType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled().accessibilityIdentifier("pairing.url")
+                TextField("Codice di 8 cifre", text: $code).textContentType(.oneTimeCode).accessibilityIdentifier("pairing.code")
+                Button(relay.busy ? "Abbinamento…" : "Abbina") { Task { await relay.pair(url: url, code: code); code = "" } }.disabled(relay.busy || code.filter(\.isNumber).count != 8).accessibilityIdentifier("pairing.submit")
             }
             Section { Text("L’accesso di questo dispositivo è protetto nel Portachiavi iOS. Il token amministratore rimane sul Hub.").font(.footnote).foregroundStyle(.secondary) }
         }
@@ -38,7 +38,7 @@ struct FleetView: View {
     var visible: [RelaySession] { relay.sessions.values.filter { (filter == "ALL" || $0.status == filter) && (search.isEmpty || "\($0.title) \($0.project) \($0.machineId)".localizedCaseInsensitiveContains(search)) }.sorted { $0.updatedAt > $1.updatedAt } }
     var body: some View {
         VStack(spacing: 0) {
-            Text(relay.connection).font(.caption.monospaced()).foregroundStyle(relay.online ? .green : .secondary).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal)
+            Text(relay.connection).font(.caption.monospaced()).foregroundStyle(relay.online ? .green : .secondary).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal).accessibilityIdentifier("fleet.connection")
             ScrollView(.horizontal, showsIndicators: false) { HStack { ForEach(statuses, id: \.self) { value in
                 Button { filter = value } label: { Text("\(statusLabel(value)) \(relay.sessions.values.filter { value == "ALL" || $0.status == value }.count)").font(.caption).padding(8).background(filter == value ? Color.white.opacity(0.13) : Color.clear).clipShape(RoundedRectangle(cornerRadius: 5)) }
             } }.padding(.horizontal) }
@@ -54,7 +54,7 @@ struct FleetView: View {
                             }
                             Spacer(); Text(relay.machines[session.machineId]?.status == "ONLINE" ? statusLabel(session.status) : "Offline").font(.caption).foregroundStyle(statusColor(session.status))
                         }.foregroundStyle(.primary).padding(.vertical, 4)
-                    }
+                    }.accessibilityIdentifier("session." + session.id)
                 }
                 if visible.isEmpty { Text(relay.online ? "Nessuna sessione" : "Connessione al Hub…").foregroundStyle(.secondary) }
             }.listStyle(.plain)
@@ -77,12 +77,12 @@ struct SessionView: View {
                     DisclosureGroup("Contesto") { VStack(alignment: .leading) { Text(session.cwd); Text(session.branch ?? ""); Text(session.threadId) }.font(.caption.monospaced()).textSelection(.enabled) }
                     ForEach(relay.requests.values.filter { $0.sessionId == session.id }.sorted { $0.id < $1.id }) { PendingView(request: $0) }
                     ForEach(relay.chat.items) { activity in
-                        VStack(alignment: .leading, spacing: 6) { Text(activity.kind == "userMessage" ? "ME" : activity.kind == "agentMessage" || activity.kind == "delta" ? "CODEX" : activity.kind.uppercased()).font(.caption.monospaced()).foregroundStyle(.secondary); Text(activity.text).font(.body.monospaced()).textSelection(.enabled) }.frame(maxWidth: .infinity, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 6) { Text(activity.kind == "userMessage" ? "ME" : activity.kind == "agentMessage" || activity.kind == "delta" ? "CODEX" : activity.kind.uppercased()).font(.caption.monospaced()).foregroundStyle(.secondary); Text(activity.text).font(.body.monospaced()).textSelection(.enabled).accessibilityIdentifier("activity." + activity.kind + "." + activity.id) }.frame(maxWidth: .infinity, alignment: .leading)
                     }
                     ForEach(relay.outbox.visible(session: session.id)) { item in
                         VStack(alignment: .leading, spacing: 6) {
                             Text("ME · \(item.kind == "follow_up" ? "FOLLOW-UP" : item.kind == "steer" ? "STEER" : "NEW TURN") · \(item.phase.rawValue)").font(.caption.monospaced()).foregroundStyle(.secondary)
-                            Text(item.text).textSelection(.enabled)
+                            Text(item.text).textSelection(.enabled).accessibilityIdentifier("outbox." + item.id)
                             if item.phase == .failed {
                                 Text(item.error ?? "Invio fallito").font(.caption).foregroundStyle(.orange)
                                 if session.allows(item.kind) { Button(item.errorCode == "UNKNOWN_OUTCOME" ? "Ho verificato Codex: reinvia" : "Riprova") { Task { await relay.retry(item) } }.disabled(!relay.online) }
@@ -98,10 +98,10 @@ struct SessionView: View {
                     if ["READY", "WORKING"].contains(session.status), !session.readOnly {
                         VStack(alignment: .leading) {
                             Text(steer ? "Steer modifica il lavoro ATTUALMENTE in corso." : session.status == "WORKING" ? "Codex eseguirà il follow-up dopo il lavoro corrente." : "Avvia un nuovo turno.").font(.caption).foregroundStyle(.secondary)
-                            TextField(steer ? "Correggi il lavoro in corso…" : session.status == "WORKING" ? "Aggiungi un follow-up…" : "Scrivi a Codex…", text: $draft, axis: .vertical).lineLimit(2...8).padding(10).background(Color.white.opacity(0.07)).clipShape(RoundedRectangle(cornerRadius: 6))
+                            TextField(steer ? "Correggi il lavoro in corso…" : session.status == "WORKING" ? "Aggiungi un follow-up…" : "Scrivi a Codex…", text: $draft, axis: .vertical).lineLimit(2...8).padding(10).background(Color.white.opacity(0.07)).clipShape(RoundedRectangle(cornerRadius: 6)).accessibilityIdentifier("composer.text")
                             Button(steer ? "Invia Steer" : session.status == "WORKING" ? "Invia follow-up" : "Invia") {
                                 let text = draft; Task { if await relay.submit(text, kind: steer ? "steer" : nil, expectedTurn: steer ? expectedTurn : nil) { draft = ""; steer = false } }
-                            }.buttonStyle(.borderedProminent).disabled(!relay.online || !session.allows(steer ? "steer" : session.defaultCommand) || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            }.buttonStyle(.borderedProminent).disabled(!relay.online || !session.allows(steer ? "steer" : session.defaultCommand) || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).accessibilityIdentifier("composer.send")
                         }
                     }
                     DisclosureGroup("Azioni sul turno corrente") {
@@ -134,12 +134,82 @@ struct PendingView: View {
                     if question.secret == true { SecureField("Risposta", text: binding) } else { TextField("Risposta libera", text: binding) }
                 }
             }
-            if request.kind == "mcp_elicitation" || request.kind == "permissions_approval" { Text("Apri la PWA o Codex locale per vedere lo schema completo prima di approvare questa richiesta.").font(.caption) }
+            if request.kind == "permissions_approval" {
+                Text("Permessi richiesti · soltanto per questo turno").font(.subheadline.bold())
+                if let permissions = request.payload?.permissions {
+                    Text(permissions.pretty).font(.caption.monospaced()).textSelection(.enabled)
+                    if request.canApprove {
+                        Button("Concedi i permessi per questo turno") { Task { await relay.answer(request, decision: "approve") } }.buttonStyle(.bordered)
+                            .disabled(!relay.online || relay.machines[request.machineId]?.status != "ONLINE" || relay.current?.capabilities.canAnswer != true)
+                    }
+                } else { Text("Contesto dei permessi non disponibile: risolvi da Codex locale.").font(.caption) }
+            }
+            if request.kind == "mcp_elicitation" { MCPRequestForm(request: request) }
             if request.canApprove && ["user_input", "command_approval", "file_approval"].contains(request.kind) {
                 Button(request.kind == "user_input" ? "Rispondi" : "Approva una volta") { Task { await relay.answer(request, decision: "approve", answers: answers.mapValues { [$0] }) } }.buttonStyle(.bordered).disabled(!relay.online || relay.current?.capabilities.canAnswer != true || (request.kind == "user_input" && (request.questions ?? []).contains { (answers[$0.id] ?? "").isEmpty }))
             }
-            if request.kind != "unsupported" { Button("Rifiuta", role: .destructive) { Task { await relay.answer(request, decision: "reject") } }.disabled(!relay.online || relay.current?.capabilities.canAnswer != true) }
+            if request.kind != "unsupported" { Button("Rifiuta", role: .destructive) { Task { await relay.answer(request, decision: "reject") } }.disabled(!relay.online || relay.machines[request.machineId]?.status != "ONLINE" || relay.current?.capabilities.canAnswer != true) }
         }.padding().background(Color.orange.opacity(0.07)).clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+}
+struct MCPRequestForm: View {
+    @EnvironmentObject var relay: RelayController
+    let request: PendingRequest
+    @State private var fields: [String: String] = [:]
+    @State private var raw = "{}"
+    @State private var editJSON = false
+    private var schema: JSONValue? { request.payload?.inputSchema }
+    private var properties: [String: JSONValue] { schema?.object?["properties"]?.object ?? [:] }
+    private var simple: Bool {
+        schema?.object?["type"]?.string == "object" && !properties.isEmpty && properties.values.allSatisfy {
+            $0.object?["enum"]?.array != nil || ["string", "number", "integer", "boolean"].contains($0.object?["type"]?.string ?? "")
+        }
+    }
+    private var response: JSONValue? {
+        guard let schema else { return nil }
+        return try? editJSON || !simple ? MCPResponse.parse(raw, schema: schema) : MCPResponse.fields(fields, schema: schema)
+    }
+    private var validation: String? {
+        guard let schema else { return "Schema non disponibile: risolvi da Codex locale." }
+        do { _ = try editJSON || !simple ? MCPResponse.parse(raw, schema: schema) : MCPResponse.fields(fields, schema: schema); return nil }
+        catch { return error.localizedDescription }
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let schema {
+                DisclosureGroup("Schema MCP completo") { Text(schema.pretty).font(.caption.monospaced()).textSelection(.enabled) }
+                if request.canApprove {
+                    if simple && !editJSON {
+                        ForEach(properties.keys.sorted(), id: \.self) { key in
+                            let property = properties[key]!.object ?? [:]
+                            let binding = Binding(get: { fields[key] ?? "" }, set: { fields[key] = $0 })
+                            let required = schema.object?["required"]?.array?.contains(.string(key)) == true
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text((property["title"]?.string ?? key) + (required ? " *" : "")).font(.subheadline.bold())
+                                if let description = property["description"]?.string { Text(description).font(.caption).foregroundStyle(.secondary) }
+                                if let options = property["enum"]?.array {
+                                    Picker(key, selection: binding) {
+                                        Text("Seleziona…").tag("")
+                                        ForEach(options.map { $0.string ?? $0.pretty }, id: \.self) { Text($0).tag($0) }
+                                    }.pickerStyle(.menu)
+                                } else if property["type"]?.string == "boolean" {
+                                    Picker(key, selection: binding) { Text("Seleziona…").tag(""); Text("Sì").tag("true"); Text("No").tag("false") }.pickerStyle(.segmented)
+                                } else if property["writeOnly"] == .bool(true) || property["format"] == .string("password") {
+                                    SecureField(key, text: binding)
+                                } else { TextField(key, text: binding).textInputAutocapitalization(.never).autocorrectionDisabled() }
+                            }
+                        }
+                        Button("Modifica risposta come JSON") { raw = (try? MCPResponse.fields(fields, schema: schema))?.pretty ?? "{}"; editJSON = true }
+                    } else {
+                        Text("Risposta JSON conforme allo schema").font(.caption)
+                        TextEditor(text: $raw).font(.body.monospaced()).frame(minHeight: 120).accessibilityLabel("Risposta MCP JSON")
+                    }
+                    if let validation { Text(validation).font(.caption).foregroundStyle(.orange) }
+                    Button("Invia risposta MCP") { if let response { Task { await relay.answer(request, decision: "approve", content: response) } } }.buttonStyle(.bordered)
+                        .disabled(response == nil || !relay.online || relay.machines[request.machineId]?.status != "ONLINE" || relay.current?.capabilities.canAnswer != true)
+                } else { Text("Questo flusso MCP richiede Codex locale.").font(.caption) }
+            } else { Text("Schema non disponibile: risolvi da Codex locale.").font(.caption) }
+        }
     }
 }
 struct DevicesView: View {

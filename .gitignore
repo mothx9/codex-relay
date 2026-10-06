@@ -9,6 +9,7 @@
 .env
 /native/.build/
 /native/*.xcconfig
+!/native/Signing.xcconfig
 xcuserdata/
 .DS_Store
 /native/CodexRelay.xcodeproj/project.xcworkspace/

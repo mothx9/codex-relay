@@ -1,33 +1,231 @@
 // !$*UTF8*$!
-{archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
-00000000000000000000006C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "iOS/Notifications.swift"; sourceTree = SOURCE_ROOT; };
-0000000000000000000000D0 = {isa = PBXBuildFile; fileRef = 00000000000000000000006C; };
-000000000000000000000064 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RelayCore/HubAPI.swift"; sourceTree = SOURCE_ROOT; };
-0000000000000000000000C8 = {isa = PBXBuildFile; fileRef = 000000000000000000000064; };
-000000000000000000000065 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RelayCore/Keychain.swift"; sourceTree = SOURCE_ROOT; };
-0000000000000000000000C9 = {isa = PBXBuildFile; fileRef = 000000000000000000000065; };
-000000000000000000000066 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RelayCore/Models.swift"; sourceTree = SOURCE_ROOT; };
-0000000000000000000000CA = {isa = PBXBuildFile; fileRef = 000000000000000000000066; };
-000000000000000000000067 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RelayCore/Outbox.swift"; sourceTree = SOURCE_ROOT; };
-0000000000000000000000CB = {isa = PBXBuildFile; fileRef = 000000000000000000000067; };
-000000000000000000000068 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "iOS/CodexRelayApp.swift"; sourceTree = SOURCE_ROOT; };
-0000000000000000000000CC = {isa = PBXBuildFile; fileRef = 000000000000000000000068; };
-000000000000000000000069 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "iOS/RelayController.swift"; sourceTree = SOURCE_ROOT; };
-0000000000000000000000CD = {isa = PBXBuildFile; fileRef = 000000000000000000000069; };
-00000000000000000000006A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "iOS/Views.swift"; sourceTree = SOURCE_ROOT; };
-0000000000000000000000CE = {isa = PBXBuildFile; fileRef = 00000000000000000000006A; };
-000000000000000000000001 = {isa = PBXProject; attributes = {LastUpgradeCheck = 2600; }; buildConfigurationList = 000000000000000000000002; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; knownRegions = (en, Base); mainGroup = 000000000000000000000003; productRefGroup = 000000000000000000000004; projectDirPath = ""; projectRoot = ""; targets = (000000000000000000000005,); };
-000000000000000000000003 = {isa = PBXGroup; children = (00000000000000000000006C,000000000000000000000064,000000000000000000000065,000000000000000000000066,000000000000000000000067,000000000000000000000068,000000000000000000000069,00000000000000000000006A,000000000000000000000004,); sourceTree = "<group>"; };
-000000000000000000000004 = {isa = PBXGroup; children = (000000000000000000000006,); name = Products; sourceTree = "<group>"; };
-000000000000000000000006 = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CodexRelay.app; sourceTree = BUILT_PRODUCTS_DIR; };
-000000000000000000000005 = {isa = PBXNativeTarget; buildConfigurationList = 000000000000000000000007; buildPhases = (000000000000000000000008,000000000000000000000009,00000000000000000000000A,); buildRules = (); dependencies = (); name = CodexRelay; productName = CodexRelay; productReference = 000000000000000000000006; productType = "com.apple.product-type.application"; };
-000000000000000000000008 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (0000000000000000000000D0,0000000000000000000000C8,0000000000000000000000C9,0000000000000000000000CA,0000000000000000000000CB,0000000000000000000000CC,0000000000000000000000CD,0000000000000000000000CE,); runOnlyForDeploymentPostprocessing = 0; };
-000000000000000000000009 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-00000000000000000000000A = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-000000000000000000000002 = {isa = XCConfigurationList; buildConfigurations = (00000000000000000000000B,00000000000000000000000C,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-000000000000000000000007 = {isa = XCConfigurationList; buildConfigurations = (00000000000000000000000D,00000000000000000000000E,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-00000000000000000000000B = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_VERSION = 6.0; }; name = Debug; };
-00000000000000000000000C = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_VERSION = 6.0; }; name = Release; };
-00000000000000000000000D = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Codex Relay"; INFOPLIST_KEY_UILaunchScreen_Generation = YES; INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES; INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"; CURRENT_PROJECT_VERSION = 1; MARKETING_VERSION = 0.1.0; PRODUCT_BUNDLE_IDENTIFIER = "net.codex-relay.iphone"; PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = "1,2"; SWIFT_STRICT_CONCURRENCY = complete; APS_ENVIRONMENT = development; INFOPLIST_KEY_RelayAPNSEnvironment = sandbox; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;}; name = Debug; };
-00000000000000000000000E = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Codex Relay"; INFOPLIST_KEY_UILaunchScreen_Generation = YES; INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES; INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"; CURRENT_PROJECT_VERSION = 1; MARKETING_VERSION = 0.1.0; PRODUCT_BUNDLE_IDENTIFIER = "net.codex-relay.iphone"; PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = "1,2"; SWIFT_STRICT_CONCURRENCY = complete; APS_ENVIRONMENT = production; INFOPLIST_KEY_RelayAPNSEnvironment = production; SWIFT_OPTIMIZATION_LEVEL = "-O";}; name = Release; };
-}; rootObject = 000000000000000000000001; }
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0000000000000000000000C8 /* RelayCore/HubAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000064 /* RelayCore/HubAPI.swift */; };
+		0000000000000000000000C9 /* RelayCore/Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000065 /* RelayCore/Keychain.swift */; };
+		0000000000000000000000CA /* RelayCore/Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000066 /* RelayCore/Models.swift */; };
+		0000000000000000000000CB /* RelayCore/Outbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000067 /* RelayCore/Outbox.swift */; };
+		0000000000000000000000CC /* iOS/CodexRelayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000068 /* iOS/CodexRelayApp.swift */; };
+		0000000000000000000000CD /* iOS/RelayController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000069 /* iOS/RelayController.swift */; };
+		0000000000000000000000CE /* iOS/Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000006A /* iOS/Views.swift */; };
+		0000000000000000000000D0 /* iOS/Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000006C /* iOS/Notifications.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+        000000000000000000000070 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = SOURCE_ROOT; };
+		000000000000000000000006 /* CodexRelay.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CodexRelay.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000064 /* RelayCore/HubAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCore/HubAPI.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000065 /* RelayCore/Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCore/Keychain.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000066 /* RelayCore/Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCore/Models.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000067 /* RelayCore/Outbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCore/Outbox.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000068 /* iOS/CodexRelayApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/CodexRelayApp.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000069 /* iOS/RelayController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/RelayController.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000006A /* iOS/Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/Views.swift; sourceTree = SOURCE_ROOT; };
+		00000000000000000000006C /* iOS/Notifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/Notifications.swift; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		000000000000000000000009 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		000000000000000000000003 = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000006C /* iOS/Notifications.swift */,
+				000000000000000000000064 /* RelayCore/HubAPI.swift */,
+				000000000000000000000065 /* RelayCore/Keychain.swift */,
+				000000000000000000000066 /* RelayCore/Models.swift */,
+				000000000000000000000067 /* RelayCore/Outbox.swift */,
+				000000000000000000000068 /* iOS/CodexRelayApp.swift */,
+				000000000000000000000069 /* iOS/RelayController.swift */,
+				00000000000000000000006A /* iOS/Views.swift */,
+				000000000000000000000004 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		000000000000000000000004 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000006 /* CodexRelay.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		000000000000000000000005 /* CodexRelay */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000000007 /* Build configuration list for PBXNativeTarget "CodexRelay" */;
+			buildPhases = (
+				000000000000000000000008 /* Sources */,
+				000000000000000000000009 /* Frameworks */,
+				00000000000000000000000A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CodexRelay;
+			productName = CodexRelay;
+			productReference = 000000000000000000000006 /* CodexRelay.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		000000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 2600;
+			};
+			buildConfigurationList = 000000000000000000000002 /* Build configuration list for PBXProject "CodexRelay" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 000000000000000000000003;
+			productRefGroup = 000000000000000000000004 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				000000000000000000000005 /* CodexRelay */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		00000000000000000000000A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		000000000000000000000008 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0000000000000000000000D0 /* iOS/Notifications.swift in Sources */,
+				0000000000000000000000C8 /* RelayCore/HubAPI.swift in Sources */,
+				0000000000000000000000C9 /* RelayCore/Keychain.swift in Sources */,
+				0000000000000000000000CA /* RelayCore/Models.swift in Sources */,
+				0000000000000000000000CB /* RelayCore/Outbox.swift in Sources */,
+				0000000000000000000000CC /* iOS/CodexRelayApp.swift in Sources */,
+				0000000000000000000000CD /* iOS/RelayController.swift in Sources */,
+				0000000000000000000000CE /* iOS/Views.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		00000000000000000000000B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		00000000000000000000000C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		00000000000000000000000D /* Debug */ = {
+			isa = XCBuildConfiguration;
+            baseConfigurationReference = 000000000000000000000070 /* Signing.xcconfig */;
+			buildSettings = {
+				APS_ENVIRONMENT = development;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Codex Relay";
+				INFOPLIST_KEY_RelayAPNSEnvironment = sandbox;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "net.codex-relay.iphone";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		00000000000000000000000E /* Release */ = {
+			isa = XCBuildConfiguration;
+            baseConfigurationReference = 000000000000000000000070 /* Signing.xcconfig */;
+			buildSettings = {
+				APS_ENVIRONMENT = production;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Codex Relay";
+				INFOPLIST_KEY_RelayAPNSEnvironment = production;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "net.codex-relay.iphone";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		000000000000000000000002 /* Build configuration list for PBXProject "CodexRelay" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000000000000B /* Debug */,
+				00000000000000000000000C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		000000000000000000000007 /* Build configuration list for PBXNativeTarget "CodexRelay" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000000000000D /* Debug */,
+				00000000000000000000000E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 000000000000000000000001 /* Project object */;
+}

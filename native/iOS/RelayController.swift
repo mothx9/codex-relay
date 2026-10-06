@@ -125,10 +125,11 @@ import UIKit
     }
     func retry(_ item: Outgoing, as kind: String? = nil) async { if await submit(item.text, kind: kind ?? item.kind) { outbox.discard(item.id) } }
     func action(_ kind: String) async { guard let current else { return }; _ = await sendCommand(["id": UUID().uuidString, "kind": kind, "session_id": current.id, "turn_id": current.turnId ?? ""]) }
-    func answer(_ request: PendingRequest, decision: String? = nil, answers: [String: [String]]? = nil) async {
-        guard requests[request.id] != nil, online, current?.capabilities.canAnswer == true else { error = "La richiesta è cambiata."; return }
+    func answer(_ request: PendingRequest, decision: String? = nil, answers: [String: [String]]? = nil, content: JSONValue? = nil) async {
+        guard requests[request.id] != nil, request.sessionId == selected, online, machines[request.machineId]?.status == "ONLINE", current?.capabilities.canAnswer == true else { error = "La richiesta è cambiata."; return }
         var command: [String: Any] = ["id": UUID().uuidString, "kind": "answer", "session_id": request.sessionId, "request_id": request.id]
         if let decision { command["decision"] = decision }; if let answers { command["answers"] = answers }
+        if let content { command["content"] = content.foundation }
         _ = await sendCommand(command)
     }
     private func sendCommand(_ command: [String: Any]) async -> Bool {

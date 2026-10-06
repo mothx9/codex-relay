@@ -1,0 +1,2 @@
+// Owner-specific team and provisioning values stay in this ignored optional file.
+#include? "LocalSigning.xcconfig"
