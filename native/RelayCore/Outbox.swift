@@ -2,16 +2,16 @@ import Foundation
 public enum DeliveryPhase: String, Sendable { case local = "LOCAL", sending = "SENDING", queued = "QUEUED", dispatched = "DISPATCHED", materialized = "MATERIALIZED", accepted = "ACCEPTED", steering = "STEERING", applied = "APPLIED", failed = "FAILED" }
 public struct Outgoing: Identifiable, Sendable {
     public let id: String; public let sessionId: String; public let kind: String; public var text: String; public var phase: DeliveryPhase = .local
-    public var error: String?; public var errorCode: String?; public let created: Date
+    public var error: String?; public var errorCode: String?; public let expectedTurn: String?; public let created: Date
 }
 public struct Outbox: Sendable {
     public private(set) var items: [Outgoing] = []
     public init() {}
-    public mutating func add(id: String = UUID().uuidString, session: String, kind: String, text: String, now: Date = Date()) throws -> String {
+    public mutating func add(id: String = UUID().uuidString, session: String, kind: String, text: String, expectedTurn: String? = nil, now: Date = Date()) throws -> String {
         if items.contains(where: { $0.id == id }) { return id }
         let pending = items.filter { $0.phase != .materialized }
         guard text.utf8.count <= 16384, pending.count < 32, pending.reduce(text.utf8.count, { $0 + $1.text.utf8.count }) <= 131072 else { throw HubFailure.message("Outbox pieno o messaggio troppo lungo.") }
-        items.append(Outgoing(id: id, sessionId: session, kind: kind, text: text, created: now))
+        items.append(Outgoing(id: id, sessionId: session, kind: kind, text: text, expectedTurn: expectedTurn, created: now))
         while items.count > 128, let i = items.firstIndex(where: { $0.phase == .materialized }) { items.remove(at: i) }
         return id
     }

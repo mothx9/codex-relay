@@ -67,6 +67,7 @@ struct SessionView: View {
     @State private var steer = false
     @State private var expectedTurn = ""
     @State private var interrupt = false
+    @State private var interruptTurn = ""
     var body: some View {
         if let session = relay.current {
             ScrollView {
@@ -107,12 +108,12 @@ struct SessionView: View {
                     DisclosureGroup("Azioni sul turno corrente") {
                         VStack(alignment: .leading) {
                             Button(steer ? "Torna al normale invio" : "Steer turno corrente") { steer.toggle(); expectedTurn = session.turnId ?? "" }.disabled(!steer && (!relay.online || !session.allows("steer")))
-                            Button("Interrompi turno", role: .destructive) { interrupt = true }.disabled(!relay.online || !session.allows("interrupt"))
+                            Button("Interrompi turno", role: .destructive) { interruptTurn = session.turnId ?? ""; interrupt = true }.disabled(!relay.online || !session.allows("interrupt"))
                         }
                     }
                     Text("Contesto effimero · cronologia in Codex").font(.caption).foregroundStyle(.secondary)
                 }.padding()
-            }.confirmationDialog("Interrompere il turno in corso?", isPresented: $interrupt, titleVisibility: .visible) { Button("Interrompi", role: .destructive) { Task { await relay.action("interrupt") } } }
+            }.confirmationDialog("Interrompere il turno in corso?", isPresented: $interrupt, titleVisibility: .visible) { Button("Interrompi", role: .destructive) { Task { await relay.action("interrupt", expectedTurn: interruptTurn) } } }
         } else { Text("Sessione non disponibile") }
     }
 }

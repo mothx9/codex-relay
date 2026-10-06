@@ -72,7 +72,10 @@ import UIKit
                     guard self.generation == generation, !Task.isCancelled else { return }
                     self.online = false; self.outbox.disconnected(); self.commands.removeAll(); self.socket?.cancel(with: .goingAway, reason: nil); self.transport?.invalidateAndCancel()
                     self.connection = "Offline · riconnessione"
-                    if let hubError = error as? HubFailure { self.error = hubError.localizedDescription; self.connection = "Accesso richiesto"; return }
+                    if let hubError = error as? HubFailure {
+                        if hubError.authenticationRequired { self.forget(); self.error = hubError.localizedDescription; return }
+                        if !hubError.retryable { self.error = hubError.localizedDescription; self.connection = "Errore del Hub"; return }
+                    }
                     let delay = min(60.0, pow(2.0, Double(min(attempt, 6)))) * Double.random(in: 0.5...1.0); attempt += 1
                     try? await Task.sleep(for: .seconds(delay))
                 }
@@ -85,7 +88,7 @@ import UIKit
             guard let snapshot = message.snapshot else { return }
             machines = Dictionary(uniqueKeysWithValues: snapshot.machines.map { ($0.id, $0) }); sessions = Dictionary(uniqueKeysWithValues: snapshot.sessions.map { ($0.id, $0) })
             requests = Dictionary(uniqueKeysWithValues: snapshot.requests.map { ($0.id, $0) }); online = true; connection = "Live · \(machines.values.filter { $0.status == "ONLINE" }.count) macchine"
-            if !selected.isEmpty { await send(["type": "watch", "session_id": selected]) }
+            if !selected.isEmpty { _ = await send(["type": "watch", "session_id": selected]) }
             await loadDevices()
         case "devices_changed": await loadDevices()
         case "event", "pending":
@@ -115,16 +118,24 @@ import UIKit
     @discardableResult func submit(_ text: String, kind: String? = nil, expectedTurn: String? = nil) async -> Bool {
         guard let session = current, online, machines[session.machineId]?.status == "ONLINE", session.allows(kind ?? session.defaultCommand), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { error = "Controllo non disponibile per questa sessione."; return false }
         let kind = kind ?? session.defaultCommand
+        let targetTurn = kind == "steer" ? (expectedTurn ?? session.turnId) : nil
         do {
-            let id = try outbox.add(session: selected, kind: kind, text: text); outbox.sending(id)
+            let id = try outbox.add(session: selected, kind: kind, text: text, expectedTurn: targetTurn); outbox.sending(id)
             var command: [String: Any] = ["id": id, "kind": kind, "session_id": selected, "text": text]
-            if kind == "steer" { command["turn_id"] = expectedTurn ?? session.turnId }
+            if kind == "steer" { command["turn_id"] = targetTurn }
             if !(await sendCommand(command)) { outbox.fail(id, code: "UNKNOWN_OUTCOME", message: "Esito sconosciuto. Verifica Codex prima di reinviare.") }
             return true
         } catch { self.error = error.localizedDescription; return false }
     }
-    func retry(_ item: Outgoing, as kind: String? = nil) async { if await submit(item.text, kind: kind ?? item.kind) { outbox.discard(item.id) } }
-    func action(_ kind: String) async { guard let current else { return }; _ = await sendCommand(["id": UUID().uuidString, "kind": kind, "session_id": current.id, "turn_id": current.turnId ?? ""]) }
+    func retry(_ item: Outgoing, as kind: String? = nil) async {
+        guard item.sessionId == selected else { return }
+        let kind = kind ?? item.kind
+        if await submit(item.text, kind: kind, expectedTurn: kind == "steer" ? item.expectedTurn : nil) { outbox.discard(item.id) }
+    }
+    func action(_ kind: String, expectedTurn: String? = nil) async {
+        guard let current, online, machines[current.machineId]?.status == "ONLINE", kind == "attach" ? current.readOnly : current.allows(kind) else { error = "Controllo non disponibile per questa sessione."; return }
+        _ = await sendCommand(["id": UUID().uuidString, "kind": kind, "session_id": current.id, "turn_id": expectedTurn ?? current.turnId ?? ""])
+    }
     func answer(_ request: PendingRequest, decision: String? = nil, answers: [String: [String]]? = nil, content: JSONValue? = nil) async {
         guard requests[request.id] != nil, request.sessionId == selected, online, machines[request.machineId]?.status == "ONLINE", current?.capabilities.canAnswer == true else { error = "La richiesta è cambiata."; return }
         var command: [String: Any] = ["id": UUID().uuidString, "kind": "answer", "session_id": request.sessionId, "request_id": request.id]

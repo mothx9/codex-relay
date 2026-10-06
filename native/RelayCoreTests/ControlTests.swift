@@ -21,9 +21,10 @@ final class ControlTests: XCTestCase {
         var chat = RecentChat(); chat.put(item); chat.put(item); XCTAssertEqual(chat.items.count, 1)
     }
     func testFailedSteerAndUnknownOutcomeNeverRequeue() throws {
-        var box = Outbox(); let id = try box.add(id: "steer", session: "m~t", kind: "steer", text: "keep text"); box.sending(id)
+        var box = Outbox(); let id = try box.add(id: "steer", session: "m~t", kind: "steer", text: "keep text", expectedTurn: "original-turn"); box.sending(id)
         let error: CommandResult = try decode(#"{"id":"steer","ok":false,"error_code":"TURN_CHANGED","error":"Il turno è cambiato."}"#)
         box.result(error); XCTAssertEqual(box.items[0].text, "keep text"); XCTAssertEqual(box.items[0].kind, "steer"); XCTAssertEqual(box.items[0].phase, .failed)
+        XCTAssertEqual(box.items[0].expectedTurn, "original-turn")
         let next = try box.add(session: "m~t", kind: "follow_up", text: "unknown"); box.sending(next); box.disconnected()
         XCTAssertEqual(box.items.last?.errorCode, "UNKNOWN_OUTCOME"); XCTAssertEqual(box.items.last?.text, "unknown")
         let emptyAfterRestart = Outbox(); XCTAssertTrue(emptyAfterRestart.items.isEmpty)
@@ -39,5 +40,16 @@ final class ControlTests: XCTestCase {
         let api = try HubAPI(url: "https://relay.local", token: "device")
         let req = api.request(path: "api/pairing/exchange", body: Data("{}".utf8)); XCTAssertEqual(req.value(forHTTPHeaderField: "Origin"), "https://relay.local"); XCTAssertEqual(req.value(forHTTPHeaderField: "Authorization"), "Bearer device"); XCTAssertEqual(req.value(forHTTPHeaderField: "X-Relay-CSRF"), "1")
         XCTAssertEqual(api.socketRequest().url?.absoluteString, "wss://relay.local/api/ui")
+    }
+    func testTemporaryHubFailureRetriesWithoutTreatingItAsRevokedAccess() {
+        for code in [408, 425, 429, 500, 502, 503, 504] {
+            let error = HubFailure.http(code, "Temporary failure")
+            XCTAssertTrue(error.retryable); XCTAssertFalse(error.authenticationRequired)
+        }
+        for code in [401, 403] {
+            let error = HubFailure.http(code, "Revoked or expired")
+            XCTAssertFalse(error.retryable); XCTAssertTrue(error.authenticationRequired)
+        }
+        XCTAssertFalse(HubFailure.message("Invalid origin").retryable)
     }
 }

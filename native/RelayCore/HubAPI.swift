@@ -1,7 +1,10 @@
 import Foundation
 public enum HubFailure: LocalizedError, Sendable {
     case message(String)
-    public var errorDescription: String? { if case let .message(text) = self { return text }; return nil }
+    case http(Int, String)
+    public var errorDescription: String? { switch self { case .message(let text), .http(_, let text): return text } }
+    public var authenticationRequired: Bool { if case .http(let code, _) = self { return code == 401 || code == 403 }; return false }
+    public var retryable: Bool { if case .http(let code, _) = self { return [408, 425, 429].contains(code) || (500...599).contains(code) }; return false }
 }
 public struct HubAPI: Sendable {
     public let origin: URL; public let token: String?
@@ -35,7 +38,7 @@ public struct HubAPI: Sendable {
         guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             let message = code == 401 ? "Codice scaduto, accesso revocato o non valido." : code == 429 ? "Troppi tentativi. Attendi un minuto." : code == 409 ? "Dispositivo già abbinato: revoca l’accesso prima di aggiungerlo di nuovo." : "Hub non disponibile (\(code))."
-            throw HubFailure.message(message)
+            throw HubFailure.http(code, message)
         }
         guard result.count <= 1_048_576 else { throw HubFailure.message("Risposta Hub troppo grande.") }
         return try RelayJSON.decoder().decode(T.self, from: result)
