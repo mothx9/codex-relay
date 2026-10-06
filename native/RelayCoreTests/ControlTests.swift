@@ -17,6 +17,11 @@ final class ControlTests: XCTestCase {
         XCTAssertEqual(session.displayStatus(machine: online, connected: false), "OFFLINE")
         XCTAssertEqual(session.displayStatus(machine: nil, connected: true), "OFFLINE")
         XCTAssertEqual(session.displayStatus(machine: online, connected: true), "WORKING")
+        XCTAssertEqual(online.connectionLabel(hubConnected: true), "Relay collegato")
+        XCTAssertEqual(offline.connectionLabel(hubConnected: true, access: "PAUSED"), "Relay in pausa")
+        XCTAssertEqual(offline.connectionLabel(hubConnected: true), "Relay non connesso")
+        XCTAssertEqual(online.connectionLabel(hubConnected: false), "Hub non connesso")
+        XCTAssertEqual(offline.connectionLabel(hubConnected: true, access: "REVOKED"), "Accesso Relay revocato")
     }
     func testQueueAckDoesNotCompleteAndCanonicalIdentityReconciles() throws {
         var box = Outbox(); let id = try box.add(id: "client", session: "m~t", kind: "follow_up", text: "later")

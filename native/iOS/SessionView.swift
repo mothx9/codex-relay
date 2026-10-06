@@ -78,7 +78,7 @@ struct SessionView: View {
                     VStack(alignment: .leading, spacing: RelaySpacing.page) {
                         HStack(spacing: 6) {
                             Circle().fill(machineOnline(session) ? statusColor(session.status) : .secondary).frame(width: 6, height: 6)
-                            Text(machineOnline(session) ? conversationStatus(session.status) : "Macchina offline")
+                            Text(machineOnline(session) ? conversationStatus(session.status) : relay.machineConnectionLabel(session.machineId))
                                 .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("session.connection").accessibilityValue(machineOnline(session) ? "Live" : "Offline")
                             if machineOnline(session), session.status == "WORKING" { ElapsedLabel(start: session.turnStarted) }
                         }
@@ -92,10 +92,15 @@ struct SessionView: View {
                                 nearBottom = false
                                 Task { await relay.loadOlderHistory() }
                             }.frame(minHeight: 44).frame(maxWidth: .infinity).accessibilityIdentifier("history.older")
+                                .accessibilityValue("\(relay.chat.items.count) elementi caricati")
                                 .disabled(!machineOnline(session))
                         }
                         if let error = relay.historyError {
                             Text(error).font(.caption).foregroundStyle(.secondary)
+                            if relay.registry?.machines.first(where: { $0.id == session.machineId })?.access == "PAUSED" {
+                                Button("Riprendi Relay su questa macchina") { Task { await relay.manageMachine(session.machineId, action: "resume") } }
+                                    .font(.subheadline).frame(minHeight: 44)
+                            }
                         }
                         if relay.chat.atCapacity || relay.chat.trimmed {
                             Text("Finestra in memoria limitata. La cronologia completa rimane in Codex.")
@@ -125,6 +130,7 @@ struct SessionView: View {
                 }
                 .scrollPosition(id: $visibleItem, anchor: .bottom)
                 .coordinateSpace(name: "transcript")
+                .accessibilityIdentifier("session.transcript")
                 .scrollDismissesKeyboard(.interactively)
                 .onChange(of: viewport.size, initial: true) { _, size in
                     guard !initialScroll, size.height > 0 else { return }
@@ -267,7 +273,7 @@ private struct ChatMessageView: View, Equatable {
                     if questions.isEmpty || activity.text != questions.map(\.title).joined(separator: "\n\n") {
                         ChatMarkdown(text: activity.text, identifier: "activity." + activity.kind + "." + activity.id)
                     }
-                    ForEach(Array(questions.enumerated()), id: \.offset) { index, question in
+                    ForEach(Array(questions.enumerated()).filter { !activity.text.contains($0.element.title) }, id: \.offset) { index, question in
                         VStack(alignment: .leading, spacing: 12) {
                             Label("Domanda", systemImage: "questionmark.bubble").font(.caption.weight(.semibold)).foregroundStyle(.orange)
                             Text(question.title).font(.body).textSelection(.enabled)
@@ -285,6 +291,10 @@ private struct ChatMessageView: View, Equatable {
                     if activity.truncated == true { Text("Contesto parziale · consulta Codex per il contenuto completo.").font(.caption).foregroundStyle(.secondary) }
                 }
             }.frame(maxWidth: .infinity, alignment: user ? .trailing : .leading)
+                .contextMenu {
+                    Button("Copia messaggio", systemImage: "doc.on.doc") { UIPasteboard.general.string = activity.text }
+                    if !user { ShareLink(item: activity.text) { Label("Condividi", systemImage: "square.and.arrow.up") } }
+                }
         }
     }
 }
@@ -356,7 +366,8 @@ private struct ToolSummaryView: View {
                         Text(toolTitle(group.kind)).font(.subheadline.weight(.semibold))
                         Text(summary).font(.caption).foregroundStyle(.secondary)
                         if !expanded, let active = group.items.last(where: { $0.state == "running" }), let detail = active.command ?? active.toolName {
-                            Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            if active.command != nil { CommandPreviewView(command: detail).lineLimit(2) }
+                            else { Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
                         }
                     }
                     Spacer(minLength: 4)
@@ -366,13 +377,18 @@ private struct ToolSummaryView: View {
                 .accessibilityValue(expanded ? "Dettagli aperti" : "Dettagli chiusi")
             if expanded {
                 VStack(alignment: .leading, spacing: 10) {
+                    Button("Apri dettagli e output", action: open).font(.caption).frame(minHeight: 44)
+                        .accessibilityIdentifier("tool.details." + group.id)
                     ForEach(group.items) { item in
                         HStack(alignment: .top, spacing: 8) {
                             Image(systemName: item.state == "running" ? "clock" : item.state == "failed" ? "exclamationmark.circle" : item.state == "completed" ? "checkmark.circle" : "circle")
-                                .font(.caption).foregroundStyle(item.state == "failed" ? .orange : .secondary)
+                                .font(.caption).foregroundStyle(item.state == "failed" ? Color.red : item.state == "completed" ? Color.green : item.state == "running" ? Color.orange : Color.secondary)
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(item.command ?? item.toolName ?? item.files?.first.map { URL(fileURLWithPath: $0.path).lastPathComponent } ?? toolTitle(group.kind))
-                                    .font(item.command != nil ? .caption.monospaced() : .subheadline).lineLimit(3).textSelection(.enabled)
+                                if let command = item.command { CommandPreviewView(command: command).lineLimit(3) }
+                                else {
+                                    Text(item.toolName ?? item.files?.first.map { URL(fileURLWithPath: $0.path).lastPathComponent } ?? toolTitle(group.kind))
+                                        .font(.subheadline).lineLimit(3).textSelection(.enabled)
+                                }
                                 HStack(spacing: 8) {
                                     Text(activityState(item.state))
                                     if let code = item.exitCode { Text("Exit \(code)") }
@@ -381,8 +397,6 @@ private struct ToolSummaryView: View {
                             }
                         }
                     }
-                    Button("Apri dettagli e output", action: open).font(.caption).frame(minHeight: 44)
-                        .accessibilityIdentifier("tool.details." + group.id)
                 }.padding(.leading, 30)
             }
         }.padding(.vertical, 4)
@@ -410,7 +424,7 @@ private struct ToolDetailView: View {
                             }
                             if let server = item.toolServer { Text(server).font(.caption).foregroundStyle(.secondary) }
                             if let command = item.command {
-                                ScrollView(.horizontal) { Text(command).font(.callout.monospaced()).textSelection(.enabled) }
+                                ScrollView(.horizontal) { CommandPreviewView(command: command).fixedSize(horizontal: true, vertical: false) }
                                     .contextMenu { Button("Copia comando", systemImage: "doc.on.doc") { UIPasteboard.general.string = command } }
                             }
                             HStack {
@@ -418,11 +432,33 @@ private struct ToolDetailView: View {
                                 if let milliseconds = item.durationMs { Text(String(format: "%.1f s", Double(milliseconds) / 1000)) }
                                 if item.truncated == true { Text("Contenuto parziale") }
                             }.font(.caption).foregroundStyle(.secondary)
+                            if item.kind == "diff" {
+                                PatchView(patch: item.text)
+                            } else if let files = item.files, !files.isEmpty {
+                                ForEach(Array(files.enumerated()), id: \.offset) { _, file in
+                                    Text(URL(fileURLWithPath: file.path).lastPathComponent + " · " + fileChangeLabel(file.kind)).font(.subheadline)
+                                    if let patch = file.patch {
+                                        if patch.hasPrefix("diff --git ") || patch.hasPrefix("@@ ") || patch.contains("\n@@ ") {
+                                            PatchView(patch: patch, path: file.path)
+                                        } else {
+                                            CodeBlockView(code: patch, language: URL(fileURLWithPath: file.path).pathExtension)
+                                        }
+                                    }
+                                }
+                            } else if group.kind == .terminal {
+                                if #available(iOS 18.0, *) {
+                                    TerminalOutputView(text: item.command != nil ? item.commandOutput : item.text)
+                                        .accessibilityIdentifier("activity." + item.kind + "." + item.id)
+                                } else {
+                                    CodeBlockView(code: item.command != nil ? item.commandOutput : item.text, language: "output")
+                                }
+                            } else {
                             ScrollView(.horizontal) {
                                 Text(item.command != nil ? item.commandOutput : item.text).font(.callout.monospaced()).textSelection(.enabled)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .accessibilityIdentifier("activity." + item.kind + "." + item.id)
                             }.contextMenu { Button("Copia output", systemImage: "doc.on.doc") { UIPasteboard.general.string = item.command != nil ? item.commandOutput : item.text } }
+                            }
                         }
                     }
                 }.padding(20)
@@ -453,4 +489,8 @@ private func conversationStatus(_ status: String) -> String {
 
 private func activityState(_ state: String?) -> String {
     switch state { case "running": "In corso"; case "completed": "Completato"; case "failed": "Fallito"; case "declined": "Rifiutato"; default: "" }
+}
+
+private func fileChangeLabel(_ kind: String) -> String {
+    switch kind { case "add", "create": "Creato"; case "delete": "Eliminato"; case "rename", "move": "Rinominato"; default: "Modificato" }
 }

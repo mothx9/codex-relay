@@ -1,7 +1,7 @@
 import Foundation
 
 public struct CodeToken: Equatable, Sendable {
-    public enum Kind: Sendable { case plain, keyword, string, number, comment, directive }
+    public enum Kind: Sendable { case plain, keyword, string, number, comment, directive, command, flag, shellOperator, variable }
     public let text: String
     public let kind: Kind
 }
@@ -52,6 +52,52 @@ public enum CodeTokens {
             emit(start, index, kind)
         }
         if let runKind { result.append(CodeToken(text: String(chars[runStart..<runEnd]), kind: runKind)) }
+        return result
+    }
+}
+
+/// Compact shell command coloring. This lexer preserves every byte and does not
+/// execute, expand, or infer the result of a command.
+public enum ShellTokens {
+    public static func tokenize(_ source: String) -> [CodeToken] {
+        let chars = Array(source)
+        var result: [CodeToken] = []
+        var index = 0, commandExpected = true
+        while index < chars.count {
+            let start = index, character = chars[index]
+            var kind: CodeToken.Kind = .plain
+            if character.isWhitespace {
+                while index < chars.count && chars[index].isWhitespace {
+                    if chars[index] == "\n" { commandExpected = true }
+                    index += 1
+                }
+            } else if character == "#" {
+                kind = .comment
+                while index < chars.count && chars[index] != "\n" { index += 1 }
+            } else if character == "'" || character == "\"" {
+                kind = .string; index += 1
+                while index < chars.count {
+                    if chars[index] == "\\" && character == "\"" { index = min(index + 2, chars.count); continue }
+                    let end = chars[index] == character; index += 1
+                    if end { break }
+                }
+                commandExpected = false
+            } else if "|;&()<>".contains(character) {
+                kind = .shellOperator; index += 1
+                if "|;&(".contains(character) { commandExpected = true }
+            } else {
+                index += 1
+                while index < chars.count && !chars[index].isWhitespace && !"|;&()<>'\"".contains(chars[index]) {
+                    if chars[index] == "\\" { index = min(index + 2, chars.count) } else { index += 1 }
+                }
+                let word = String(chars[start..<index])
+                if word.hasPrefix("$") { kind = .variable }
+                else if commandExpected && !word.contains("=") { kind = .command; commandExpected = false }
+                else if word.hasPrefix("-") { kind = .flag }
+                else if Double(word) != nil { kind = .number }
+            }
+            result.append(CodeToken(text: String(chars[start..<index]), kind: kind))
+        }
         return result
     }
 }

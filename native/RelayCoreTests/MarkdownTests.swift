@@ -46,3 +46,14 @@ final class MarkdownTests: XCTestCase {
         XCTAssertEqual(CodeTokens.tokenize(String(repeating: " ", count: 131072), language: nil).count, 1)
     }
 }
+
+final class ShellTokenTests: XCTestCase {
+    func testCommandPreviewPreservesShellAndColorsTokens() {
+        let source = "PATH=/tmp/bin rg -n 'hello world' src/ | head -5\npython3 -c \"print(1)\" # check\n"
+        let tokens = ShellTokens.tokenize(source)
+        XCTAssertEqual(tokens.map(\.text).joined(), source)
+        XCTAssertEqual(tokens.filter { $0.kind == .command }.map(\.text), ["rg", "head", "python3"])
+        XCTAssertTrue(tokens.contains { $0.kind == .flag && $0.text == "-n" })
+        XCTAssertTrue(tokens.contains { $0.kind == .string && $0.text == "'hello world'" })
+    }
+}

@@ -80,17 +80,37 @@ import XCTest
             app.buttons["Azioni della sessione"].tap()
         }
         let older = app.buttons["history.older"]
-        let transcript = app.scrollViews.firstMatch
+        let transcript = app.scrollViews["session.transcript"]
+        wait(15) { older.exists && transcript.frame.height > 100 }
+        transcript.swipeDown(velocity: .fast)
         for _ in 0..<12 {
             if older.isHittable { break }
             transcript.swipeDown(velocity: .fast)
         }
         XCTAssertTrue(older.isHittable)
-        let before = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.'")).count
+        let before = older.value as? String
         older.tap()
-        wait(15) { older.isEnabled && app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.'")).count > before }
+        wait(15) { older.isEnabled && older.value as? String != before }
         XCTAssertTrue(composer.isHittable)
         let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Live canonical history pagination"; capture.lifetime = .keepAlways; add(capture)
+        for kind in ["changes", "terminal"] {
+            let candidates = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "tool." + kind + "."))
+            var visible = candidates.allElementsBoundByIndex.first(where: { $0.isHittable })
+            for _ in 0..<8 where visible == nil {
+                transcript.swipeUp()
+                visible = candidates.allElementsBoundByIndex.first(where: { $0.isHittable })
+            }
+            if let activity = visible {
+                let identity = activity.identifier
+                if activity.value as? String != "Dettagli aperti" { activity.tap() }
+                let details = app.buttons[identity.replacingOccurrences(of: "tool.", with: "tool.details.")]
+                for _ in 0..<5 { if details.isHittable { break }; transcript.swipeUp() }
+                XCTAssertTrue(details.isHittable); details.tap()
+                XCTAssertTrue(app.buttons["Chiudi"].waitForExistence(timeout: 5))
+                let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Live " + kind; capture.lifetime = .keepAlways; add(capture)
+                app.buttons["Chiudi"].tap()
+            }
+        }
         // No attach, send, approval, interruption or other Codex mutation.
     }
     func testLivePairingKeychainFleetAndCanonicalTurn() throws {

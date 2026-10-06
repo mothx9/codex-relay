@@ -139,11 +139,13 @@ import UIKit
                     requestErrors[identity] = result.error ?? "Risposta non riuscita."
                 }
             }
+            var handledHistory = false
             if result.sessionId == selected {
                 // New Hubs echo the watch's history ID. Legacy Hubs return an
                 // uncorrelated first page, accepted only during watch hydration.
                 let historyReply = result.id == historyRequestID || (!historyCorrelated && restoredWatch && historyLoading && result.history != nil && !issuedHistoryIDs.contains(result.id))
                 if historyReply {
+                    handledHistory = true
                     if result.id == historyRequestID { historyCorrelated = true }
                     historyLoading = false; historyRequestID = nil
                     if result.ok {
@@ -151,16 +153,25 @@ import UIKit
                         chat.mergeHistory(result.history ?? [])
                         historyCursor = result.historyCursor
                         historyError = nil
-                    } else { chat.endHistory(); historyError = result.error ?? "Cronologia non disponibile." }
+                    } else {
+                        chat.endHistory()
+                        historyError = result.errorCode == "MACHINE_OFFLINE" ? "Cronologia disponibile quando Relay si ricollega alla macchina." : result.error ?? "Cronologia non disponibile."
+                        if result.errorCode == "MACHINE_OFFLINE" { restoredWatch = false }
+                    }
                 }
                 outbox.queue(session: selected, entries: result.followUps ?? [])
             }
-            if !result.ok { error = result.error ?? "Comando rifiutato." }
+            if !result.ok && !handledHistory { error = result.error ?? "Comando rifiutato." }
         default: break
         }
     }
     private func watchSelected() async {
         guard !selected.isEmpty, online else { return }
+        guard let current, machines[current.machineId]?.status == "ONLINE" else {
+            historyLoading = false; restoredWatch = false
+            historyError = "La cronologia si caricherà quando Relay sarà collegato alla macchina."
+            return
+        }
         let id = UUID().uuidString
         issuedHistoryIDs.append(id); if issuedHistoryIDs.count > 128 { issuedHistoryIDs.removeFirst() }
         historyRequestID = id; historyLoading = true; historyError = nil; chat.beginHistory()
@@ -176,6 +187,11 @@ import UIKit
         if !(await sendCommand(["id": id, "kind": "history", "session_id": selected, "history_cursor": cursor])) {
             historyLoading = false; historyRequestID = nil; historyError = "Connessione interrotta. Riprova."
         }
+    }
+    func machineConnectionLabel(_ id: String) -> String {
+        guard let machine = machines[id] else { return "Stato macchina non disponibile" }
+        let access = registry?.machines.first(where: { $0.id == id })?.access
+        return machine.connectionLabel(hubConnected: online, access: access)
     }
     func open(_ id: String) {
         guard id != selected else { return }

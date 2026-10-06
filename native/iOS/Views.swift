@@ -105,9 +105,14 @@ struct FleetView: View {
     private var machineLabels: some View {
         ForEach(relay.machines.values.sorted { $0.name < $1.name }) { machine in
             let online = relay.online && machine.status == "ONLINE"
-            Label(machine.name, systemImage: online ? "checkmark.circle.fill" : "network.slash")
-                .font(.caption.weight(.medium)).foregroundStyle(online ? Color.primary : Color.secondary)
-                .accessibilityLabel("\(machine.name), \(online ? "online" : "offline")").accessibilityIdentifier("fleet.machine." + machine.id)
+            VStack(alignment: .leading, spacing: 3) {
+                Label(machine.name, systemImage: online ? "checkmark.circle" : "network.slash")
+                    .font(.caption.weight(.medium))
+                let active = relay.sessions.values.filter { $0.machineId == machine.id && ["WORKING", "NEEDS_YOU"].contains($0.status) }.count
+                Text(online ? (active == 0 ? "Nessun lavoro in corso" : "\(active) \(active == 1 ? "sessione attiva" : "sessioni attive")") : relay.machineConnectionLabel(machine.id))
+                    .font(.caption2).foregroundStyle(.secondary)
+            }.foregroundStyle(online ? Color.primary : Color.secondary)
+                .accessibilityElement(children: .combine).accessibilityIdentifier("fleet.machine." + machine.id)
         }
     }
     @ViewBuilder private func sessionSection(_ title: String, sessions: [RelaySession]) -> some View {
@@ -125,10 +130,11 @@ struct FleetSessionRow: View {
                 HStack {
                     Text(relay.machines[session.machineId]?.name ?? session.machineId).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     Spacer()
-                    Label(statusLabel(status), systemImage: status == "OFFLINE" ? "network.slash" : status == "NEEDS_YOU" ? "exclamationmark.bubble.fill" : status == "WORKING" ? "circle.dotted" : status == "FAILED" ? "exclamationmark.circle" : "checkmark")
+                    Label(status == "OFFLINE" ? "Stato non aggiornato" : statusLabel(status), systemImage: status == "OFFLINE" ? "network.slash" : status == "NEEDS_YOU" ? "exclamationmark.bubble.fill" : status == "WORKING" ? "circle.dotted" : status == "FAILED" ? "exclamationmark.circle" : "checkmark")
                         .font(.caption).foregroundStyle(statusColor(status))
                 }
                 Text(session.title).font(.body.weight(.semibold)).lineLimit(2).foregroundStyle(.primary)
+                if status == "OFFLINE" { Text(relay.machineConnectionLabel(session.machineId)).font(.caption).foregroundStyle(.secondary) }
                 if status == "WORKING", let activity = relay.liveActivities[session.id] {
                     Text(activity.detail).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                 }
@@ -174,7 +180,7 @@ struct NeedsYouView: View {
                             Text(relay.sessions[request.sessionId]?.title ?? "Sessione Codex").font(.body.weight(.semibold))
                             Label(request.kind == "user_input" ? "Codex ha una domanda" : "Approvazione richiesta", systemImage: "exclamationmark.bubble")
                                 .font(.subheadline).foregroundStyle(.orange)
-                            if !relay.online || relay.machines[request.machineId]?.status != "ONLINE" { Text("Macchina offline").font(.caption).foregroundStyle(.secondary) }
+                            if !relay.online || relay.machines[request.machineId]?.status != "ONLINE" { Text(relay.machineConnectionLabel(request.machineId)).font(.caption).foregroundStyle(.secondary) }
                         }.padding(.vertical, RelaySpacing.compact)
                     }.buttonStyle(.plain).accessibilityIdentifier("request." + request.id)
                 }
@@ -306,16 +312,17 @@ struct DevicesView: View {
             Section("Macchine Codex") {
                 ForEach(relay.registry?.machines ?? []) { device in
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("\(device.machine.name) · \(device.machine.status)").font(.headline)
+                        Text(device.machine.name).font(.headline)
+                        Text(relay.machineConnectionLabel(device.id)).font(.subheadline).foregroundStyle(.secondary)
                         Text("\(device.access) · Codex \(device.machine.codexVersion ?? "—")").font(.caption)
                         if let account = device.machine.account { Text("\(account.email ?? account.kind) · \(account.plan ?? "")").font(.caption).foregroundStyle(.secondary) }
                         HStack {
-                            if device.access != "REVOKED" { Button(device.access == "PAUSED" ? "Ricollega" : "Scollega") { Task { await relay.manageMachine(device.id, action: device.access == "PAUSED" ? "resume" : "pause") } }.buttonStyle(.bordered) }
+                            if device.access != "REVOKED" { Button(device.access == "PAUSED" ? "Riprendi Relay" : "Metti in pausa Relay") { Task { await relay.manageMachine(device.id, action: device.access == "PAUSED" ? "resume" : "pause") } }.buttonStyle(.bordered) }
                             Button("Elimina", role: .destructive) { removing = device }.buttonStyle(.bordered)
                         }
                     }.padding(.vertical, 4)
                 }
-                Text("Scollega sospende l’accesso Relay. Il lavoro Codex continua sulla macchina.").font(.caption).foregroundStyle(.secondary)
+                Text("La pausa sospende solo il collegamento a Relay. Il lavoro Codex continua sulla macchina.").font(.caption).foregroundStyle(.secondary)
             }
             Section("Client abbinati") {
                 ForEach(relay.registry?.operators ?? []) { device in
@@ -342,7 +349,7 @@ struct DevicesView: View {
             .confirmationDialog("Eliminare \(removing?.machine.name ?? "") dal Hub? La credenziale verrà revocata; Codex continuerà localmente.", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) { Button("Elimina e revoca", role: .destructive) { if let id = removing?.id { Task { await relay.manageMachine(id, action: "remove") } }; removing = nil } }
     }
 }
-func statusLabel(_ status: String) -> String { ["OFFLINE": "Offline", "ALL": "All", "NEEDS_YOU": "Needs you", "WORKING": "Working", "READY": "Ready", "INACTIVE": "Inactive", "FAILED": "Failed"][status] ?? status }
+func statusLabel(_ status: String) -> String { ["OFFLINE": "Relay non connesso", "ALL": "Tutte", "NEEDS_YOU": "Serve una risposta", "WORKING": "In corso", "READY": "Pronta", "INACTIVE": "Inattiva", "FAILED": "Errore"][status] ?? status }
 func statusColor(_ status: String) -> Color { status == "NEEDS_YOU" ? .orange : status == "WORKING" ? .green : status == "FAILED" ? .red : .secondary }
 
 #if DEBUG

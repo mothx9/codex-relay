@@ -5,6 +5,16 @@ public struct Machine: Codable, Identifiable, Sendable {
     public let id: String; public let name: String; public let status: String
     public let codexVersion: String?; public let adapter: String?; public let lastSeen: String
     public let account: Account?
+    public func connectionLabel(hubConnected: Bool, access: String? = nil) -> String {
+        if !hubConnected { return "Hub non connesso" }
+        if access == "PAUSED" { return "Relay in pausa" }
+        if access == "REVOKED" { return "Accesso Relay revocato" }
+        switch status {
+        case "ONLINE": return "Relay collegato"
+        case "DEGRADED": return "Codex non connesso"
+        default: return "Relay non connesso"
+        }
+    }
 }
 public struct Capabilities: Codable, Sendable {
     public var canSend: Bool; public var canFollowUp: Bool; public var canSteer: Bool; public var canInterrupt: Bool; public var canAnswer: Bool

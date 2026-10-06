@@ -106,8 +106,10 @@ enum CodePalette {
     static func color(_ kind: CodeToken.Kind) -> Color {
         switch kind {
         case .plain: .primary
-        case .comment: .secondary
-        case .keyword, .directive: Color(uiColor: .systemIndigo)
+        case .comment, .shellOperator: .secondary
+        case .command: Color.accentColor
+        case .variable: Color(uiColor: .systemOrange)
+        case .keyword, .directive, .flag: Color(uiColor: .systemIndigo)
         case .string: Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? .systemMint : UIColor(red: 0.04, green: 0.38, blue: 0.25, alpha: 1) })
         case .number: Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? .systemOrange : UIColor(red: 0.62, green: 0.25, blue: 0.02, alpha: 1) })
         }
@@ -145,6 +147,121 @@ struct CodeBlockView: View {
                 let source = code; let syntax = language
                 let parsed = await Task.detached(priority: .userInitiated) { CodeTokens.tokenize(source, language: syntax) }.value
                 if !Task.isCancelled { tokens = parsed }
+            }
+    }
+}
+
+struct PatchView: View {
+    let patch: String
+    var path = "Patch"
+    @State private var files: [PatchFile] = []
+    var body: some View {
+        VStack(alignment: .leading, spacing: RelaySpacing.page) {
+            ForEach(files) { file in
+                VStack(alignment: .leading, spacing: RelaySpacing.row) {
+                    HStack {
+                        Text(URL(fileURLWithPath: file.path).lastPathComponent).font(.subheadline.weight(.semibold)).lineLimit(2)
+                        Spacer()
+                        Text("+\(file.additions) −\(file.deletions)").font(.caption.monospacedDigit())
+                        Menu {
+                            Button("Copia percorso", systemImage: "doc.on.doc") { UIPasteboard.general.string = file.path }
+                            Button("Copia patch", systemImage: "doc.on.doc") { UIPasteboard.general.string = patch }
+                        } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
+                            .accessibilityLabel("Azioni per " + file.path)
+                    }
+                    ScrollView(.horizontal) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(file.lines) { line in
+                                HStack(alignment: .top, spacing: 8) {
+                                    Text(line.old.map(String.init) ?? "").frame(minWidth: 28, alignment: .trailing).foregroundStyle(.secondary)
+                                    Text(line.new.map(String.init) ?? "").frame(minWidth: 28, alignment: .trailing).foregroundStyle(.secondary)
+                                    Text(line.text).textSelection(.enabled)
+                                    Spacer(minLength: 0)
+                                }.font(.caption.monospaced()).fixedSize(horizontal: false, vertical: true)
+                                    .padding(.horizontal, 8).padding(.vertical, 2)
+                                    .background(tint(line.kind))
+                            }
+                        }.fixedSize(horizontal: true, vertical: false)
+                    }.background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+                }
+            }
+        }.task(id: patch + path) {
+            let source = patch, filename = path
+            let parsed = await Task.detached { PatchDocument.parse(source, path: filename) }.value
+            if !Task.isCancelled { files = parsed }
+        }.contextMenu { Button("Copia patch", systemImage: "doc.on.doc") { UIPasteboard.general.string = patch } }
+    }
+    private func tint(_ kind: PatchLine.Kind) -> Color {
+        switch kind {
+        case .addition: .green.opacity(0.12)
+        case .deletion: .red.opacity(0.12)
+        case .hunk: .accentColor.opacity(0.12)
+        default: .clear
+        }
+    }
+}
+
+@available(iOS 18.0, *)
+struct TerminalOutputView: View {
+    let text: String
+    @State private var following = true
+    @State private var unseen = false
+    @ScaledMetric(relativeTo: .caption) private var maximumHeight: CGFloat = 300
+    private var chunks: [String] {
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+        return stride(from: 0, to: lines.count, by: 48).map { lines[$0..<min($0 + 48, lines.count)].joined(separator: "\n") }
+    }
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView([.vertical, .horizontal]) {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(chunks.enumerated()), id: \.offset) { _, chunk in
+                        Text(chunk).font(.caption.monospaced()).textSelection(.enabled)
+                            .fixedSize(horizontal: true, vertical: true)
+                    }
+                    Color.clear.frame(height: 1).id("output.latest")
+                }.padding(10)
+            }.frame(height: min(maximumHeight, max(56, CGFloat(text.filter { $0 == "\n" }.count + 1) * 18 + 20)))
+                .defaultScrollAnchor(.bottomLeading, for: .initialOffset)
+                .onScrollGeometryChange(for: Bool.self) { geometry in
+                    geometry.visibleRect.maxY >= geometry.contentSize.height - 60
+                } action: { _, atBottom in
+                    following = atBottom
+                    if atBottom { unseen = false }
+                }
+                .onChange(of: text) { _, _ in
+                    if following { proxy.scrollTo("output.latest", anchor: .bottomLeading) }
+                    else { unseen = true }
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    if unseen {
+                        Button { proxy.scrollTo("output.latest", anchor: .bottomLeading); following = true; unseen = false } label: {
+                            Label("Ultimo output", systemImage: "arrow.down")
+                        }.font(.caption).buttonStyle(.borderedProminent).padding(8)
+                    }
+                }
+        }.background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+            .contextMenu { Button("Copia output", systemImage: "doc.on.doc") { UIPasteboard.general.string = text } }
+    }
+}
+
+struct CommandPreviewView: View {
+    let command: String
+    @State private var highlighted = AttributedString()
+    var body: some View {
+        Text(highlighted.characters.isEmpty ? AttributedString(command) : highlighted)
+            .font(.caption.monospaced()).textSelection(.enabled)
+            .task(id: command) {
+                let source = command
+                let tokens = await Task.detached { ShellTokens.tokenize(source) }.value
+                guard !Task.isCancelled else { return }
+                var value = AttributedString()
+                for token in tokens {
+                    var part = AttributedString(token.text)
+                    part.foregroundColor = CodePalette.color(token.kind)
+                    value.append(part)
+                }
+                highlighted = value
             }
     }
 }
