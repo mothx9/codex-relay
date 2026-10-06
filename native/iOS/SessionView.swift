@@ -45,7 +45,7 @@ struct SessionView: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
                             Button("Contesto della sessione", systemImage: "info.circle") { context = true }
-                            Button(steer ? "Torna al follow-up" : "Modifica il turno corrente", systemImage: "arrow.triangle.branch") {
+                            Button(steer ? "Torna al follow-up" : "Steer del turno corrente", systemImage: "arrow.triangle.branch") {
                                 steer.toggle(); expectedTurn = session.turnId ?? ""; composing = true
                             }.disabled(!steer && (!machineOnline(session) || !session.allows("steer")))
                             Button("Interrompi turno", systemImage: "stop.circle", role: .destructive) {
@@ -57,6 +57,12 @@ struct SessionView: View {
                 }
                 .confirmationDialog("Interrompere il turno in corso?", isPresented: $interrupt, titleVisibility: .visible) {
                     Button("Interrompi", role: .destructive) { Task { await relay.action("interrupt", expectedTurn: interruptTurn) } }
+                }
+                .onChange(of: relay.outbox.items.filter { $0.sessionId == session.id && $0.kind == "steer" && $0.phase == .failed && $0.errorCode != "UNKNOWN_OUTCOME" }.map(\.id)) { old, new in
+                    guard draft.isEmpty, let id = new.last(where: { !old.contains($0) }),
+                          let failed = relay.outbox.items.first(where: { $0.id == id }) else { return }
+                    draft = failed.text
+                    steer = false
                 }
                 .sheet(item: $tools) { ToolDetailView(group: $0) }
                 .sheet(isPresented: $context) { contextSheet(session) }
@@ -159,7 +165,7 @@ struct SessionView: View {
             } else {
                 if steer {
                     HStack {
-                        Label("Modifica il turno in corso", systemImage: "arrow.triangle.branch").font(.caption).foregroundStyle(.orange)
+                        Label("Steer · invia subito al turno corrente", systemImage: "arrow.triangle.branch").font(.caption).foregroundStyle(.orange)
                         Spacer()
                         Button("Annulla") { steer = false }.font(.caption)
                     }
@@ -176,17 +182,7 @@ struct SessionView: View {
                         .font(.body).lineLimit(1...5).focused($composing).padding(.leading, 20).padding(.vertical, 16)
                         .disabled(!available).accessibilityIdentifier("composer.text")
                     Button {
-                        let text = draft; let sessionID = session.id
-                        let targetTurn = steer ? expectedTurn : nil
-                        submitting = true
-                        Task {
-                            defer { submitting = false }
-                            guard relay.current?.id == sessionID else { return }
-                            if await relay.submit(text, kind: kind, expectedTurn: targetTurn) {
-                                if draft == text { draft = "" }
-                                steer = false; scrollRequest += 1
-                            }
-                        }
+                        sendDraft(session, kind: kind, targetTurn: steer ? expectedTurn : nil)
                     } label: {
                         Image(systemName: "arrow.up").font(.body.weight(.semibold))
                             .foregroundStyle(Color(uiColor: .systemBackground))
@@ -195,7 +191,29 @@ struct SessionView: View {
                     .buttonStyle(.plain).disabled(!canSend).padding(6)
                     .accessibilityLabel(steer ? "Invia Steer" : session.status == "WORKING" ? "Invia follow-up" : "Invia")
                     .accessibilityIdentifier("composer.send")
+                    .contextMenu {
+                        if session.allows("steer") {
+                            Button("Invia ora (Steer)", systemImage: "arrow.triangle.branch") {
+                                sendDraft(session, kind: "steer", targetTurn: session.turnId)
+                            }.disabled(!machineOnline(session) || submitting || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        }
+                    }
+                    .accessibilityHint(session.status == "WORKING" ? "Invia in coda. Tieni premuto per inviare subito con Steer." : "Invia un nuovo messaggio")
                 }.modifier(ComposerSurface())
+            }
+        }
+    }
+
+    private func sendDraft(_ session: RelaySession, kind: String, targetTurn: String?) {
+        guard !submitting else { return }
+        let text = draft
+        submitting = true
+        Task {
+            defer { submitting = false }
+            guard relay.current?.id == session.id else { return }
+            if await relay.submit(text, kind: kind, expectedTurn: targetTurn) {
+                if draft == text { draft = "" }
+                steer = false; scrollRequest += 1
             }
         }
     }
@@ -319,23 +337,55 @@ private struct OutgoingMessageView: View {
 private struct ToolSummaryView: View {
     let group: TranscriptGroup
     let open: () -> Void
+    @State private var expanded = false
+    private var running: Int { group.items.filter { $0.state == "running" }.count }
+    private var failed: Int { group.items.filter { $0.state == "failed" || $0.state == "declined" }.count }
+    private var summary: String {
+        var value = toolCount(group)
+        if running > 0 { value += " · \(running) in corso" }
+        if failed > 0 { value += " · \(failed) \(failed == 1 ? "non riuscito" : "non riusciti")" }
+        if running == 0 && failed == 0 && group.items.allSatisfy({ $0.state == "completed" }) { value += group.items.count == 1 ? " · completato" : " · completati" }
+        return value
+    }
     var body: some View {
-        Button(action: open) {
-            HStack(spacing: 12) {
-                Image(systemName: toolIcon(group.kind)).font(.body).foregroundStyle(.secondary)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(toolTitle(group.kind)).font(.subheadline.weight(.semibold))
-                    Text(toolCount(group) + (group.items.contains { $0.state == "running" } ? " · in corso" : "")).font(.caption).foregroundStyle(.secondary)
-                    if let active = group.items.last(where: { $0.state == "running" }), let detail = active.command ?? active.toolName {
-                        Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        VStack(alignment: .leading, spacing: 4) {
+            Button { expanded.toggle() } label: {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: toolIcon(group.kind)).font(.subheadline).frame(width: 20)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(toolTitle(group.kind)).font(.subheadline.weight(.semibold))
+                        Text(summary).font(.caption).foregroundStyle(.secondary)
+                        if !expanded, let active = group.items.last(where: { $0.state == "running" }), let detail = active.command ?? active.toolName {
+                            Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
                     }
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
-            }.foregroundStyle(.primary).padding(16)
-                .background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 16))
-                .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.primary.opacity(0.09)))
-        }.buttonStyle(.plain).accessibilityIdentifier("tool." + group.id)
+                    Spacer(minLength: 4)
+                    Image(systemName: expanded ? "chevron.down" : "chevron.right").font(.caption).foregroundStyle(.secondary)
+                }.foregroundStyle(.primary).frame(minHeight: 44, alignment: .center).contentShape(Rectangle())
+            }.buttonStyle(.plain).accessibilityIdentifier("tool." + group.id)
+                .accessibilityValue(expanded ? "Dettagli aperti" : "Dettagli chiusi")
+            if expanded {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(group.items) { item in
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: item.state == "running" ? "clock" : item.state == "failed" ? "exclamationmark.circle" : item.state == "completed" ? "checkmark.circle" : "circle")
+                                .font(.caption).foregroundStyle(item.state == "failed" ? .orange : .secondary)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(item.command ?? item.toolName ?? item.files?.first.map { URL(fileURLWithPath: $0.path).lastPathComponent } ?? toolTitle(group.kind))
+                                    .font(item.command != nil ? .caption.monospaced() : .subheadline).lineLimit(3).textSelection(.enabled)
+                                HStack(spacing: 8) {
+                                    Text(activityState(item.state))
+                                    if let code = item.exitCode { Text("Exit \(code)") }
+                                    if let duration = item.durationMs { Text(String(format: "%.1f s", Double(duration) / 1000)) }
+                                }.font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    Button("Apri dettagli e output", action: open).font(.caption).frame(minHeight: 44)
+                        .accessibilityIdentifier("tool.details." + group.id)
+                }.padding(.leading, 30)
+            }
+        }.padding(.vertical, 4)
     }
 }
 
@@ -399,66 +449,6 @@ private func toolCount(_ group: TranscriptGroup) -> String {
 }
 private func conversationStatus(_ status: String) -> String {
     ["WORKING": "In corso", "READY": "Pronto", "NEEDS_YOU": "Serve una risposta", "INACTIVE": "Inattivo", "FAILED": "Errore"][status] ?? status
-}
-
-/// Render Markdown blocks using native selectable text; code keeps its spacing.
-private struct ChatMarkdown: View {
-    let text: String
-    let identifier: String
-    private struct Block {
-        enum Kind { case paragraph, heading, bullet, code }
-        let kind: Kind
-        let text: String
-    }
-    private var blocks: [Block] {
-        var result: [Block] = []; var paragraph: [String] = []; var code: [String] = []; var fenced = false
-        func flush() {
-            if !paragraph.isEmpty { result.append(Block(kind: .paragraph, text: paragraph.joined(separator: "\n"))); paragraph = [] }
-        }
-        for line in text.components(separatedBy: "\n") {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix("```") {
-                flush()
-                if fenced { result.append(Block(kind: .code, text: code.joined(separator: "\n"))); code = [] }
-                fenced.toggle(); continue
-            }
-            if fenced { code.append(line); continue }
-            if trimmed.isEmpty { flush(); continue }
-            let heading = trimmed.prefix { $0 == "#" }
-            if (1...6).contains(heading.count), trimmed.dropFirst(heading.count).hasPrefix(" ") {
-                flush(); result.append(Block(kind: .heading, text: String(trimmed.dropFirst(heading.count + 1)))); continue
-            }
-            if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") {
-                flush(); result.append(Block(kind: .bullet, text: String(trimmed.dropFirst(2)))); continue
-            }
-            paragraph.append(line)
-        }
-        flush()
-        if fenced { result.append(Block(kind: .code, text: code.joined(separator: "\n"))) }
-        return result
-    }
-    private func inline(_ text: String) -> AttributedString {
-        (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text)
-    }
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            ForEach(Array(blocks.enumerated()), id: \.offset) { index, block in
-                let id = index == 0 ? identifier : identifier + ".\(index)"
-                switch block.kind {
-                case .paragraph: Text(inline(block.text)).font(.body).textSelection(.enabled).accessibilityIdentifier(id)
-                case .heading: Text(inline(block.text)).font(.headline).textSelection(.enabled).accessibilityAddTraits(.isHeader).accessibilityIdentifier(id)
-                case .bullet:
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Text("•").foregroundStyle(.secondary)
-                        Text(inline(block.text)).font(.body).textSelection(.enabled).accessibilityIdentifier(id)
-                    }
-                case .code:
-                    ScrollView(.horizontal) { Text(block.text).font(.callout.monospaced()).textSelection(.enabled).accessibilityIdentifier(id) }
-                        .padding(12).background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 12))
-                }
-            }
-        }.frame(maxWidth: .infinity, alignment: .leading)
-    }
 }
 
 private func activityState(_ state: String?) -> String {

@@ -49,6 +49,7 @@ import XCTest
         XCTAssertTrue(terminal.isHittable)
         XCTAssertTrue(composer.isHittable)
         terminal.tap()
+        app.buttons["tool.details.terminal.preview-command-0"].tap()
         XCTAssertTrue(app.staticTexts["activity.commandExecution.preview-command-0"].waitForExistence(timeout: 5))
         app.buttons["Chiudi"].tap()
         XCTAssertTrue(composer.isHittable)
@@ -68,6 +69,16 @@ import XCTest
         XCTAssertTrue(session.waitForExistence(timeout: 15)); session.tap()
         let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
         XCTAssertTrue(composer.waitForExistence(timeout: 15)); XCTAssertTrue(composer.isHittable)
+        app.buttons["Azioni della sessione"].tap()
+        let steer = app.buttons["Steer del turno corrente"]
+        XCTAssertTrue(steer.waitForExistence(timeout: 5))
+        if steer.isEnabled {
+            steer.tap()
+            XCTAssertTrue(app.buttons["composer.send"].label == "Invia Steer")
+            app.buttons["Annulla"].tap()
+        } else {
+            app.buttons["Azioni della sessione"].tap()
+        }
         let older = app.buttons["history.older"]
         let transcript = app.scrollViews.firstMatch
         for _ in 0..<12 {

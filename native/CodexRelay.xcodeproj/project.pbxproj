@@ -6,6 +6,12 @@
 	objectVersion = 56;
 	objects = {
 
+/* Begin XCRemoteSwiftPackageReference section */
+        000000000000000000000301 = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/swiftlang/swift-markdown.git"; requirement = {kind = exactVersion; version = 0.9.0; }; };
+/* End XCRemoteSwiftPackageReference section */
+/* Begin XCSwiftPackageProductDependency section */
+        000000000000000000000300 = {isa = XCSwiftPackageProductDependency; package = 000000000000000000000301; productName = Markdown; };
+/* End XCSwiftPackageProductDependency section */
 /* Begin PBXBuildFile section */
 		0000000000000000000000C8 /* RelayCore/HubAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000064 /* RelayCore/HubAPI.swift */; };
 		0000000000000000000000C9 /* RelayCore/Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000065 /* RelayCore/Keychain.swift */; };
@@ -18,6 +24,10 @@
 		000000000000000000000201 = {isa = PBXBuildFile; fileRef = 000000000000000000000202; };
 		0000000000000000000000D1 /* RelayCore/Transcript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000071; };
 		0000000000000000000000D2 /* iOS/SessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000072; };
+		0000000000000000000000E0 = {isa = PBXBuildFile; fileRef = 000000000000000000000080; };
+		0000000000000000000000E1 = {isa = PBXBuildFile; fileRef = 000000000000000000000081; };
+		0000000000000000000000E2 = {isa = PBXBuildFile; fileRef = 000000000000000000000082; };
+		0000000000000000000000E3 = {isa = PBXBuildFile; productRef = 000000000000000000000300; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,13 +45,16 @@
 		000000000000000000000203 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = CodexRelayUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000071 /* RelayCore/Transcript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCore/Transcript.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000072 /* iOS/SessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/SessionView.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000080 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCore/MarkdownPresentation.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000081 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCore/CodeTokens.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000082 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/RichContent.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		000000000000000000000009 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
-			files = (
+			files = (0000000000000000000000E3,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -52,6 +65,9 @@
 		000000000000000000000003 = {
 			isa = PBXGroup;
 			children = (
+				000000000000000000000082,
+				000000000000000000000081,
+				000000000000000000000080,
 				000000000000000000000072 /* iOS/SessionView.swift */,
 				000000000000000000000071 /* RelayCore/Transcript.swift */,
 				000000000000000000000202 /* LiveAcceptanceTests.swift */,
@@ -92,6 +108,7 @@
 			);
 			dependencies = (
 			);
+			packageProductDependencies = (000000000000000000000300);
 			name = CodexRelay;
 			productName = CodexRelay;
 			productReference = 000000000000000000000006 /* CodexRelay.app */;
@@ -132,6 +149,7 @@
 			productRefGroup = 000000000000000000000004 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
+			packageReferences = (000000000000000000000301);
 			targets = (
 				000000000000000000000204 /* CodexRelayUITests */,
 				000000000000000000000005 /* CodexRelay */,
@@ -155,6 +173,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0000000000000000000000E2,
+				0000000000000000000000E1,
+				0000000000000000000000E0,
 				0000000000000000000000D2 /* iOS/SessionView.swift in Sources */,
 				0000000000000000000000D1 /* RelayCore/Transcript.swift in Sources */,
 				0000000000000000000000D0 /* iOS/Notifications.swift in Sources */,
@@ -176,6 +197,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
+				ONLY_ACTIVE_ARCH = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;

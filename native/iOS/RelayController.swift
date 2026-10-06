@@ -166,6 +166,10 @@ import UIKit
         guard let session = current, online, machines[session.machineId]?.status == "ONLINE", session.allows(kind ?? session.defaultCommand), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { error = "Controllo non disponibile per questa sessione."; return false }
         let kind = kind ?? session.defaultCommand
         let targetTurn = kind == "steer" ? (expectedTurn ?? session.turnId) : nil
+        if kind == "steer", targetTurn != session.turnId {
+            error = "Il turno è cambiato. Il testo è conservato: scegli di nuovo Steer o invialo come follow-up."
+            return false
+        }
         do {
             let id = try outbox.add(session: selected, kind: kind, text: text, expectedTurn: targetTurn); outbox.sending(id)
             var command: [String: Any] = ["id": id, "kind": kind, "session_id": selected, "text": text]
