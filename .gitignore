@@ -7,3 +7,9 @@
 *.secret
 *.token
 .env
+/native/.build/
+/native/*.xcconfig
+xcuserdata/
+*.mobileprovision
+*.p8
+*.p12

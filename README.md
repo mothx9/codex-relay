@@ -101,6 +101,30 @@ codex-relay token revoke --data-dir "$HOME/.local/share/codex-relay/hub" --machi
 
 Revocation rejects new commands immediately and closes existing agent connections within 15 seconds. `token add` for an existing machine rotates its token; it never overwrites the output file. The operator bootstrap token grants full control; protect it as a privileged credential. Logout invalidates that browser session and closes its WebSockets. Operator sessions expire after 12 hours.
 
+## Native iPhone client
+
+The SwiftUI project is [native/CodexRelay.xcodeproj](native/CodexRelay.xcodeproj). See [native/README.md](native/README.md) for build, pairing, signing, APNs configuration and the exact acceptance gaps. This client uses the same Hub as the PWA; it does not create another Fleet.
+
+## Device pairing and management
+
+A phone does not need the long bootstrap token. On the installed Hub, generate a five-minute, one-use code:
+
+```sh
+codex-relay pair --hub-url "${RELAY_HUB_URL:?Set the actual HTTPS hub URL}" \
+  --data-dir "$HOME/.local/share/codex-relay/hub" --name iPhone
+```
+
+Enter the 8 digits in the native app or browser pairing screen. Already authenticated clients can generate additional operator/agent codes in **Dispositivi**. Codes vanish on Hub restart. Each client gets its own revocable access; no transcript or outbox is persisted.
+
+Dispositivi lists Hub agents and paired operator clients. **Scollega/Ricollega** pauses/restores an agent's access without stopping Codex. **Elimina** revokes access and removes its Fleet metadata. Adding an agent uses a code minted for that machine ID; redeem it into a private token file before installation:
+
+```sh
+codex-relay pair --kind agent --hub-url "$RELAY_HUB_URL" \
+  --code-file "$HOME/pairing-code" --out "$HOME/.config/codex-relay/new-machine.token"
+```
+
+The code file must be mode 0600. Existing enrolled machines cannot be silently replaced. Codex account type/email/plan are shown from official `account/read`; OpenAI account-wide devices are managed in ChatGPT Security settings, not through Relay.
+
 ## iPhone PWA and Web Push
 
 1. Open the production **HTTPS** hub in Safari, then Share → Add to Home Screen.

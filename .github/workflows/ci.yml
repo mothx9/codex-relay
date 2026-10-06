@@ -20,3 +20,9 @@ jobs:
         with:
           name: binaries
           path: dist/
+  native:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test --package-path native
+      - run: xcodebuild -project native/CodexRelay.xcodeproj -scheme CodexRelay -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/relay-ios-build CODE_SIGNING_ALLOWED=NO build
