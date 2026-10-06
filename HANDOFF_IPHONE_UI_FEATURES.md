@@ -6,7 +6,7 @@ Checkpoint: 6 ottobre 2026. Repository esistente: https://github.com/mothx9/code
 
 L'app è stata firmata, installata, aperta e abbinata sul vero iPhone. Il proprietario considera l'interfaccia attuale provvisoria e chiede un'interfaccia pensata davvero per iPhone, insieme a un upgrade delle feature. La prossima wave deve progettare e implementare questo upgrade, preservando il sistema già collegato e distinguendo le funzioni presenti dalle acceptance ancora mancanti.
 
-Il collegamento dell'iPhone non significa che ogni requisito sia completato: Spark è ancora offline e APNs reale non è configurato. Non usare «tutto collegato» per dichiarare tutti e tre gli agent online o notifiche funzionanti.
+Il controllo finale vede tutti e tre gli host ONLINE. Spark è tornato raggiungibile, ma il suo agent è ancora rc.3; APNs reale non è configurato. Il collegamento dell'iPhone non significa che ogni flusso nativo sia già verificato.
 
 ## Stato verificato
 
@@ -16,7 +16,8 @@ Il collegamento dell'iPhone non significa che ogni requisito sia completato: Spa
 | Rollback | Backup privato di binario, unità e SQLite. Un primo controllo di recovery fallito ha realmente ripristinato rc.3; il successivo upgrade rc.4 è riuscito. |
 | Exon | Agent rc.4 aggiornato separatamente, con snapshot e account metadata. Codex non è stato riavviato. |
 | MacBook | Agent rc.4 aggiornato separatamente attraverso il launchd esistente; credenziali e plist preservati. |
-| Spark | Enrollment preservato, ma host offline già prima dell'upgrade. Il proprietario sta gestendo il ritorno online. Upgrade agent e recovery sono aperti. |
+| Spark | Era offline durante l'upgrade. Nel controllo finale è ONLINE sul Hub e raggiungibile via SSH: servizio agent attivo, binario rc.3 linux/arm64. Enrollment preservato; upgrade rc.4, account metadata e nuova recovery restano aperti. |
+| Controlli PWA precedenti | New Turn, Follow-up con riconciliazione esatta, Answer e recovery agent/Hub erano passati su tutti e tre gli host attraverso questo stesso Hub. Steer e Interrupt erano passati su Exon. Sono prove storiche della base, non acceptance del nuovo client nativo. |
 | OTP sul Hub reale | Otto cifre, exchange riuscito, riuso rifiutato, scadenza reale dopo cinque minuti. Nessun token amministratore sul telefono. |
 | Revoca e dispositivi | Su enrollment usa-e-getta: revoca operatore chiude WSS e produce HTTP 401; rimozione client; aggiunta agent, conflitto, pausa/ripresa, revoca, re-enrollment e rimozione. Nessun enrollment reale revocato per le prove. |
 | App fisica | Personal Team del proprietario, Developer Mode confermata dopo il riavvio, profilo rigenerato per l'iPhone collegato, firma verificata, installazione e avvio riusciti. Il proprietario ha confermato pairing e apertura. |
@@ -82,7 +83,7 @@ Nuove feature come creazione/rinomina/archiviazione di thread o selezione di pro
 
 | Prova | Simulatore nativo | Vero iPhone |
 | --- | --- | --- |
-| Pairing/Fleet | PASS; host registrati non significa tre host online | Confermati dal proprietario |
+| Pairing/Fleet | PASS; il test enumera gli host registrati. Il controllo finale separato vede tre host ONLINE | Confermati dal proprietario |
 | Keychain dopo restart | PASS | Da automatizzare/verificare esplicitamente |
 | New Turn + risposta canonica | PASS su thread isolato | Aperta |
 | Follow-up immediato, accodato, eseguito una volta, senza duplicati | Aperta | Aperta |
@@ -99,7 +100,7 @@ Usare soltanto i thread di validation isolati indicati nell'handoff operativo pr
 
 ### 4. Spark e APNs
 
-Quando il proprietario segnala Spark online, verificarne l'accesso e aggiornarne soltanto l'agent Relay con backup/rollback, conservando il token. Confermare di nuovo le tre macchine e i metadata account. Nessuna modifica di rete per renderlo raggiungibile.
+Spark è ora raggiungibile: la prossima wave deve ricontrollarne lo stato e aggiornare soltanto l'agent Relay da rc.3 a rc.4 con backup/rollback, conservando il token. Confermare di nuovo le tre macchine e i metadata account. Non occorre chiedere al proprietario di riaccenderlo sulla base del vecchio checkpoint; nessuna modifica di rete e nessun restart del daemon Codex condiviso.
 
 Per APNs servono un team Apple push-capable, provisioning coerente e la chiave del proprietario. Non avviare iscrizioni a pagamento o creare chiavi senza gli accessi/autorizzazioni necessari. Config e `.p8` restano private con mode 0600; il solo Hub usa la chiave. L'installer rc.4 ora conserva `--apns-config` fra upgrade; un servizio già avviato richiede il restart per applicare una nuova unità. Verificare ricezione con app chiusa e tap sulla sessione corretta, senza contenuti sensibili sul lock screen.
 
@@ -129,6 +130,7 @@ Verifiche eseguite sulla base funzionale:
 - `swift test --package-path native`: dieci test core PASS.
 - Build simulatore con firma locale, build-for-testing e live XCUITest contro il Hub reale PASS. Il test usa configurazione privata nel bundle di test costruito, mai nel repository; CI senza config non prova il live E2E.
 - Build iPhone firmata, verifica strict della firma, installazione e avvio dell'ultima build PASS.
+- Controllo finale del runtime: Hub attivo rc.4, SQLite `quick_check` OK, Exon/Spark/MacBook ONLINE e enrollment iPhone attivo. Controllo SSH separato: servizio Spark attivo, binario ancora rc.3. Nessun servizio riavviato per questo controllo.
 - CI Go/native verde sulla base funzionale `1f4cf72` ([run verificato](https://github.com/mothx9/codex-relay/actions/runs/37492369716)); ricontrollare comunque HEAD prima della prossima wave. Il Native job compila anche il target UI test con `build-for-testing`.
 
 Comandi e dettagli completi sono in [native/README.md](native/README.md), [DEPLOYMENT.md](DEPLOYMENT.md) e [VALIDATION.md](VALIDATION.md). Leggere anche README, ARCHITECTURE, DISCOVERY, SECURITY e HANDOFF_MACOS. L'handoff operativo privato contiene accessi e thread autorizzati; il suo stato rc.3 iniziale è storico e viene superato dal checkpoint rc.4 attuale.
