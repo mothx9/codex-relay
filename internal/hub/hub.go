@@ -21,11 +21,15 @@ type Config struct {
 	APNS                  *push.APNS
 }
 type agentPeer struct {
-	peer     *protocol.Peer
-	epoch    string
-	sequence uint64
-	lastSeen time.Time
-	token    string
+	peer         *protocol.Peer
+	epoch        string
+	sequence     uint64
+	seen         map[string]bool
+	seenOrder    []string
+	lastSeen     time.Time
+	token        string
+	connectedAt  time.Time
+	connectionID string
 }
 type operator struct {
 	peer    *protocol.Peer
@@ -84,6 +88,9 @@ func New(s *store.Store, c Config) (*Hub, error) {
 	}
 	for _, v := range snap.Sessions {
 		h.sessions[v.ID] = v
+	}
+	for _, r := range snap.Requests {
+		h.requests[r.ID] = r
 	}
 	h.push = push.New(s, c.PushKeys, c.PushSubject)
 	h.push.APNS = c.APNS
@@ -145,13 +152,7 @@ func (h *Hub) maintain(now time.Time) {
 			h.push.Enqueue(push.Notice{Kind: "machine_offline", Key: "offline/" + m.ID + "/" + m.LastSeen.Format(time.RFC3339Nano), Machine: m.Name})
 		}
 	}
-	for id, r := range h.requests {
-		if now.After(r.ExpiresAt) {
-			delete(h.requests, id)
-			_ = h.store.ResolvePending(id)
-			h.broadcast(protocol.Message{Type: "event", Event: &protocol.Event{Kind: "request_resolved", SessionID: r.SessionID, RequestID: id}}, "")
-		}
-	}
+	// Only Codex resolution or a complete new-epoch reconciliation retires a request.
 	if e := h.store.Prune(); e != nil {
 		slog.Error("metadata maintenance failed")
 	}
@@ -165,10 +166,7 @@ func (h *Hub) snapshot() protocol.Snapshot {
 		snap.Machines = append(snap.Machines, m)
 	}
 	for _, s := range h.sessions {
-		if h.machines[s.MachineID].Status != protocol.Online {
-			s.Capabilities = protocol.Capabilities{}
-		}
-		snap.Sessions = append(snap.Sessions, s)
+		snap.Sessions = append(snap.Sessions, h.visibleSession(s))
 	}
 	for _, r := range h.requests {
 		r.Payload = nil
@@ -189,6 +187,12 @@ func samePending(a, b protocol.PendingRequest) bool {
 }
 
 func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
+	if current := h.agents[id]; current != nil && current != a {
+		return errors.New("stale connection")
+	}
+	if a.epoch != "" && a.epoch != msg.Epoch {
+		return errors.New("epoch changed within connection")
+	}
 	if msg.Version != protocol.Version || msg.Machine == nil || msg.Machine.ID != id || len(msg.Sessions) > protocol.MaxSessions || len(msg.Requests) > 128 || msg.Epoch == "" {
 		return errors.New("invalid announcement")
 	}
@@ -219,7 +223,28 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	if a.epoch == msg.Epoch && msg.Sequence < a.sequence {
 		return nil
 	}
+	// A reachable Agent with unavailable Codex must retain last-known state.
+	if msg.Machine.Status == protocol.Degraded {
+		m := h.machines[id]
+		m.ID, m.Name, m.Status = id, protocol.Clip(msg.Machine.Name, 64), protocol.Degraded
+		m.AgentVersion, m.CodexVersion, m.Adapter = msg.Machine.AgentVersion, msg.Machine.CodexVersion, msg.Machine.Adapter
+		m.LastSeen = time.Now().UTC()
+		h.machines[id] = m
+		a.epoch, a.lastSeen = msg.Epoch, m.LastSeen
+		snap := h.snapshot()
+		h.broadcast(protocol.Message{Type: "snapshot", Snapshot: &snap}, "")
+		return h.store.SaveMachine(m)
+	}
 	m := *msg.Machine
+	m.Freshness = h.machines[id].Freshness
+	m.Freshness.ConnectionID = a.connectionID
+	m.Freshness.Epoch, m.Freshness.ProtocolVersion = msg.Epoch, msg.Version
+	m.Freshness.LastSnapshot = time.Now().UTC()
+	m.Freshness.Sequence, m.Freshness.SnapshotSequence = msg.Sequence, msg.Sequence
+	m.Freshness.SnapshotMS = msg.Machine.Freshness.SnapshotMS
+	if !a.connectedAt.IsZero() {
+		m.Freshness.SyncMS = float64(time.Since(a.connectedAt).Microseconds()) / 1000
+	}
 	m.ID = id
 	m.LastSeen = time.Now().UTC()
 	m.Name = protocol.Clip(m.Name, 64)
@@ -233,6 +258,10 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	}
 	if e := h.store.SaveMachine(m); e != nil {
 		return e
+	}
+	for i := range msg.Sessions {
+		msg.Sessions[i].ObservedAt = m.LastSeen
+		msg.Sessions[i].AgentEpoch = msg.Epoch
 	}
 	if e := h.store.ReplaceSessions(id, msg.Sessions); e != nil {
 		return e
@@ -255,6 +284,10 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	for rid, r := range h.requests {
 		if r.MachineID == id {
 			next, exists := incoming[rid]
+			if !exists && a.epoch == msg.Epoch {
+				incoming[rid] = r
+				continue
+			}
 			// Periodic announcements must not release an in-flight approval.
 			if !exists || a.epoch != msg.Epoch || !samePending(r, next) {
 				delete(h.answering, rid)
@@ -271,8 +304,9 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 			delete(h.liveActivities, sid)
 		}
 	}
-	for _, r := range msg.Requests {
+	for _, r := range incoming {
 		h.requests[r.ID] = r
+		h.ensurePendingSession(r, msg.Epoch, m.LastSeen)
 		if e := h.store.SavePending(r); e != nil {
 			return e
 		}
@@ -286,14 +320,45 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	return nil
 }
 func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
+	if current := h.agents[id]; current != nil && current != a {
+		return errors.New("stale connection")
+	}
 	if e.MachineID != id || e.Epoch != a.epoch || e.ID == "" || e.SessionID == "" {
 		return errors.New("invalid event identity")
 	}
-	if e.Sequence <= a.sequence {
+	if e.Request != nil {
+		r := e.Request
+		if r.ID == "" || r.MachineID != id || r.SessionID != e.SessionID || r.SessionID != protocol.SessionID(id, r.ThreadID) || len(r.Payload) > 64<<10 {
+			return errors.New("invalid pending request identity")
+		}
+		if _, exists := h.requests[r.ID]; !exists && len(h.requests) >= 128 {
+			return errors.New("pending capacity reached")
+		}
+	}
+	if r, exists := h.requests[e.RequestID]; e.Kind == "request_resolved" && exists && (r.MachineID != id || r.SessionID != e.SessionID) {
+		return errors.New("cross-session resolution")
+	}
+	if e.Sequence <= a.sequence || a.seen[e.ID] {
 		return nil
+	}
+	if a.seen == nil {
+		a.seen = map[string]bool{}
+	}
+	a.seen[e.ID] = true
+	a.seenOrder = append(a.seenOrder, e.ID)
+	if len(a.seenOrder) > 2048 {
+		delete(a.seen, a.seenOrder[0])
+		a.seenOrder = a.seenOrder[1:]
 	}
 	a.sequence = e.Sequence
 	a.lastSeen = time.Now()
+	m := h.machines[id]
+	m.LastSeen = a.lastSeen
+	m.Freshness.LastEvent, m.Freshness.Sequence = a.lastSeen, e.Sequence
+	h.machines[id] = m
+	if e.Request != nil && e.Request.MachineID == id && e.Request.SessionID == e.SessionID && e.Request.SessionID == protocol.SessionID(id, e.Request.ThreadID) {
+		h.ensurePendingSession(*e.Request, a.epoch, a.lastSeen)
+	}
 	s, ok := h.sessions[e.SessionID]
 	if !ok {
 		if e.Session == nil {
@@ -312,6 +377,7 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 			return errors.New("invalid session update")
 		}
 		s = *e.Session
+		s.ObservedAt, s.AgentEpoch = a.lastSeen, a.epoch
 		h.sessions[s.ID] = s
 		if err := h.store.SaveSession(s); err != nil {
 			return err
@@ -319,10 +385,13 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 	}
 	if e.Request != nil {
 		r := *e.Request
-		if r.MachineID != id || r.SessionID != s.ID || r.ThreadID != s.ThreadID || len(r.Payload) > 64<<10 || len(h.requests) >= 128 {
+		if r.MachineID != id || r.SessionID != s.ID || r.ThreadID != s.ThreadID || len(r.Payload) > 64<<10 {
 			return errors.New("invalid pending request")
 		}
 		h.requests[r.ID] = r
+		h.ensurePendingSession(r, a.epoch, a.lastSeen)
+		s = h.sessions[r.SessionID]
+		e.Session = &s
 		if err := h.store.SavePending(r); err != nil {
 			return err
 		}
@@ -334,6 +403,10 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 		if err := h.store.ResolvePending(e.RequestID); err != nil {
 			return err
 		}
+	}
+	if e.Session != nil {
+		visible := h.visibleSession(*e.Session)
+		e.Session = &visible
 	}
 	h.updateLiveActivity(e)
 	if b := h.buffers[e.SessionID]; b != nil {
@@ -389,6 +462,7 @@ func (h *Hub) offline(id string, a *agentPeer) {
 	delete(h.agents, id)
 	m := h.machines[id]
 	m.Status = protocol.Offline
+	m.Freshness.LastDisconnectReason = "transport_closed"
 	h.machines[id] = m
 	_ = h.store.SaveMachine(m)
 	for rid, r := range h.requests {
@@ -396,7 +470,6 @@ func (h *Hub) offline(id string, a *agentPeer) {
 			delete(h.answering, rid)
 		}
 	}
-	_ = h.store.ClearPending(id)
 	for cid, f := range h.flights {
 		if f.machine == id {
 			r := protocol.Failure(protocol.Command{ID: cid, SessionID: f.session}, protocol.UnknownOutcome)
@@ -406,4 +479,50 @@ func (h *Hub) offline(id string, a *agentPeer) {
 	}
 	snap := h.snapshot()
 	h.broadcast(protocol.Message{Type: "snapshot", Snapshot: &snap}, "")
+}
+
+// Pending state has priority over catalogue pagination and session snapshots.
+func (h *Hub) ensurePendingSession(r protocol.PendingRequest, epoch string, observed time.Time) {
+	s, known := h.sessions[r.SessionID]
+	if !known {
+		s = protocol.Session{ID: r.SessionID, MachineID: r.MachineID, ThreadID: r.ThreadID, Title: "Thread " + protocol.Clip(r.ThreadID, 8), Cwd: r.Cwd, ReadOnly: true}
+	}
+	if !known {
+		s.Status = protocol.NeedsYou
+	}
+	s.AgentEpoch, s.ObservedAt = epoch, observed
+	h.sessions[s.ID] = s
+	_ = h.store.SaveSession(s)
+}
+
+// Transport acceptance immediately invalidates the previous live freshness.
+func (h *Hub) syncing(id string, a *agentPeer) {
+	now := time.Now().UTC()
+	a.connectedAt, a.connectionID = now, protocol.ID()
+	m := h.machines[id]
+	m.ID = id
+	if m.Name == "" {
+		m.Name = id
+	}
+	if !m.Freshness.ConnectedAt.IsZero() {
+		m.Freshness.ReconnectCount++
+	}
+	m.Status = protocol.Syncing
+	m.Freshness.ConnectedAt, m.Freshness.ConnectionID = now, a.connectionID
+	h.machines[id] = m
+	snap := h.snapshot()
+	h.broadcast(protocol.Message{Type: "snapshot", Snapshot: &snap}, "")
+}
+
+func (h *Hub) visibleSession(s protocol.Session) protocol.Session {
+	s.Fresh = h.machines[s.MachineID].Status == protocol.Online
+	for _, r := range h.requests {
+		if r.SessionID == s.ID {
+			s.Status = protocol.NeedsYou
+		}
+	}
+	if !s.Fresh {
+		s.Capabilities = protocol.Capabilities{}
+	}
+	return s
 }

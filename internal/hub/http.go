@@ -210,6 +210,7 @@ func (h *Hub) agent(w http.ResponseWriter, r *http.Request) {
 		old.peer.Close()
 	}
 	h.agents[id] = a
+	h.syncing(id, a)
 	h.mu.Unlock()
 	defer h.offline(id, a)
 	for {
@@ -229,6 +230,7 @@ func (h *Hub) agent(w http.ResponseWriter, r *http.Request) {
 			a.lastSeen = time.Now()
 			m := h.machines[id]
 			m.LastSeen = a.lastSeen
+			m.Freshness.LastHeartbeat = a.lastSeen
 			h.machines[id] = m
 		case "event":
 			if msg.Event == nil {
@@ -403,7 +405,7 @@ func (h *Hub) route(o *operator, c protocol.Command) {
 		}
 	case protocol.Answer:
 		r, ok := h.requests[c.RequestID]
-		if !ok || r.SessionID != s.ID || time.Now().After(r.ExpiresAt) {
+		if !ok || r.SessionID != s.ID {
 			fail(protocol.PendingRequestChanged)
 			return
 		}

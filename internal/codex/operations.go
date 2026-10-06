@@ -328,7 +328,7 @@ func (a *Adapter) errorCode(c protocol.Command, err error) string {
 func (a *Adapter) respond(c protocol.Command) error {
 	a.mu.Lock()
 	p, ok := a.requests[c.RequestID]
-	if !ok || p.Sent || p.Request.ThreadID != c.ThreadID || time.Now().After(p.Request.ExpiresAt) {
+	if !ok || p.Sent || p.Request.ThreadID != c.ThreadID {
 		a.mu.Unlock()
 		return errors.New("Request expired, resolved, or already answered")
 	}

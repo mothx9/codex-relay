@@ -174,6 +174,26 @@ func (s *Store) Load() (protocol.Snapshot, error) {
 		v.ReadOnly = true
 		out.Sessions = append(out.Sessions, v)
 	}
+	if e = rows.Err(); e != nil {
+		return out, e
+	}
+	rows.Close()
+	rows, e = s.DB.Query(`SELECT id,machine_id,session_id,thread_id,turn_id,kind,created_at,expires_at,status FROM pending_requests`)
+	if e != nil {
+		return out, e
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var r protocol.PendingRequest
+		var created, expires string
+		if e = rows.Scan(&r.ID, &r.MachineID, &r.SessionID, &r.ThreadID, &r.TurnID, &r.Kind, &created, &expires, &r.Status); e != nil {
+			return out, e
+		}
+		r.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
+		r.ExpiresAt, _ = time.Parse(time.RFC3339Nano, expires)
+		// Routing metadata survives restart; sensitive form context is replayed by Codex.
+		out.Requests = append(out.Requests, r)
+	}
 	return out, rows.Err()
 }
 func (s *Store) Audit(action, machine, session, command, outcome string) error {

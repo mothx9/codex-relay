@@ -50,7 +50,7 @@ func Normalize(raw string, flags []string) string {
 	switch raw {
 	case "active":
 		for _, f := range flags {
-			if f == "waitingForApproval" || f == "waitingForUserInput" {
+			if f == "waitingForApproval" || f == "waitingForUserInput" || f == "waitingOnApproval" || f == "waitingOnUserInput" {
 				return protocol.NeedsYou
 			}
 		}
@@ -91,8 +91,11 @@ func (a *Adapter) capabilities(s protocol.Session) protocol.Session {
 	s.Capabilities = protocol.Capabilities{}
 	// Direct-input permission does not revoke a server request addressed to us.
 	for _, p := range a.requests {
-		if p.Request.ThreadID == s.ThreadID && p.Request.Kind != "unsupported" && !p.Sent {
-			s.Capabilities.CanAnswer = true
+		if p.Request.ThreadID == s.ThreadID {
+			s.Status = protocol.NeedsYou
+			if p.Request.Kind != "unsupported" && !p.Sent {
+				s.Capabilities.CanAnswer = true
+			}
 		}
 	}
 	if s.ReadOnly {

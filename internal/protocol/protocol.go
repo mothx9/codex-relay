@@ -13,17 +13,21 @@ const MaxMessage = 1 << 20
 const MaxSessions = 256
 const MaxText = 16384
 const (
-	Online   = "ONLINE"
-	Offline  = "OFFLINE"
-	Degraded = "DEGRADED"
-	NeedsYou = "NEEDS_YOU"
-	Working  = "WORKING"
-	Ready    = "READY"
-	Inactive = "INACTIVE"
-	Failed   = "FAILED"
+	Online       = "ONLINE"
+	Syncing      = "SYNCING"
+	Reconnecting = "RECONNECTING"
+	Offline      = "OFFLINE"
+	Degraded     = "DEGRADED"
+	NeedsYou     = "NEEDS_YOU"
+	Working      = "WORKING"
+	Ready        = "READY"
+	Inactive     = "INACTIVE"
+	Failed       = "FAILED"
 )
 
 type Machine struct {
+	AgentVersion string    `json:"agent_version,omitempty"`
+	Freshness    Freshness `json:"freshness"`
 	ID           string    `json:"id"`
 	Name         string    `json:"name"`
 	Status       string    `json:"status"`
@@ -40,6 +44,9 @@ type Account struct {
 	Plan  string `json:"plan,omitempty"`
 }
 type Session struct {
+	Fresh          bool         `json:"fresh"`
+	ObservedAt     time.Time    `json:"observed_at,omitempty"`
+	AgentEpoch     string       `json:"agent_epoch,omitempty"`
 	ID             string       `json:"id"`
 	MachineID      string       `json:"machine_id"`
 	ThreadID       string       `json:"thread_id"`

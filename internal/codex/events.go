@@ -254,6 +254,7 @@ func (a *Adapter) handle(m rpcMessage) {
 	case "serverRequest/resolved":
 		rid := a.requestID(p.RequestID)
 		delete(a.requests, rid)
+		s.Status = Normalize(s.RawStatus, nil)
 		ev.Kind = "request_resolved"
 		ev.RequestID = rid
 	case "item/agentMessage/delta":
