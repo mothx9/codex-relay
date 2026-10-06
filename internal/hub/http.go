@@ -33,6 +33,7 @@ func (h *Hub) Handler() http.Handler {
 	mux.HandleFunc("POST /api/devices/{id}/remove", h.removeDevice)
 	mux.HandleFunc("POST /api/machines/{id}/{action}", h.manageMachine)
 	mux.HandleFunc("GET /api/bootstrap", h.bootstrap)
+	mux.HandleFunc("GET /api/diagnostics", h.diagnostics)
 	mux.HandleFunc("GET /api/ui", h.ui)
 	mux.HandleFunc("GET /api/agent", h.agent)
 	mux.HandleFunc("GET /api/agent/status", func(w http.ResponseWriter, r *http.Request) {

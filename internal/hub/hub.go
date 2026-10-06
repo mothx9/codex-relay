@@ -16,6 +16,7 @@ import (
 
 type Config struct {
 	PublicURL, AdminToken string
+	Version               string
 	PushKeys              push.Keys
 	PushSubject           string
 	APNS                  *push.APNS
@@ -357,6 +358,10 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 	m := h.machines[id]
 	m.LastSeen = a.lastSeen
 	m.Freshness.LastEvent, m.Freshness.Sequence = a.lastSeen, e.Sequence
+	e.HubObservedAt = a.lastSeen.UTC()
+	if !e.Timestamp.IsZero() {
+		m.Freshness.AgentToHub.Observe(a.lastSeen.Sub(e.Timestamp))
+	}
 	h.machines[id] = m
 	if e.Request != nil && e.Request.MachineID == id && e.Request.SessionID == e.SessionID && e.Request.SessionID == protocol.SessionID(id, e.Request.ThreadID) {
 		h.ensurePendingSession(*e.Request, a.epoch, a.lastSeen)

@@ -294,3 +294,21 @@ public struct EventFreshness: Sendable {
         return true
     }
 }
+
+/// Bounded in-memory diagnostics. Rendering duration is deliberately not inferred.
+public struct ReceiptTiming: Sendable {
+    public private(set) var samples = 0
+    public private(set) var hubToNativeMs: Double = 0
+    public private(set) var reducerMs: Double = 0
+    public private(set) var clockSkew = false
+    public init() {}
+    public mutating func observe(hub: String?, received: Date, reduced: Date) {
+        reducerMs = max(0, reduced.timeIntervalSince(received) * 1000)
+        guard let hub else { return }
+        let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        guard let date = formatter.date(from: hub) ?? ISO8601DateFormatter().date(from: hub) else { return }
+        let ms = received.timeIntervalSince(date) * 1000
+        guard ms >= 0, ms < 300_000 else { clockSkew = true; return }
+        samples = min(samples + 1, 1024); hubToNativeMs = ms
+    }
+}

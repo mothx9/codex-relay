@@ -166,25 +166,26 @@ type LiveActivity struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 type Event struct {
-	LiveActivity *LiveActivity   `json:"live_activity,omitempty"`
-	ID           string          `json:"event_id"`
-	MachineID    string          `json:"machine_id"`
-	SessionID    string          `json:"session_id"`
-	Timestamp    time.Time       `json:"timestamp"`
-	Kind         string          `json:"kind"`
-	Sequence     uint64          `json:"sequence"`
-	Epoch        string          `json:"epoch"`
-	RawEvent     string          `json:"raw_event,omitempty"`
-	Session      *Session        `json:"session,omitempty"`
-	Request      *PendingRequest `json:"request,omitempty"`
-	RequestID    string          `json:"request_id,omitempty"`
-	Activity     *Activity       `json:"activity,omitempty"`
-	TurnID       string          `json:"turn_id,omitempty"`
-	ItemID       string          `json:"item_id,omitempty"`
-	Text         string          `json:"text,omitempty"`
-	NotifyKey    string          `json:"notify_key,omitempty"`
-	FollowUps    []FollowUp      `json:"follow_ups,omitempty"`
-	ClientID     string          `json:"client_id,omitempty"`
+	HubObservedAt time.Time       `json:"hub_observed_at,omitempty"`
+	LiveActivity  *LiveActivity   `json:"live_activity,omitempty"`
+	ID            string          `json:"event_id"`
+	MachineID     string          `json:"machine_id"`
+	SessionID     string          `json:"session_id"`
+	Timestamp     time.Time       `json:"timestamp"`
+	Kind          string          `json:"kind"`
+	Sequence      uint64          `json:"sequence"`
+	Epoch         string          `json:"epoch"`
+	RawEvent      string          `json:"raw_event,omitempty"`
+	Session       *Session        `json:"session,omitempty"`
+	Request       *PendingRequest `json:"request,omitempty"`
+	RequestID     string          `json:"request_id,omitempty"`
+	Activity      *Activity       `json:"activity,omitempty"`
+	TurnID        string          `json:"turn_id,omitempty"`
+	ItemID        string          `json:"item_id,omitempty"`
+	Text          string          `json:"text,omitempty"`
+	NotifyKey     string          `json:"notify_key,omitempty"`
+	FollowUps     []FollowUp      `json:"follow_ups,omitempty"`
+	ClientID      string          `json:"client_id,omitempty"`
 }
 type Command struct {
 	QueueID       string              `json:"queue_id,omitempty"`

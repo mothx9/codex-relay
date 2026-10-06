@@ -212,7 +212,7 @@ func runHub(ctx context.Context, args []string) error {
 		return e
 	}
 	defer s.Close()
-	h, e := hub.New(s, hub.Config{PublicURL: *public, AdminToken: strings.TrimSpace(string(admin)), PushKeys: keys, PushSubject: *subject, APNS: nativePush})
+	h, e := hub.New(s, hub.Config{Version: version, PublicURL: *public, AdminToken: strings.TrimSpace(string(admin)), PushKeys: keys, PushSubject: *subject, APNS: nativePush})
 	if e != nil {
 		return e
 	}

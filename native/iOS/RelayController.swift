@@ -45,6 +45,7 @@ import UIKit
     private var generation = UUID()
     private var seen: [String] = []
     private var eventFreshness = EventFreshness()
+    var receiptTiming = ReceiptTiming()
     private var paused = false
     private var commands: Set<String> = []
     private var lastBackground: Date?
@@ -117,6 +118,8 @@ import UIKit
         case "devices_changed": Task { await loadDevices() }
         case "event", "pending":
             guard let event = message.event else { return }
+            let received = Date()
+            defer { receiptTiming.observe(hub: event.hubObservedAt, received: received, reduced: Date()) }
             if event.kind == "live_activity" { liveActivities[event.sessionId] = event.liveActivity; return }
             if let id = event.eventId, !id.isEmpty {
                 if seen.contains(id) {
