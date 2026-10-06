@@ -8,11 +8,13 @@ build:
 test:
 	go test ./...
 	node web/control.test.mjs
+	python3 scripts/install_test.py
 check:
 	test -z "$$(gofmt -l cmd internal web)"
 	go vet ./...
 	go test -race ./...
 	node web/control.test.mjs
+	python3 scripts/install_test.py
 cross:
 	mkdir -p dist
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="$(LDFLAGS)" -o dist/codex-relay-linux-amd64 ./cmd/codex-relay

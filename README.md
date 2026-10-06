@@ -2,7 +2,7 @@
 
 A personal control plane for Codex sessions on multiple machines. Codex does the work on each host; Relay transports control, derived state and notifications. One Go binary contains the hub, outbound agent and browser PWA. The hub needs no Node runtime, GPU or external database.
 
-**Status: v0.1 RC, native iPhone extension in progress.** One persistent Hub runs on Zima over Alfa Wi-Fi, with real Exon, Spark and MacBook agents connected to the same HTTPS origin. New turns, native follow-up, live responses, Needs You answers and agent/Hub recovery passed through that Hub. The Exon validation Hub is stopped. Shared Codex daemons tested: 0.160.1 on Linux amd64/arm64, 0.160.0 on macOS arm64. Physical iPhone installation and notification receipt/tap remain acceptance requirements. See [VALIDATION.md](VALIDATION.md).
+**Status: v0.1 RC, native iPhone extension in progress.** One persistent Hub runs on Zima. Its rc.4 build and Exon/MacBook agent upgrades are deployed; Spark's enrollment is preserved but the host is currently offline. Earlier three-host PWA control/recovery acceptance passed through this same Hub. Live simulator pairing, Keychain restart, New Turn/reply and exact reconciliation now pass; the owner's iPhone app is signed, installed and paired. Remaining native controls and real APNs receipt/tap are open. The Exon validation Hub remains stopped. See [VALIDATION.md](VALIDATION.md).
 
 Codex Relay is an independent project, not affiliated with or endorsed by OpenAI. Apache-2.0 licensed. No OpenAI logos are used.
 

@@ -47,6 +47,10 @@ systemctl --user status codex-relay-hub
 
 The installer downloads and verifies the Linux amd64 prerelease. It requires curl, install, systemd and sha256sum, not Go/Node. Bootstrap token and DB are in `~/.local/share/codex-relay/hub`. Read the bootstrap token locally for login.
 
+For native push on a verified rc.4 Hub, supply `--binary` and `--apns-config FILE` to this same installer. The config must be a nonempty regular owner-owned file with mode 0600; its referenced Apple `.p8` key also requires mode 0600 and is checked by the Hub. The installer writes only a private path record at `~/.config/codex-relay/apns-config.path`, retains that path when later upgrades omit the flag, and does not copy or delete Apple keys. Use `--apns-config none` to explicitly remove the service flag. Existing manually configured APNs units require the owner to supply their path before migration; it cannot be silently dropped. `--dry-run` validates and renders without saving the record or changing a service. Agent installs reject this option.
+
+Changing an already-running Hub unit requires `systemctl --user restart codex-relay-hub.service` after your normal backup/rollback preparation; enable/start alone does not replace an existing process. Verify the new configuration through authenticated bootstrap and physical push acceptance. A Personal Team installation, generated service flag or mocked APNs test does not prove notification delivery.
+
 Create the three distinct agent tokens **on the active hub** (Zima in this deployment). Use its actual data directory if it differs from this installed-service default:
 
 ```sh

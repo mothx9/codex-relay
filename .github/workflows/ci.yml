@@ -12,6 +12,7 @@ jobs:
           go-version: '1.27.x'
       - run: test -z "$(gofmt -l cmd internal web)"
       - run: sh -n scripts/install.sh
+      - run: python3 scripts/install_test.py
       - run: go vet ./...
       - run: go test -race ./...
       - run: node web/control.test.mjs

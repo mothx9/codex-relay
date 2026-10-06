@@ -2,13 +2,15 @@
 # Per-user installation. No network, firewall, Wi-Fi, or VPN configuration changes.
 set -eu
 role=${1:-}
-case "$role" in hub|agent) shift ;; *) printf '%s\n' 'Usage: install.sh hub|agent --public-url URL | --hub-url URL --machine ID --token-file FILE [--binary FILE] [--dry-run] [--no-start (Linux)]'; exit 2 ;; esac
+case "$role" in hub|agent) shift ;; *) printf '%s\n' 'Usage: install.sh hub|agent --public-url URL [--apns-config FILE|none] | --hub-url URL --machine ID --token-file FILE [--binary FILE] [--dry-run] [--no-start (Linux)]'; exit 2 ;; esac
 relay_binary=''
 hub_url=''
 public_url=''
 machine=''
 token_file=''
 codex_binary=''
+apns_config=''
+apns_supplied=0
 insecure=''
 dry_run=0
 no_start=0
@@ -21,6 +23,7 @@ while [ "$#" -gt 0 ]; do
   --machine) machine=$2; shift 2 ;;
   --token-file) token_file=$2; shift 2 ;;
   --codex) codex_binary=$2; shift 2 ;;
+  --apns-config) apns_config=$2; apns_supplied=1; shift 2 ;;
   --listen) listen=$2; shift 2 ;;
   --insecure-http) insecure='--insecure-http'; shift ;;
   --dry-run) dry_run=1; shift ;;
@@ -60,12 +63,35 @@ esac
 install_bin="$HOME/.local/bin/codex-relay"
 state_dir="$HOME/.local/share/codex-relay/$role"
 config_dir="$HOME/.config/codex-relay"
+apns_record="$config_dir/apns-config.path"
+if [ "$role" = agent ] && [ "$apns_supplied" = 1 ]; then
+ printf '%s\n' '--apns-config is only valid for the Hub; Apple keys never go to agents.' >&2; exit 2
+fi
+private_file() {
+ [ -f "$1" ] && [ ! -L "$1" ] && [ -r "$1" ] &&
+ [ -n "$(find "$1" -prune -type f -perm 0600 -user "$(id -un)" -print)" ]
+}
+if [ "$role" = hub ]; then
+ if [ -e "$apns_record" ] || [ -L "$apns_record" ]; then
+  private_file "$apns_record" || { printf '%s\n' 'Saved APNs path must be an owner-readable regular file with mode 0600.' >&2; exit 1; }
+  if [ "$apns_supplied" = 0 ]; then apns_config=$(cat "$apns_record"); fi
+ elif [ "$apns_supplied" = 0 ] && [ -f "$HOME/.config/systemd/user/codex-relay-hub.service" ]; then
+  case "$(cat "$HOME/.config/systemd/user/codex-relay-hub.service")" in
+   *--apns-config*) printf '%s\n' 'Existing service has a manually configured APNs path. Supply --apns-config FILE to preserve it, or none to disable it.' >&2; exit 1 ;;
+  esac
+ fi
+fi
+if [ "$apns_config" = none ]; then apns_config=''; fi
+case "$apns_config" in /*|'') ;; *) apns_config="$(pwd)/$apns_config" ;; esac
 case "$token_file" in /*|'') ;; *) token_file="$(pwd)/$token_file" ;; esac
 # Reject newline-bearing values before writing either unit syntax.
-for value in "$install_bin" "$state_dir" "$config_dir" "$public_url" "$hub_url" "$machine" "$token_file" "$codex_binary" "$listen" "$PATH"; do
+for value in "$install_bin" "$state_dir" "$config_dir" "$public_url" "$hub_url" "$machine" "$token_file" "$codex_binary" "$apns_config" "$listen" "$PATH"; do
  case "$value" in *'
 '*) printf '%s\n' 'Newlines are not valid installation arguments' >&2; exit 2 ;; esac
 done
+if [ -n "$apns_config" ]; then
+ private_file "$apns_config" && [ -s "$apns_config" ] || { printf '%s\n' 'APNs config must be a nonempty owner-readable regular file with mode 0600.' >&2; exit 1; }
+fi
 if [ "$dry_run" = 0 ]; then
  umask 077
  mkdir -p "$(dirname "$install_bin")" "$state_dir" "$config_dir"
@@ -82,6 +108,11 @@ if [ "$dry_run" = 0 ]; then
   relay_binary="$download_dir/codex-relay-$target"
  fi
  install -m 0755 "$relay_binary" "$install_bin"
+ if [ "$role" = hub ] && [ "$apns_supplied" = 1 ]; then
+  apns_tmp=$(mktemp "$config_dir/.apns-config.XXXXXX")
+  printf '%s\n' "$apns_config" > "$apns_tmp"
+  chmod 0600 "$apns_tmp"; mv "$apns_tmp" "$apns_record"
+ fi
  if [ "$role" = agent ]; then
   # Enrollment may already be staged at its final path.
   target_token="$config_dir/$machine.token"
@@ -91,7 +122,7 @@ if [ "$dry_run" = 0 ]; then
  fi
 fi
 if [ "$role" = agent ]; then token_file="$config_dir/$machine.token"; fi
-unit_quote() { printf '"'; printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/%/%%/g'; printf '"'; }
+unit_quote() { printf '"'; printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/%/%%/g; s/\$/$$/g'; printf '"'; }
 xml() { printf '%s' "$1" | sed 's/\&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g'; }
 if [ "$os" = Linux ]; then
  unit_dir="$HOME/.config/systemd/user"
@@ -100,6 +131,7 @@ if [ "$os" = Linux ]; then
   printf '[Unit]\nDescription=Codex Relay %s\nStartLimitIntervalSec=0\n\n[Service]\nType=simple\nUMask=0077\nRestart=on-failure\nRestartSec=3\nTimeoutStopSec=15\nNoNewPrivileges=true\nWorkingDirectory=' "$role"
   printf '%s' "$state_dir" | sed 's/%/%%/g'; printf '\nEnvironment='; unit_quote "PATH=$PATH"; printf '\nExecStart='; unit_quote "$install_bin"; printf ' %s' "$role"
   if [ "$role" = hub ]; then printf ' --listen '; unit_quote "$listen"; printf ' --public-url '; unit_quote "$public_url"; printf ' --data-dir '; unit_quote "$state_dir"
+   if [ -n "$apns_config" ]; then printf ' --apns-config '; unit_quote "$apns_config"; fi
   else printf ' --hub-url '; unit_quote "$hub_url"; printf ' --machine '; unit_quote "$machine"; printf ' --name '; unit_quote "$machine"; printf ' --token-file '; unit_quote "$token_file"; printf ' --codex '; unit_quote "$codex_binary"; fi
   [ -z "$insecure" ] || printf ' %s' "$insecure"
   printf '\n\n[Install]\nWantedBy=default.target\n'
