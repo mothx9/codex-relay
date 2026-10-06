@@ -43,6 +43,21 @@ final class ControlTests: XCTestCase {
         XCTAssertEqual(box.items.last?.errorCode, "UNKNOWN_OUTCOME"); XCTAssertEqual(box.items.last?.text, "unknown")
         let emptyAfterRestart = Outbox(); XCTAssertTrue(emptyAfterRestart.items.isEmpty)
     }
+    func testCanonicalQueueEditUpdatesOneBubbleAndDoesNotResurrectDispatchedMessage() throws {
+        var box = Outbox()
+        let original: FollowUp = try decode(#"{"id":"queue","client_id":"client","text":"original","editable":true,"revision":"old"}"#)
+        box.queue(session: "m~t", entries: [original])
+        let edited: FollowUp = try decode(#"{"id":"queue","client_id":"client","text":"corrected","editable":true,"revision":"new"}"#)
+        box.queue(session: "m~t", entries: [edited])
+        XCTAssertEqual(box.items.count, 1)
+        XCTAssertEqual(box.items[0].text, "corrected")
+        XCTAssertEqual(box.items[0].queueId, "queue")
+        XCTAssertEqual(box.items[0].queueRevision, "new")
+        XCTAssertTrue(box.items[0].queueEditable)
+        box.materialize(session: "m~t", activity: Activity(id: "canonical", kind: "userMessage", text: "corrected", clientId: "client"))
+        box.queue(session: "m~t", entries: [original])
+        XCTAssertTrue(box.visible(session: "m~t").isEmpty)
+    }
     func testBoundedMemoryAndTTL() throws {
         var box = Outbox(); for _ in 0..<32 { _ = try box.add(session: "m~t", kind: "follow_up", text: "pending", now: Date(timeIntervalSince1970: 1)) }
         XCTAssertThrowsError(try box.add(session: "m~t", kind: "follow_up", text: "overflow")); box.prune(active: "", now: Date(timeIntervalSince1970: 302)); XCTAssertTrue(box.items.isEmpty)

@@ -98,6 +98,7 @@ func (a *Adapter) capabilities(s protocol.Session) protocol.Session {
 	if s.ReadOnly {
 		return s
 	}
+	s.Capabilities.CanEditQueue = a.queue
 	s.Capabilities.CanSend = s.Status == protocol.Ready
 	s.Capabilities.CanFollowUp = s.Status == protocol.Working && a.queue
 	s.Capabilities.CanSteer = s.Status == protocol.Working && s.TurnID != ""

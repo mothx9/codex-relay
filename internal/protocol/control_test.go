@@ -19,6 +19,9 @@ func TestControlPreconditions(t *testing.T) {
 		{"new turn ready", Session{Status: Ready, Capabilities: Capabilities{CanSend: true}}, Command{Kind: NewTurn}, ""},
 		{"new turn working", working, Command{Kind: NewTurn}, TurnChanged},
 		{"read only", Session{ReadOnly: true}, Command{Kind: NewTurn}, SessionReadOnly},
+		{"queue editing requires capability", Session{Status: Working}, Command{Kind: QueueUpdate}, FollowUpUnavailable},
+		{"queue editing supported while ready", Session{Status: Ready, Capabilities: Capabilities{CanEditQueue: true}}, Command{Kind: QueueUpdate}, ""},
+		{"read only cannot edit queue", Session{ReadOnly: true, Capabilities: Capabilities{CanEditQueue: true}}, Command{Kind: QueueUpdate}, SessionReadOnly},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := CheckControl(tc.session, tc.command); got != tc.want {

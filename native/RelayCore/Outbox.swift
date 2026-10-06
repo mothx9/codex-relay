@@ -2,6 +2,7 @@ import Foundation
 public enum DeliveryPhase: String, Sendable { case local = "LOCAL", sending = "SENDING", queued = "QUEUED", dispatched = "DISPATCHED", materialized = "MATERIALIZED", accepted = "ACCEPTED", steering = "STEERING", applied = "APPLIED", failed = "FAILED" }
 public struct Outgoing: Identifiable, Sendable {
     public let id: String; public let sessionId: String; public let kind: String; public var text: String; public var phase: DeliveryPhase = .local
+    public var queueId: String?; public var queueRevision: String?; public var queueEditable = false
     public var error: String?; public var errorCode: String?; public let expectedTurn: String?; public let created: Date
 }
 public struct Outbox: Sendable {
@@ -38,7 +39,10 @@ public struct Outbox: Sendable {
         for entry in entries {
             guard let text = entry.text, !text.isEmpty else { continue }
             if !items.contains(where: { $0.id == entry.clientId }) { _ = try? add(id: entry.clientId, session: session, kind: "follow_up", text: text) }
-            update(entry.clientId) { if $0.sessionId == session && ![.materialized, .dispatched].contains($0.phase) { $0.phase = .queued; $0.error = nil; $0.errorCode = nil } }
+            update(entry.clientId) { if $0.sessionId == session && ![.materialized, .dispatched].contains($0.phase) {
+                $0.phase = .queued; $0.text = text; $0.queueId = entry.id; $0.queueRevision = entry.revision; $0.queueEditable = entry.editable == true
+                $0.error = nil; $0.errorCode = nil
+            } }
         }
     }
     public func visible(session: String) -> [Outgoing] { items.filter { $0.sessionId == session && $0.phase != .materialized } }

@@ -17,6 +17,7 @@ public struct Machine: Codable, Identifiable, Sendable {
     }
 }
 public struct Capabilities: Codable, Sendable {
+    public var canEditQueue: Bool?
     public var canSend: Bool; public var canFollowUp: Bool; public var canSteer: Bool; public var canInterrupt: Bool; public var canAnswer: Bool
     public init(canSend: Bool = false, canFollowUp: Bool = false, canSteer: Bool = false, canInterrupt: Bool = false, canAnswer: Bool = false) {
         self.canSend = canSend; self.canFollowUp = canFollowUp; self.canSteer = canSteer; self.canInterrupt = canInterrupt; self.canAnswer = canAnswer
@@ -31,10 +32,12 @@ public struct RelaySession: Codable, Identifiable, Sendable {
     public func displayStatus(machine: Machine?, connected: Bool) -> String {
         connected && machine?.status == "ONLINE" ? status : "OFFLINE"
     }
+    public var canEditQueueAvailable: Bool { !readOnly && capabilities.canEditQueue == true }
     public func allows(_ kind: String) -> Bool {
         if kind == "answer" { return capabilities.canAnswer }
         if readOnly { return false }
         switch kind {
+        case "queue_update": return canEditQueueAvailable
         case "new_turn": return status == "READY" && capabilities.canSend
         case "follow_up": return status == "WORKING" && capabilities.canFollowUp
         case "steer": return status == "WORKING" && !(turnId ?? "").isEmpty && capabilities.canSteer
@@ -71,7 +74,10 @@ public struct AsyncQuestion: Codable, Sendable, Equatable {
     public let title: String; public let options: [String]?
     public init(title: String, options: [String]? = nil) { self.title = title; self.options = options }
 }
-public struct FollowUp: Codable, Sendable { public let id: String; public let clientId: String; public let text: String? }
+public struct FollowUp: Codable, Sendable {
+    public let id: String; public let clientId: String; public let text: String?
+    public let editable: Bool?; public let revision: String?
+}
 public struct QuestionOption: Codable, Sendable { public let label: String; public let description: String }
 public struct Question: Codable, Identifiable, Sendable { public let id: String; public let header: String; public let question: String; public let options: [QuestionOption]?; public let secret: Bool? }
 public struct PendingRequest: Codable, Identifiable, Sendable {

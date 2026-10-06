@@ -362,7 +362,7 @@ func (h *Hub) route(o *operator, c protocol.Command) {
 		r := protocol.Failure(c, code)
 		o.peer.Enqueue(protocol.Message{Type: "result", Result: &r})
 	}
-	if len(c.ID) < 16 || len(c.ID) > 128 || len(c.Text) > protocol.MaxText || len(c.Content) > 64<<10 || len(c.HistoryCursor) > 8192 {
+	if len(c.ID) < 16 || len(c.ID) > 128 || len(c.Text) > protocol.MaxText || len(c.Content) > 64<<10 || len(c.HistoryCursor) > 8192 || len(c.QueueID) > 256 || len(c.QueueClientID) > 128 || len(c.QueueRevision) > 64 {
 		fail(protocol.CodexRejected)
 		return
 	}
@@ -392,12 +392,12 @@ func (h *Hub) route(o *operator, c protocol.Command) {
 	c.ThreadID = s.ThreadID
 	switch c.Kind {
 	case "history", "attach":
-	case protocol.NewTurn, protocol.Steer, protocol.FollowUpCommand, protocol.Interrupt:
+	case protocol.QueueUpdate, protocol.NewTurn, protocol.Steer, protocol.FollowUpCommand, protocol.Interrupt:
 		if code := protocol.CheckControl(s, c); code != "" {
 			fail(code)
 			return
 		}
-		if (c.Kind == protocol.NewTurn || c.Kind == protocol.Steer || c.Kind == protocol.FollowUpCommand) && strings.TrimSpace(c.Text) == "" {
+		if (c.Kind == protocol.NewTurn || c.Kind == protocol.Steer || c.Kind == protocol.FollowUpCommand || c.Kind == protocol.QueueUpdate) && strings.TrimSpace(c.Text) == "" {
 			fail(protocol.CodexRejected)
 			return
 		}

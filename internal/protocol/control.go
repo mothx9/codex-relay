@@ -2,6 +2,7 @@ package protocol
 
 const (
 	NewTurn               = "new_turn"
+	QueueUpdate           = "queue_update"
 	FollowUpCommand       = "follow_up"
 	Steer                 = "steer"
 	Answer                = "answer"
@@ -73,6 +74,10 @@ func CheckControl(s Session, c Command) string {
 		}
 		if !s.Capabilities.CanSend {
 			return SessionReadOnly
+		}
+	case QueueUpdate:
+		if !s.Capabilities.CanEditQueue {
+			return FollowUpUnavailable
 		}
 	case FollowUpCommand:
 		if s.Status != Working || !s.Capabilities.CanFollowUp {

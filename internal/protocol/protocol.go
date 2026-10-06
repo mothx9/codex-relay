@@ -57,6 +57,7 @@ type Session struct {
 	Capabilities   Capabilities `json:"capabilities"`
 }
 type Capabilities struct {
+	CanEditQueue bool `json:"can_edit_queue"`
 	CanSend      bool `json:"can_send"`
 	CanFollowUp  bool `json:"can_follow_up"`
 	CanSteer     bool `json:"can_steer"`
@@ -112,6 +113,8 @@ type AsyncQuestion struct {
 
 // FollowUp is an ephemeral view of the queue owned by the backend.
 type FollowUp struct {
+	Editable bool   `json:"editable,omitempty"`
+	Revision string `json:"revision,omitempty"`
 	ID       string `json:"id"`
 	ClientID string `json:"client_id"`
 	Text     string `json:"text,omitempty"`
@@ -177,6 +180,9 @@ type Event struct {
 	ClientID     string          `json:"client_id,omitempty"`
 }
 type Command struct {
+	QueueID       string              `json:"queue_id,omitempty"`
+	QueueClientID string              `json:"queue_client_id,omitempty"`
+	QueueRevision string              `json:"queue_revision,omitempty"`
 	HistoryCursor string              `json:"history_cursor,omitempty"`
 	ID            string              `json:"id"`
 	Kind          string              `json:"kind"`

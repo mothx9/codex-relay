@@ -232,6 +232,14 @@ func (a *Adapter) Execute(ctx context.Context, c protocol.Command) protocol.Resu
 		if err == nil {
 			a.emit(protocol.Event{Kind: "session", SessionID: attached.ID, Session: &attached})
 		}
+	case protocol.QueueUpdate:
+		if code := protocol.CheckControl(s, c); code != "" {
+			return protocol.Failure(c, code)
+		}
+		if strings.TrimSpace(c.Text) == "" || len(c.Text) > protocol.MaxText {
+			return protocol.Failure(c, protocol.CodexRejected)
+		}
+		return a.editQueue(ctx, c)
 	case protocol.NewTurn, protocol.Steer, protocol.FollowUpCommand, protocol.Interrupt:
 		if code := protocol.CheckControl(s, c); code != "" {
 			return protocol.Failure(c, code)
