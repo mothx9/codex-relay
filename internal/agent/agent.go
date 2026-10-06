@@ -168,6 +168,7 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 		return e
 	}
 	epoch, watermark := b.Cursor()
+	forwarded := watermark
 	m.LastSeen = time.Now().UTC()
 	if reader, ok := b.(interface {
 		Account(context.Context) *protocol.Account
@@ -243,6 +244,7 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 				continue
 			}
 			p.Enqueue(protocol.Message{Type: "event", Event: &ev})
+			forwarded = ev.Sequence
 		case <-heartbeat.C:
 			m.LastSeen = time.Now().UTC()
 			p.Enqueue(protocol.Message{Type: "heartbeat", Machine: &m})
@@ -251,7 +253,33 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 			if e != nil {
 				return e
 			}
-			epoch, watermark = b.Cursor()
+			nextEpoch, nextWatermark := b.Cursor()
+			if nextEpoch != epoch {
+				return errors.New("Codex epoch changed")
+			}
+			// A metadata snapshot cannot replace transcript deltas or completed
+			// items. Flush events covered by its cursor before announcing it;
+			// otherwise the Hub will reject those events as already observed.
+			for forwarded < nextWatermark {
+				select {
+				case ev := <-b.Events():
+					if ev.Epoch != epoch {
+						return errors.New("Codex event epoch changed")
+					}
+					if ev.Sequence <= forwarded {
+						continue
+					}
+					p.Enqueue(protocol.Message{Type: "event", Event: &ev})
+					forwarded = ev.Sequence
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-p.Done:
+					return errors.New("Hub disconnected")
+				case <-b.Done():
+					return errors.New("Codex disconnected")
+				}
+			}
+			watermark = nextWatermark
 			p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", Machine: &m, Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
 		}
 	}

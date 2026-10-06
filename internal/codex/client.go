@@ -259,12 +259,14 @@ func (a *Adapter) readLoop() {
 	}
 }
 func (a *Adapter) emit(e protocol.Event) {
+	// Assign sequence and publish under the same lock. Queue refreshes and
+	// app-server events must never reach the Hub in reversed sequence order.
 	a.mu.Lock()
+	defer a.mu.Unlock()
 	a.sequence++
 	e.Sequence = a.sequence
 	e.Epoch = a.epoch
 	e.ID = a.epoch + "/" + fmt.Sprint(a.sequence)
-	a.mu.Unlock()
 	e.MachineID = a.cfg.MachineID
 	if e.Timestamp.IsZero() {
 		e.Timestamp = time.Now().UTC()
