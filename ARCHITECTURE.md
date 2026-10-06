@@ -14,7 +14,7 @@ Codex Relay is a transport/control plane, not another AI runtime.
 
 ## One reference deployment
 
-A hub can technically run on any supported host. The reference installation uses one canonical always-on **Zima hub**, with outbound Exon, Spark and MacBook agents beside their existing shared Codex daemons. Trusted Zima access is restored; its prepared service is not yet an active fleet. Network acceptance and the actual cutover remain pending; [VALIDATION.md](VALIDATION.md) records the observed deployment status. The Exon loopback validation hub is a temporary rollback environment and is stopped only after the Zima control path passes real acceptance. There must never be two production hubs, databases or fleets.
+A Hub can technically run on any supported host. The reference installation now uses one canonical always-on **Zima Hub**, with outbound Exon, Spark and MacBook agents beside their existing shared Codex daemons. Zima runs over Alfa Wi-Fi without temporary Ethernet. The Exon validation Hub is stopped; its private state is retained temporarily as an inactive rollback. There is one production Hub, database and Fleet. The native iPhone client requested after cutover connects to this same Hub; the PWA remains available as an operator client. [VALIDATION.md](VALIDATION.md) records the actual acceptance.
 
 ```text
               iPhone / Browser

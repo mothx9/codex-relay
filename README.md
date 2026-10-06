@@ -2,7 +2,7 @@
 
 A personal control plane for Codex sessions on multiple machines. Codex does the work on each host; Relay transports control, derived state and notifications. One Go binary contains the hub, outbound agent and browser PWA. The hub needs no Node runtime, GPU or external database.
 
-**Status: v0.1.0-rc.3.** The canonical composer and ephemeral follow-up lifecycle run against real Codex 0.160.0. The reference deployment has one always-on hub on Zima, with Exon, Spark and MacBook as agents. Trusted Zima SSH and its Alfa Wi-Fi have been recovered; its hub service and HTTPS ingress are prepared. Ethernet-removal acceptance, hub activation, agent cutover and physical iPhone push acceptance remain pending. The current Exon loopback hub is validation/rollback only. See [VALIDATION.md](VALIDATION.md) for evidence and limits.
+**Status: v0.1 RC, native iPhone extension in progress.** One persistent Hub runs on Zima over Alfa Wi-Fi, with real Exon, Spark and MacBook agents connected to the same HTTPS origin. New turns, native follow-up, live responses, Needs You answers and agent/Hub recovery passed through that Hub. The Exon validation Hub is stopped. Shared Codex daemons tested: 0.160.1 on Linux amd64/arm64, 0.160.0 on macOS arm64. Physical iPhone installation and notification receipt/tap remain acceptance requirements. See [VALIDATION.md](VALIDATION.md).
 
 Codex Relay is an independent project, not affiliated with or endorsed by OpenAI. Apache-2.0 licensed. No OpenAI logos are used.
 
@@ -165,13 +165,13 @@ RELAY_REAL_CODEX_TURN=1 go test ./internal/codex -run TestRealCodexRoundTrip -v
 
 ## Limits and next compatibility work
 
-- Verified CLI/daemon: 0.160.0 on Linux amd64, with native discovery also exercised on Linux arm64 and macOS arm64. The protocol is experimental; other versions are unverified. Keep upgrades deliberate and run doctor/optional tests.
+- Verified shared daemon: 0.160.1 on Linux amd64/arm64, 0.160.0 on macOS arm64. The protocol is experimental; other versions are unverified. Keep upgrades deliberate and run doctor/optional tests.
 - Resume is the live subscription boundary. There is no separate `thread/subscribe` or `serverRequest/list`; the shared server replays pending requests on resume.
 - 16 machines, 256 recent sessions per agent, 1024 fleet sessions, 32 operator sockets, 32 push subscriptions, 128 pending requests/in-flight commands. These are deliberate v0.1 bounds.
 - Unloaded historical threads show INACTIVE/read-only. Relay cannot infer activity of a separate non-shared Codex process. No TUI scraping, ANSI parser or PTY controller is used.
 - File approval is disabled when proposed file context is missing. Permission grants are explicitly turn-scoped; persistent/session grants and execution-policy amendments are not exposed.
 - MCP form input uses an explicit JSON response; URL elicitations require local Codex. Legacy/dynamic requests are shown as requiring local handling. These paths have contract tests, not full live acceptance coverage.
 - No creation of new Codex projects, remote file browser, multi-user policies or autonomous orchestration. Local Codex remains the source of truth.
-- Canonical Zima hub/Wi-Fi, the three agents connected to that hub, MacBook launchd/reconnect, real Zima resource measurements and physical iPhone push/deep-link acceptance remain to be verified. ARM64/macOS binaries and Codex discovery have run on the real hosts; Spark's service is staged, inactive.
+- The canonical Zima fleet, systemd/launchd agents, control flow and process recovery are verified. Physical iPhone notification/tap, MacBook sleep/wake and roaming, and long-duration Wi-Fi stability remain unverified.
 
-Compatibility fixtures for Codex upgrades and release automation are later work. Coordinator AI, native Swift clients, additional backends, fleet policies and YAI integration remain outside v0.1.
+Compatibility fixtures for Codex upgrades and release automation are later work. The user expanded this wave to include a native Swift iPhone client, short one-time pairing and device management. Coordinator AI, additional backends, fleet policies and YAI integration remain outside v0.1.

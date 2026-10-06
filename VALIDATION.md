@@ -1,26 +1,60 @@
 # Validation record
 
-## Current deployment checkpoint — 2026-10-05
+## Canonical deployment acceptance — 2026-10-06
 
-Trusted Zima SSH is restored. Debian 12 (bookworm), Linux amd64, kernel 6.1.0-37-amd64 now reports `running` with zero failed units. A missing optional HDD was blocking boot; its fstab entry now has `nofail` and a bounded device timeout. Only the invalid legacy NFS entry was disabled. Existing root/data filesystems were not reformatted or repaired destructively; original configuration backups remain private on Zima.
+Zima Debian 12 amd64 now boots normally with zero failed units. A missing optional HDD mount was made nonfatal; an invalid legacy NFS entry was disabled. The obsolete bridge/DHCP server was removed on Zima only. Root/data filesystems were not reformatted; private backups are retained locally. Exon's network configuration was not modified during this recovery.
 
-The old Zima bridge/DHCP setup was announcing a conflicting LAN subnet. Both networkd DHCP and dnsmasq are now disabled, the old bridge/address/routes are absent, and there is no UDP 67 listener. NetworkManager owns Zima's ordinary DHCP client interfaces. These recovery changes were made on Zima only; Exon's network configuration was not modified during this recovery.
+Alfa USB `0bda:0811` is AWUS036ACS / RTL8811AU. The initial rtw88 backport had firmware TX errors and loss; DKMS `rtl8821au/5.12.5.2` from morrownr/8821au-20210708 commit `1a819991f5b75e64dfcf922b96a6681f367cbba0` passed checks with a 20 MHz limit and power saving off. Ethernet and monitor were physically removed; Ethernet carrier=0, new SSH and Wi-Fi-bound DNS/HTTPS checks passed. This proves cable-removal acceptance, not months of unattended stability.
 
-Actual Alfa: USB `0bda:0811`, AWUS036ACS / RTL8811AU. An initial rtw88 backport associated but produced firmware TX-report errors, packet loss and HTTPS timeouts. The alternative recommended in [Alfa's Linux support](https://docs.alfa.com.tw/Support/Linux/RTL8811AU/) was built from `morrownr/8821au-20210708` commit `1a819991f5b75e64dfcf922b96a6681f367cbba0`, installed as DKMS `rtl8821au/5.12.5.2`, and limited to 20 MHz with power saving disabled. The unused rtw88 backport was removed to avoid driver contention; its sources/configuration remain available for rollback on Zima. The profile and credentials are private, autoconnect is enabled, and Wi-Fi has primary route preference with Ethernet retained as fallback.
+Hub user service active/enabled, linger=yes. Real HTTPS certificate verified and WebSocket upgrade exercised from a real browser. Bootstrap/VAPID hashes and the operator cookie survived an actual Hub restart. Private origin, addresses and account identities remain outside this public repository.
 
-| Zima recovery check | Observed |
+| Real control through the single Zima Hub | EXON | SPARK | MACBOOK |
+| --- | --- | --- | --- |
+| Agent online / actual sessions visible | PASS | PASS | PASS |
+| Shared Codex daemon discovered | 0.160.1 | 0.160.1 | 0.160.0 |
+| Native binary | linux/amd64 | linux/arm64 | darwin/arm64 |
+| Service | systemd user | systemd user | launchd |
+| New turn / live response | PASS | PASS | PASS |
+| Follow-up / exact client ID reconciliation | PASS | PASS | PASS |
+| Harmless structured input / Answer / READY | PASS | PASS | PASS |
+| Actual agent service restart / fresh snapshot | PASS | PASS | PASS |
+| Fleet recovery after real Hub restart | PASS | PASS | PASS |
+
+Only isolated validation threads received commands. Explicit Steer and Interrupt passed on Exon. A Codex-owned follow-up executed once across browser disconnect and Hub restart, with no automatic resend. All three agents reannounced after Hub restart in 2023 ms. Old Exon validation Hub/Agent processes are stopped and their PID file retired. No unrelated daemon or workload was restarted. MacBook physical sleep/wake and off-LAN roaming are unverified.
+
+### Actual Zima resource sample
+
+Same Hub PID, three agents connected, 600 seconds without controlled test turns followed by a 30.026-second CPU window. Other Codex work increased session metadata from 395 to 398, so this is not a zero-traffic sample.
+
+| Metric | Observed |
 | --- | --- |
-| Fresh SSH through Alfa Wi-Fi | Passed, trusted existing host key. |
-| Wi-Fi → router, 20 packets | 20/20, zero loss; RTT min/avg/max 3.080 / 3.765 / 5.304 ms. |
-| Wi-Fi → Exon, 20 packets | 20/20, zero loss; RTT min/avg/max 4.074 / 27.276 / 95.021 ms. |
-| Wi-Fi DNS + HTTPS | HTTP 200; measured connect 58.740 ms, total 795.497 ms to GitHub in this sample. This is not Relay event latency. |
-| Tailscale | Existing installation running, no health warnings in the latest check. |
-| Hub artifact | rc.3 Linux amd64 executed; SHA256 matched the published artifact. |
-| Persistent hub | Unit syntax verified; **inactive/disabled**, no bootstrap token/database generated. Linger enabled. |
-| HTTPS ingress | Previously empty Serve mapping prepared persistently for the sole Zima loopback hub. Application/TLS acceptance awaits hub activation. |
-| Ethernet unplug / reboot survival | Pending physical Ethernet removal and subsequent checks. |
+| RSS start / after 10 minutes | 20,620 / 20,172 KiB (20.14 / 19.70 MiB) |
+| CPU final window | 4 ticks at 100 Hz: 0.133% of one core |
+| Main SQLite DB | 376,832 bytes (368 KiB), unchanged |
+| WAL start / final | 1,009,432 / 3,436,112 bytes |
+| SHM | 32,768 bytes |
+| TCP sockets | One loopback listener, three established agent connections |
+| Kernel receive/send queue samples | 0 bytes |
+| Socket file descriptors | 5 |
 
-This short Wi-Fi sample does not prove unattended stability. No Zima hub RAM/CPU, three-agent latency or iPhone push measurements are claimed yet. Spark currently responds through Tailscale; MacBook timed out on the latest SSH check. Canonical agent enrollment/control, hub recovery and physical iPhone push/tap remain pending. **The release remains rc.3.** Historical access-blocker entries below are superseded by this checkpoint.
+Application event-queue occupancy is not exposed; kernel queue bytes are not that metric. WAL checkpointing is SQLite's default; no transcript table exists. This short sample is not a long-duration leak test.
+
+### Transport latency without inference
+
+All three agents used Tailscale direct peers. Five metadata-only official `thread/name/set` events per isolated validation thread were correlated by event ID between a loopback observer on Zima and a real HTTPS browser. Source/Hub/browser clocks were calibrated over persistent SSH connections. One-way values include clock asymmetry, millisecond quantization and observer overhead.
+
+| Hop | Five observed samples, ms |
+| --- | --- |
+| Exon Agent → Hub observer | 9.04, 5.45, 6.72, 10.00, 5.63 |
+| Spark Agent → Hub observer | 7.54, 6.19, 6.25, 8.66, 7.64 |
+| MacBook Agent → Hub observer | 11.68, 11.12, 7.49, 9.66, 10.70 |
+| Hub observer → HTTPS browser | 1.80–25.77 across all 15 events |
+
+Model inference is excluded. Temporary measurement tooling is outside the production runtime. Private network endpoints/topology identifiers are not published.
+
+### Native extension acceptance
+
+The user requested a native Swift iPhone client, OTP pairing and device management after the canonical cutover. Physical iPhone installation, native notification receipt and notification tap remain acceptance requirements; no complete v0.1 release or push E2E PASS is claimed.
 
 ## Historical MVP acceptance — v0.1.0-rc.1
 

@@ -1,10 +1,10 @@
 # Deployment commands
 
-The installer does not change Wi-Fi, routing, firewall, NetworkManager or VPN settings. SSH aliases below must already point to reachable, trusted hosts. A hub can technically run on any supported host. The reference installation uses **Zima as the sole canonical always-on hub** and Exon/Spark/MacBook only as agents. The existing Exon loopback hub is a validation rollback, not a second production fleet. Do not activate agents against an assumed URL or transfer old validation tokens as Zima credentials.
+The installer does not change Wi-Fi, routing, firewall, NetworkManager or VPN settings. SSH aliases below must already point to reachable, trusted hosts. A hub can technically run on any supported host. The reference installation uses **Zima as the sole canonical always-on hub** and Exon/Spark/MacBook only as agents. The Exon validation Hub is stopped and retained as an inactive rollback, not a second production fleet. Do not activate agents against an assumed URL or transfer old validation tokens as Zima credentials.
 
 ## Zima recovery and cutover boundary
 
-The 2026-10-05 recovery restored trusted SSH and normal Debian boot. Alfa USB ID `0bda:0811` identifies AWUS036ACS / RTL8811AU; the host uses the DKMS `rtl8821au/5.12.5.2` driver with a persistent NetworkManager profile, power saving disabled and a 20 MHz channel limit. Wi-Fi SSH, DNS/HTTPS and bounded packet-loss checks passed while temporary Ethernet remained connected. The user hub unit is prepared but inactive/disabled, linger is enabled, and an unused Tailscale Serve origin has been configured for its loopback listener. Ethernet-removal acceptance is required before activation. No Wi-Fi credentials, private keys or runtime state are stored in this repository.
+Recovery and cutover completed on 2026-10-06. Zima is Debian 12 amd64; Alfa USB `0bda:0811` uses DKMS `rtl8821au/5.12.5.2`, a persistent NetworkManager profile, disabled power saving and a 20 MHz limit. Fresh SSH, DNS and Internet checks passed after Ethernet was physically removed. The Hub user service is active/enabled with linger; HTTPS/WSS is provided by an existing Tailscale Serve mapping. All three agents use the same Hub and distinct credentials issued on Zima. Exon/Spark use systemd user services; MacBook uses launchd. No Exon network settings were changed during this recovery. Private hostnames, addresses, account identifiers and credentials are intentionally omitted from this public document; set the actual origin as `RELAY_HUB_URL`.
 
 Before installation, obtain trusted SSH to Zima. If the headless host has no working route, temporary Ethernet is the only initial recovery path available remotely. A USB Wi-Fi adapter alone cannot be configured through a disconnected host.
 
@@ -12,7 +12,7 @@ Collect `uname -a`, `/etc/os-release`, `lsusb`, `ip -br link`, `ip -br addr`, `i
 
 Inspect `tailscale status`, `tailscale ping` and `tailscale serve status` on the recovered Zima. Use its existing routing and an available HTTPS Serve mapping; do not overwrite another service. The hub remains loopback-only. The one stable HTTPS origin belongs to Zima and is shared by operator PWA and all three outbound agents.
 
-Install Zima's persistent hub first; verify service restart, linger, DB recovery and stable bootstrap/VAPID files. Enroll Exon on this hub, then prove real snapshot/chat/follow-up/answer/reconnect before stopping the old Exon hub. Retain its private state directory temporarily for rollback. Enroll Spark next, then MacBook. An unreachable Zima blocks this cutover; a staged binary or unit is not an online fleet.
+For a fresh installation, install Zima's persistent Hub first; verify service restart, linger, DB recovery and stable bootstrap/VAPID files. Enroll Exon on this hub, then prove real snapshot/chat/follow-up/answer/reconnect before stopping the old Exon hub. Retain its private state directory temporarily for rollback. Enroll Spark next, then MacBook. An unreachable Zima blocks this cutover; a staged binary or unit is not an online fleet.
 
 ## Prerequisites and setup order
 
