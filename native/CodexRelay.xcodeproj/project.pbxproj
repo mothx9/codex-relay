@@ -16,6 +16,8 @@
 		0000000000000000000000CE /* iOS/Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000006A /* iOS/Views.swift */; };
 		0000000000000000000000D0 /* iOS/Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000006C /* iOS/Notifications.swift */; };
 		000000000000000000000201 = {isa = PBXBuildFile; fileRef = 000000000000000000000202; };
+		0000000000000000000000D1 /* RelayCore/Transcript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000071; };
+		0000000000000000000000D2 /* iOS/SessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000072; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +33,8 @@
 		00000000000000000000006C /* iOS/Notifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/Notifications.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000202 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSUITests/LiveAcceptanceTests.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000203 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = CodexRelayUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000071 /* RelayCore/Transcript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCore/Transcript.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000072 /* iOS/SessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/SessionView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,6 +52,8 @@
 		000000000000000000000003 = {
 			isa = PBXGroup;
 			children = (
+				000000000000000000000072 /* iOS/SessionView.swift */,
+				000000000000000000000071 /* RelayCore/Transcript.swift */,
 				000000000000000000000202 /* LiveAcceptanceTests.swift */,
 				000000000000000000000070 /* Signing.xcconfig */,
 				00000000000000000000006C /* iOS/Notifications.swift */,
@@ -149,6 +155,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0000000000000000000000D2 /* iOS/SessionView.swift in Sources */,
+				0000000000000000000000D1 /* RelayCore/Transcript.swift in Sources */,
 				0000000000000000000000D0 /* iOS/Notifications.swift in Sources */,
 				0000000000000000000000C8 /* RelayCore/HubAPI.swift in Sources */,
 				0000000000000000000000C9 /* RelayCore/Keychain.swift in Sources */,

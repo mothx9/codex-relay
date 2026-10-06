@@ -61,62 +61,6 @@ struct FleetView: View {
         }.searchable(text: $search, prompt: "Sessione, macchina o progetto")
     }
 }
-struct SessionView: View {
-    @EnvironmentObject var relay: RelayController
-    @State private var draft = ""
-    @State private var steer = false
-    @State private var expectedTurn = ""
-    @State private var interrupt = false
-    @State private var interruptTurn = ""
-    var body: some View {
-        if let session = relay.current {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    Text("\(relay.machines[session.machineId]?.name ?? session.machineId) · \(session.project)").font(.caption.monospaced()).foregroundStyle(.secondary)
-                    Text(session.title).font(.title2)
-                    Text("\(statusLabel(session.status)) · \(relay.connection)").font(.caption).foregroundStyle(statusColor(session.status)).accessibilityIdentifier("session.connection")
-                    DisclosureGroup("Contesto") { VStack(alignment: .leading) { Text(session.cwd); Text(session.branch ?? ""); Text(session.threadId) }.font(.caption.monospaced()).textSelection(.enabled) }
-                    ForEach(relay.requests.values.filter { $0.sessionId == session.id }.sorted { $0.id < $1.id }) { PendingView(request: $0) }
-                    ForEach(relay.chat.items) { activity in
-                        VStack(alignment: .leading, spacing: 6) { Text(activity.kind == "userMessage" ? "ME" : activity.kind == "agentMessage" || activity.kind == "delta" ? "CODEX" : activity.kind.uppercased()).font(.caption.monospaced()).foregroundStyle(.secondary); Text(activity.text).font(.body.monospaced()).textSelection(.enabled).accessibilityIdentifier("activity." + activity.kind + "." + activity.id) }.frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    ForEach(relay.outbox.visible(session: session.id)) { item in
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("ME · \(item.kind == "follow_up" ? "FOLLOW-UP" : item.kind == "steer" ? "STEER" : "NEW TURN") · \(item.phase.rawValue)").font(.caption.monospaced()).foregroundStyle(.secondary)
-                            Text(item.text).textSelection(.enabled).accessibilityIdentifier("outbox." + item.id)
-                            if item.phase == .failed {
-                                Text(item.error ?? "Invio fallito").font(.caption).foregroundStyle(.orange)
-                                if session.allows(item.kind) { Button(item.errorCode == "UNKNOWN_OUTCOME" ? "Ho verificato Codex: reinvia" : "Riprova") { Task { await relay.retry(item) } }.disabled(!relay.online) }
-                                if item.kind == "steer", session.allows(session.defaultCommand) { Button("Invia come \(session.defaultCommand == "follow_up" ? "follow-up" : "nuovo turno")") { Task { await relay.retry(item, as: session.defaultCommand) } }.disabled(!relay.online) }
-                                Button("Scarta") { relay.outbox.discard(item.id) }
-                            }
-                        }.frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    if session.readOnly {
-                        Text("Thread in sola lettura. Collegalo al daemon Codex per controllarlo.").font(.caption).foregroundStyle(.secondary)
-                        Button("Collega thread") { Task { await relay.action("attach") } }.disabled(!relay.online)
-                    }
-                    if ["READY", "WORKING"].contains(session.status), !session.readOnly {
-                        VStack(alignment: .leading) {
-                            Text(steer ? "Steer modifica il lavoro ATTUALMENTE in corso." : session.status == "WORKING" ? "Codex eseguirà il follow-up dopo il lavoro corrente." : "Avvia un nuovo turno.").font(.caption).foregroundStyle(.secondary)
-                            TextField(steer ? "Correggi il lavoro in corso…" : session.status == "WORKING" ? "Aggiungi un follow-up…" : "Scrivi a Codex…", text: $draft, axis: .vertical).lineLimit(2...8).padding(10).background(Color.white.opacity(0.07)).clipShape(RoundedRectangle(cornerRadius: 6)).accessibilityIdentifier("composer.text")
-                            Button(steer ? "Invia Steer" : session.status == "WORKING" ? "Invia follow-up" : "Invia") {
-                                let text = draft; Task { if await relay.submit(text, kind: steer ? "steer" : nil, expectedTurn: steer ? expectedTurn : nil) { draft = ""; steer = false } }
-                            }.buttonStyle(.borderedProminent).disabled(!relay.online || !session.allows(steer ? "steer" : session.defaultCommand) || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).accessibilityIdentifier("composer.send")
-                        }
-                    }
-                    DisclosureGroup("Azioni sul turno corrente") {
-                        VStack(alignment: .leading) {
-                            Button(steer ? "Torna al normale invio" : "Steer turno corrente") { steer.toggle(); expectedTurn = session.turnId ?? "" }.disabled(!steer && (!relay.online || !session.allows("steer")))
-                            Button("Interrompi turno", role: .destructive) { interruptTurn = session.turnId ?? ""; interrupt = true }.disabled(!relay.online || !session.allows("interrupt"))
-                        }
-                    }
-                    Text("Contesto effimero · cronologia in Codex").font(.caption).foregroundStyle(.secondary)
-                }.padding()
-            }.confirmationDialog("Interrompere il turno in corso?", isPresented: $interrupt, titleVisibility: .visible) { Button("Interrompi", role: .destructive) { Task { await relay.action("interrupt", expectedTurn: interruptTurn) } } }
-        } else { Text("Sessione non disponibile") }
-    }
-}
 struct PendingView: View {
     @EnvironmentObject var relay: RelayController
     let request: PendingRequest
@@ -275,9 +219,27 @@ func statusColor(_ status: String) -> Color { status == "NEEDS_YOU" ? .orange : 
 
 #if DEBUG
 // Explicitly sandboxed fixtures: no Keychain access, Hub transport or notification consent.
-@MainActor private enum PreviewData {
+@MainActor enum PreviewData {
     static func decode<T: Decodable>(_ text: String, as: T.Type = T.self) -> T {
         try! RelayJSON.decoder().decode(T.self, from: Data(text.utf8))
+    }
+    static func conversation(long: Bool = false) -> RelayController {
+        let relay = controller()
+        let session: RelaySession = decode(#"{"id":"laptop~conversation-preview","machine_id":"laptop","thread_id":"conversation-preview","title":"Clona e avvia…","project":"Developer","cwd":"/demo/Developer","branch":"main","status":"WORKING","updated_at":"2026-10-06T12:00:00Z","turn_id":"preview-turn","read_only":false,"capabilities":{"can_send":true,"can_follow_up":true,"can_steer":true,"can_interrupt":true,"can_answer":true}}"#)
+        relay.sessions[session.id] = session; relay.selected = session.id
+        relay.chat = RecentChat(); relay.outbox = Outbox()
+        relay.chat.put(Activity(id: "preview-summary", kind: "agentMessage", text: "Ho aggiornato la struttura del sito e sto verificando gli asset.\n\n### Verifica\n- logo sostituito\n- responsive controllato\n- server locale attivo"))
+        for index in 0..<3 { relay.chat.put(Activity(id: "preview-command-\(index)", kind: "commandExecution", text: ["pwd\n/demo/Developer", "git status --short\nWorking tree clean", "npm run build\nBuild completata"][index])) }
+        for index in 0..<6 { relay.chat.put(Activity(id: "preview-mcp-\(index)", kind: "mcpToolCall", text: "Operazione dimostrativa \(index + 1) · dati fittizi")) }
+        if long {
+            for index in 0..<15 {
+                relay.chat.put(Activity(id: "preview-history-\(index)", kind: "agentMessage", text: "Controllo \(index + 1)\n\nQuesta conversazione di esempio verifica che il composer rimanga accessibile mentre scorri i messaggi precedenti. I dati sono fittizi e non vengono inviati al Hub."))
+            }
+        }
+        relay.chat.put(Activity(id: "preview-question", kind: "agentMessage", text: "Come procediamo?", questions: [AsyncQuestion(title: "Come procediamo?", options: ["Solo verifica", "Applica la modifica"])]))
+        let id = try! relay.outbox.add(id: "preview-queued", session: session.id, kind: "follow_up", text: "Controlla anche la pagina donazioni, ma non cambiare ancora il testo.")
+        relay.outbox.sending(id); relay.outbox.result(decode(#"{"id":"preview-queued","ok":true}"#))
+        return relay
     }
     static func controller(status: String = "WORKING", paired: Bool = true) -> RelayController {
         let relay = RelayController(preview: true)
@@ -319,4 +281,9 @@ func statusColor(_ status: String) -> Color { status == "NEEDS_YOU" ? .orange : 
 #Preview("Sessione · Follow-up in coda") { RelayPreview { SessionView() } }
 #Preview("Sessione · Needs You") { RelayPreview(status: "NEEDS_YOU") { SessionView() } }
 #Preview("Dispositivi · isolati") { RelayPreview { DevicesView() } }
+@MainActor private struct ConversationPreview: View {
+    @StateObject private var relay = PreviewData.conversation()
+    var body: some View { NavigationStack { SessionView() }.environmentObject(relay).preferredColorScheme(.dark).tint(.white) }
+}
+#Preview("Chat · riferimento iPhone") { ConversationPreview() }
 #endif

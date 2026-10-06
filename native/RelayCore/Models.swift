@@ -32,7 +32,13 @@ public struct RelaySession: Codable, Identifiable, Sendable {
 }
 public struct Activity: Codable, Identifiable, Sendable {
     public var id: String; public var kind: String; public var text: String; public var timestamp: String?; public var clientId: String?
-    public init(id: String, kind: String, text: String, timestamp: String? = nil, clientId: String? = nil) { self.id = id; self.kind = kind; self.text = text; self.timestamp = timestamp; self.clientId = clientId }
+    public var questions: [AsyncQuestion]?; public var truncated: Bool?
+    public init(id: String, kind: String, text: String, timestamp: String? = nil, clientId: String? = nil, questions: [AsyncQuestion]? = nil, truncated: Bool? = nil) { self.id = id; self.kind = kind; self.text = text; self.timestamp = timestamp; self.clientId = clientId; self.questions = questions; self.truncated = truncated }
+    public var contextBytes: Int { text.utf8.count + (questions ?? []).reduce(0) { $0 + $1.title.utf8.count + ($1.options ?? []).reduce(0) { $0 + $1.utf8.count } } }
+}
+public struct AsyncQuestion: Codable, Sendable {
+    public let title: String; public let options: [String]?
+    public init(title: String, options: [String]? = nil) { self.title = title; self.options = options }
 }
 public struct FollowUp: Codable, Sendable { public let id: String; public let clientId: String; public let text: String? }
 public struct QuestionOption: Codable, Sendable { public let label: String; public let description: String }

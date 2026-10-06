@@ -5,11 +5,20 @@ import UserNotifications
 #endif
 
 @main struct CodexRelayApp: App {
-    @StateObject private var relay = RelayController()
+    @StateObject private var relay: RelayController
     @Environment(\.scenePhase) private var phase
     #if canImport(UIKit)
     @UIApplicationDelegateAdaptor(NotificationDelegate.self) private var notifications
     #endif
+    init() {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--preview-chat") {
+            _relay = StateObject(wrappedValue: PreviewData.conversation(long: ProcessInfo.processInfo.arguments.contains("--long-transcript")))
+            return
+        }
+        #endif
+        _relay = StateObject(wrappedValue: RelayController())
+    }
     var body: some Scene {
         WindowGroup {
             RootView().environmentObject(relay).preferredColorScheme(.dark)

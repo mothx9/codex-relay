@@ -52,7 +52,7 @@ public struct RecentChat: Sendable {
     public mutating func put(_ activity: Activity) {
         var a = activity; a.text = String(a.text.prefix(16384))
         if let i = items.firstIndex(where: { $0.id == a.id || (a.clientId != nil && $0.clientId == a.clientId) }) { items[i] = a } else { items.append(a) }
-        while items.count > 50 || items.reduce(0, { $0 + $1.text.utf8.count }) > 131072 { items.removeFirst() }
+        while items.count > 50 || items.reduce(0, { $0 + $1.contextBytes }) > 131072 { items.removeFirst() }
     }
     public mutating func apply(_ event: RelayEvent) {
         if let activity = event.activity { put(activity); return }
