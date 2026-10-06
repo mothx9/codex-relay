@@ -10,6 +10,8 @@ import XCTest
         let sessionID: String
         let sessionTitle: String
         let sendTurn: Bool
+        let copyItemID: String?
+        let copyText: String?
     }
     private func wait(_ seconds: TimeInterval = 30, _ condition: @escaping () -> Bool) {
         let predicate = NSPredicate { _, _ in condition() }
@@ -122,6 +124,60 @@ import XCTest
         XCTAssertTrue(app.tabBars.buttons["Needs You"].waitForExistence(timeout: 15))
         app.tabBars.buttons["Needs You"].tap()
         XCTAssertFalse(app.buttons.containing(.staticText, identifier: config.sessionTitle).firstMatch.exists)
+    }
+    func testLiveCompleteMessageClipboard() throws {
+        guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires a canonical read-only copy target.") }
+        let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
+        guard let itemID = config.copyItemID, let expected = config.copyText else { throw XCTSkip("Requires canonical expected text.") }
+        XCTAssertGreaterThanOrEqual(expected.components(separatedBy: "\n\n").count, 3)
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launch()
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 15))
+        search.tap(); search.typeText(config.sessionTitle)
+        let row = app.buttons["session." + config.sessionID]
+        XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+        let transcript = app.scrollViews["session.transcript"]
+        XCTAssertTrue(transcript.waitForExistence(timeout: 15))
+        let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
+        // Both the last Markdown paragraph and the explicit message action
+        // must copy the canonical source, not the focused text selection.
+        let paragraphs = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "activity.agentMessage." + itemID + "."))
+        for _ in 0..<30 {
+            if paragraphs.count > 0 { break }
+            transcript.swipeDown(velocity: .fast)
+            let older = app.buttons["history.older"]
+            if older.isHittable {
+                let previous = older.value as? String
+                older.tap()
+                wait(15) { older.isEnabled && older.value as? String != previous }
+            }
+        }
+        let lastParagraph = paragraphs.allElementsBoundByIndex.last
+        let actions = app.buttons["message.actions." + itemID]
+        for route in 0..<2 {
+            let source = route == 0 ? try XCTUnwrap(lastParagraph) : actions
+            for _ in 0..<24 {
+                if source.isHittable { break }
+                if source.exists && source.frame.minY > transcript.frame.maxY - 60 { transcript.swipeUp() }
+                else { transcript.swipeDown() }
+            }
+            XCTAssertTrue(source.isHittable)
+            if route == 0 { source.press(forDuration: 1) } else { source.tap() }
+            let copy = app.buttons["Copia messaggio completo"]
+            XCTAssertTrue(copy.waitForExistence(timeout: 5)); copy.tap()
+            composer.tap(); composer.press(forDuration: 1)
+            let paste = app.menuItems.matching(NSPredicate(format: "label IN %@", ["Paste", "Incolla"])).firstMatch
+            XCTAssertTrue(paste.waitForExistence(timeout: 5)); paste.tap()
+            let permission = app.buttons.matching(NSPredicate(format: "label IN %@", ["Allow Paste", "Consenti Incolla"])).firstMatch
+            if permission.waitForExistence(timeout: 1) { permission.tap() }
+            wait(5) { composer.value as? String == expected }
+            print("CANONICAL_COPY_PASTE_MATCHED route=\(route) bytes=\(expected.utf8.count)")
+            composer.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: expected.count))
+            transcript.swipeDown()
+        }
+        // Never send the pasted text; terminating discards this local draft.
+        app.terminate()
     }
     func testLiveReadOnlySettingsSurfaces() throws {
         guard Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") != nil else { throw XCTSkip("Requires a paired real Hub.") }

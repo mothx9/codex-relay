@@ -312,8 +312,18 @@ private struct ChatMessageView: View, Equatable {
         HStack(alignment: .top, spacing: 0) {
             if user { Spacer(minLength: 44) }
             VStack(alignment: user ? .trailing : .leading, spacing: 8) {
-                Text(user ? "Tu" : "Codex").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    .contextMenu { Button("Copia messaggio completo", systemImage: "doc.on.doc") { UIPasteboard.general.string = activity.text } }
+                Menu {
+                    Button("Copia messaggio completo", systemImage: "doc.on.doc") { UIPasteboard.general.string = activity.text }
+                    if !user { ShareLink(item: activity.text) { Label("Condividi", systemImage: "square.and.arrow.up") } }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(user ? "Tu" : "Codex")
+                        Image(systemName: "chevron.down").font(.caption2)
+                    }.font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        .frame(minWidth: 44, minHeight: 44, alignment: user ? .trailing : .leading)
+                        .contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityLabel("Azioni del messaggio")
+                    .accessibilityIdentifier("message.actions." + activity.id)
                 if user {
                     Text(activity.text).font(.body).textSelection(.enabled)
                         .padding(.horizontal, 16).padding(.vertical, 12)

@@ -114,8 +114,9 @@ under one lock. Regression tests verify both the final-response refresh race
 and ordered concurrent publication; this is independent of SwiftUI rendering.
 
 
-Whole-message copy is offered inside each paragraph/code context menu, so nested
-Markdown menus do not hide it. Command output has an explicit per-command copy
+Whole-message copy is offered from the tappable message author label (Codex/Tu)
+and inside each paragraph/code context menu. The author menu operates directly
+on the canonical activity text, independently of native paragraph selection. Command output has an explicit per-command copy
 menu; the activity sheet can copy all outputs in the group. Manual text
 selection remains scoped to each native text block. Initial history hydration
 positions the conversation at recent content, and pending requests have a
@@ -139,3 +140,10 @@ scrolling and links were owner-confirmed. Full-message copy was installed after
 that confirmation and remains a separate physical acceptance item. Remaining
 live qualification includes controlled MCP and file/diff progression, command
 approval, and real APNs delivery (external Apple/Hub capability required).
+
+`testLiveCompleteMessageClipboard` uses an existing real canonical message with
+at least three Markdown blocks. Its private test configuration additionally
+provides `copyItemID` and `copyText`, read from Codex. The test copies from a nested
+paragraph and the author menu, pastes into the local composer, and requires exact
+equality with the canonical text. It never sends the draft and terminates the app
+to discard it. Menu existence alone is not clipboard acceptance.
