@@ -89,4 +89,17 @@ final class TranscriptTests: XCTestCase {
         XCTAssertEqual(chat.items.map(\.id), ["old", "middle", "new"])
     }
 
+    func testCommandOutputStreamsWithoutLosingCommandOrLifecycle() throws {
+        var chat = RecentChat()
+        let command = try RelayJSON.decoder().decode(Activity.self, from: Data(#"{"id":"cmd","kind":"commandExecution","command":"make test","text":"make test","state":"running"}"#.utf8))
+        chat.put(command)
+        let delta = try RelayJSON.decoder().decode(RelayEvent.self, from: Data(#"{"session_id":"m~t","kind":"command_output","item_id":"cmd","text":"test 1 passed\n"}"#.utf8))
+        chat.apply(delta); chat.apply(delta)
+        XCTAssertEqual(chat.items.count, 1)
+        XCTAssertEqual(chat.items[0].command, "make test")
+        XCTAssertEqual(chat.items[0].commandOutput, "test 1 passed\ntest 1 passed\n")
+        XCTAssertEqual(chat.items[0].state, "running")
+        XCTAssertEqual(chat.items[0].kind, "commandExecution")
+    }
+
 }

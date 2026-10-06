@@ -60,8 +60,12 @@ public struct RecentChat: Sendable {
     public mutating func beginHistory() { changedDuringHistory.removeAll(keepingCapacity: true); readingHistory = true }
     public mutating func endHistory() { readingHistory = false; changedDuringHistory.removeAll(keepingCapacity: true) }
     public mutating func put(_ activity: Activity) {
-        var a = activity; a.text = String(a.text.prefix(16384))
-        if let i = items.firstIndex(where: { $0.id == a.id || (a.clientId != nil && $0.clientId == a.clientId) }) { items[i] = a } else { items.append(a) }
+        var a = activity
+        if a.text.utf8.count > 131072 {
+            let bytes = a.kind == "commandExecution" || a.kind == "command_output" ? Array(a.text.utf8.suffix(131072)) : Array(a.text.utf8.prefix(131072))
+            a.text = String(decoding: bytes, as: UTF8.self); a.truncated = true
+        }
+        if let i = items.firstIndex(where: { $0.id == a.id || (a.clientId != nil && $0.clientId == a.clientId) }) { items[i] = preservingStream(a, prior: items[i]) } else { items.append(a) }
         trim()
     }
     /// Prepend missing canonical items while preserving any newer live version.
@@ -70,7 +74,7 @@ public struct RecentChat: Sendable {
         func same(_ a: Activity, _ b: Activity) -> Bool { a.id == b.id || (a.clientId != nil && a.clientId == b.clientId) }
         for (position, item) in history.enumerated() {
             if let i = items.firstIndex(where: { same($0, item) }) {
-                if !changedDuringHistory.contains(items[i].id) { items[i] = item }
+                if !changedDuringHistory.contains(items[i].id) { items[i] = preservingStream(item, prior: items[i]) }
             } else if let next = history.dropFirst(position + 1).first(where: { entry in items.contains { same($0, entry) } }),
                       let index = items.firstIndex(where: { same($0, next) }) {
                 items.insert(item, at: index)
@@ -82,6 +86,13 @@ public struct RecentChat: Sendable {
         }
         endHistory()
         trim()
+    }
+    private func preservingStream(_ incoming: Activity, prior: Activity) -> Activity {
+        var result = incoming
+        if incoming.truncated == true && (prior.text.hasPrefix(incoming.text) || (prior.truncated == true && incoming.command != nil && incoming.command == prior.command)) && prior.text.utf8.count > incoming.text.utf8.count {
+            result.text = prior.text
+        }
+        return result
     }
     private mutating func trim() {
         var bytes = items.reduce(0) { $0 + $1.contextBytes }
@@ -95,6 +106,8 @@ public struct RecentChat: Sendable {
         let id = event.itemId ?? "\(event.turnId ?? "")/\(event.kind)"
         if readingHistory { changedDuringHistory.insert(id) }
         var item = items.first { $0.id == id } ?? Activity(id: id, kind: event.kind == "delta" ? "agentMessage" : event.kind, text: "", timestamp: event.timestamp)
+        if event.kind == "command_output", let command = item.command, item.text == command { item.text += "\n" }
+        if event.kind != "diff" { item.state = "running" }
         item.text = (event.kind == "diff" ? "" : item.text) + (event.text ?? "")
         put(item)
     }

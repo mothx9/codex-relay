@@ -1,32 +1,33 @@
 import Foundation
-import Combine
+import Observation
 #if canImport(UIKit)
 import UIKit
 #endif
 
-@MainActor final class RelayController: ObservableObject {
-    @Published var credential: Credential?
-    @Published var machines: [String: Machine] = [:]
-    @Published var sessions: [String: RelaySession] = [:]
-    @Published var requests: [String: PendingRequest] = [:]
-    @Published var chat = RecentChat()
-    @Published var historyCursor: String?
-    @Published var historyLoading = false
-    @Published var historyError: String?
+@MainActor @Observable final class RelayController {
+    var credential: Credential?
+    var machines: [String: Machine] = [:]
+    var sessions: [String: RelaySession] = [:]
+    var liveActivities: [String: LiveActivity] = [:]
+    var requests: [String: PendingRequest] = [:]
+    var chat = RecentChat()
+    var historyCursor: String?
+    var historyLoading = false
+    var historyError: String?
     private var historyRequestID: String?
     private var restoredWatch = false
     private var historyCorrelated = false
     private var issuedHistoryIDs: [String] = []
-    @Published var outbox = Outbox()
-    @Published var selected: String = ""
-    @Published var online = false
-    @Published var connection = "Accesso richiesto"
-    @Published var error: String?
-    @Published var registry: DeviceRegistry?
-    @Published var pairCode: PairCode?
-    @Published var busy = false
-    @Published var nativePushAvailable = false
-    @Published var notificationStatus = "Notifiche non abilitate"
+    var outbox = Outbox()
+    var selected: String = ""
+    var online = false
+    var connection = "Accesso richiesto"
+    var error: String?
+    var registry: DeviceRegistry?
+    var pairCode: PairCode?
+    var busy = false
+    var nativePushAvailable = false
+    var notificationStatus = "Notifiche non abilitate"
     var apnsToken: String?
     private var socket: URLSessionWebSocketTask?
     private var transport: URLSession?
@@ -93,6 +94,7 @@ import UIKit
         switch message.type {
         case "snapshot":
             guard let snapshot = message.snapshot else { return }
+            liveActivities = snapshot.liveActivities ?? [:]
             machines = Dictionary(uniqueKeysWithValues: snapshot.machines.map { ($0.id, $0) }); sessions = Dictionary(uniqueKeysWithValues: snapshot.sessions.map { ($0.id, $0) })
             requests = Dictionary(uniqueKeysWithValues: snapshot.requests.map { ($0.id, $0) }); online = true; connection = "Live · \(machines.values.filter { $0.status == "ONLINE" }.count) macchine"
             if !selected.isEmpty && !restoredWatch { await watchSelected() }
@@ -100,6 +102,7 @@ import UIKit
         case "devices_changed": Task { await loadDevices() }
         case "event", "pending":
             guard let event = message.event else { return }
+            if event.kind == "live_activity" { liveActivities[event.sessionId] = event.liveActivity; return }
             if let id = event.eventId, !id.isEmpty { if seen.contains(id) { return }; seen.append(id); if seen.count > 1024 { seen.removeFirst(seen.count - 1024) } }
             if let session = event.session { sessions[session.id] = session }
             if let request = event.request { requests[request.id] = request }
@@ -204,7 +207,7 @@ import UIKit
         guard let api else { return }; do { let _: Ack = try await api.fetch("api/devices/\(id)/revoke", body: [:]); if id == credential?.id { forget() } else { await loadDevices() } } catch { self.error = error.localizedDescription }
     }
     func logout() async { if let api { _ = try? await api.fetch("api/logout", body: [:], as: Ack.self) }; forget() }
-    func forget() { guard !previewOnly else { return }; stop(); CredentialVault.clear(); credential = nil; machines = [:]; sessions = [:]; requests = [:]; registry = nil; pairCode = nil; selected = ""; chat = RecentChat(); outbox = Outbox(); connection = "Accesso richiesto" }
+    func forget() { guard !previewOnly else { return }; stop(); CredentialVault.clear(); credential = nil; machines = [:]; sessions = [:]; liveActivities = [:]; requests = [:]; registry = nil; pairCode = nil; selected = ""; chat = RecentChat(); outbox = Outbox(); connection = "Accesso richiesto" }
     func background() { guard !previewOnly else { return }; paused = true; lastBackground = Date(); stop() }
     func foreground() { guard !previewOnly else { return }; paused = false; outbox.prune(active: ""); if let lastBackground, Date().timeIntervalSince(lastBackground) > 300 { outbox = Outbox(); chat = RecentChat(); historyCursor = nil }; connect() }
     private func stop() { chat.endHistory(); restoredWatch = false; historyLoading = false; historyRequestID = nil; generation = UUID(); loop?.cancel(); loop = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; transport?.invalidateAndCancel(); transport = nil; online = false; commands.removeAll(); outbox.disconnected() }

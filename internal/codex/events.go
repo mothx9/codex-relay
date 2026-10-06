@@ -11,14 +11,19 @@ import (
 
 func activity(raw json.RawMessage) protocol.Activity {
 	var item struct {
-		ID        string                   `json:"id"`
-		ClientID  string                   `json:"clientId"`
-		Type      string                   `json:"type"`
-		Text      string                   `json:"text"`
-		Command   string                   `json:"command"`
-		Output    string                   `json:"aggregatedOutput"`
-		Questions []protocol.AsyncQuestion `json:"questions"`
-		Changes   []struct {
+		Status     string                   `json:"status"`
+		ExitCode   *int                     `json:"exitCode"`
+		DurationMS *int64                   `json:"durationMs"`
+		Tool       string                   `json:"tool"`
+		Server     string                   `json:"server"`
+		ID         string                   `json:"id"`
+		ClientID   string                   `json:"clientId"`
+		Type       string                   `json:"type"`
+		Text       string                   `json:"text"`
+		Command    string                   `json:"command"`
+		Output     string                   `json:"aggregatedOutput"`
+		Questions  []protocol.AsyncQuestion `json:"questions"`
+		Changes    []struct {
 			Path string          `json:"path"`
 			Kind json.RawMessage `json:"kind"`
 			Diff string          `json:"diff"`
@@ -29,7 +34,13 @@ func activity(raw json.RawMessage) protocol.Activity {
 		} `json:"content"`
 	}
 	_ = json.Unmarshal(raw, &item)
-	v := protocol.Activity{ID: item.ID, ClientID: item.ClientID, Kind: item.Type, Timestamp: time.Now().UTC()}
+	v := protocol.Activity{ID: item.ID, ClientID: item.ClientID, Kind: item.Type, Timestamp: time.Now().UTC(), ExitCode: item.ExitCode, DurationMS: item.DurationMS}
+	switch item.Status {
+	case "inProgress":
+		v.State = "running"
+	case "completed", "failed", "declined":
+		v.State = item.Status
+	}
 	switch item.Type {
 	case "agentMessage":
 		v.Text = item.Text
@@ -48,27 +59,52 @@ func activity(raw json.RawMessage) protocol.Activity {
 			}
 		}
 	case "commandExecution":
-		v.Text = item.Command
+		v.Command = protocol.Clip(item.Command, 1024)
+		v.Truncated = len(v.Command) < len(item.Command)
+		v.Text = v.Command
 		if item.Output != "" {
 			v.Text += "\n" + item.Output
 		}
 	case "fileChange":
 		v.Text = "File changes"
+		budget := protocol.MaxText / 2
 		for _, change := range item.Changes {
-			v.Text += "\n" + change.Path + " " + string(change.Kind) + "\n" + change.Diff
+			if len(v.Files) >= 16 || budget <= 0 {
+				v.Truncated = true
+				break
+			}
+			var kind struct {
+				Type     string `json:"type"`
+				MovePath string `json:"move_path"`
+			}
+			_ = json.Unmarshal(change.Kind, &kind)
+			f := protocol.FileChange{Path: protocol.Clip(change.Path, min(1024, budget)), Kind: protocol.Clip(kind.Type, 32)}
+			budget -= len(f.Path) + len(f.Kind)
+			if kind.MovePath != "" && budget > 0 {
+				f.PreviousPath = f.Path
+				f.Path = protocol.Clip(kind.MovePath, min(1024, budget))
+				f.Kind = "rename"
+				budget -= len(f.Path) + 6
+			}
+			if budget > 0 {
+				f.Patch = protocol.Clip(change.Diff, budget)
+				budget -= len(f.Patch)
+			}
+			v.Truncated = v.Truncated || len(f.Patch) < len(change.Diff)
+			v.Files = append(v.Files, f)
+			v.Text += "\n" + f.Path + " " + f.Kind + "\n" + f.Patch
 		}
 	case "mcpToolCall":
-		v.Text = "MCP tool call"
+		v.ToolName = protocol.Clip(item.Tool, 160)
+		v.ToolServer = protocol.Clip(item.Server, 128)
+		v.Text = v.ToolName
+		if v.Text == "" {
+			v.Text = "MCP"
+		}
 	default:
 		return v
 	}
-	textBudget := protocol.MaxText
-	for _, q := range v.Questions {
-		textBudget -= len(q.Title)
-		for _, option := range q.Options {
-			textBudget -= len(option)
-		}
-	}
+	textBudget := max(0, protocol.MaxText-(v.ContextBytes()-len(v.Text)))
 	v.Truncated = v.Truncated || len(v.Text) > textBudget
 	v.Text = protocol.Clip(v.Text, textBudget)
 	return v
@@ -218,7 +254,14 @@ func (a *Adapter) handle(m rpcMessage) {
 		ev.Text = protocol.Clip(p.Diff, protocol.MaxText)
 	case "item/started", "item/completed":
 		v := activity(p.Item)
-		if v.Text == "" && len(v.Questions) == 0 {
+		if v.State == "" {
+			if m.Method == "item/started" {
+				v.State = "running"
+			} else {
+				v.State = "completed"
+			}
+		}
+		if v.Text == "" && len(v.Questions) == 0 && v.Kind != "agentMessage" {
 			a.mu.Unlock()
 			return
 		}

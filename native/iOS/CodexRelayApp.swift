@@ -5,7 +5,7 @@ import UserNotifications
 #endif
 
 @main struct CodexRelayApp: App {
-    @StateObject private var relay: RelayController
+    @State private var relay: RelayController
     @Environment(\.scenePhase) private var phase
     #if canImport(UIKit)
     @UIApplicationDelegateAdaptor(NotificationDelegate.self) private var notifications
@@ -13,15 +13,15 @@ import UserNotifications
     init() {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--preview-chat") {
-            _relay = StateObject(wrappedValue: PreviewData.conversation(long: ProcessInfo.processInfo.arguments.contains("--long-transcript")))
+            _relay = State(initialValue: PreviewData.conversation(long: ProcessInfo.processInfo.arguments.contains("--long-transcript")))
             return
         }
         #endif
-        _relay = StateObject(wrappedValue: RelayController())
+        _relay = State(initialValue: RelayController())
     }
     var body: some Scene {
         WindowGroup {
-            RootView().environmentObject(relay)
+            RootView().environment(relay)
                 #if canImport(UIKit)
                 .onAppear {
                     notifications.onToken = { token in relay.apnsToken = token; Task { await relay.registerNativePush() } }

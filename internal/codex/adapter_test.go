@@ -464,3 +464,23 @@ func TestRealCodexRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestOperationalActivityMetadataPreservesLifecycleAndBounds(t *testing.T) {
+	command := activity(json.RawMessage(`{"id":"cmd","type":"commandExecution","command":"printf hello","aggregatedOutput":"hello","status":"failed","exitCode":1,"durationMs":123}`))
+	if command.Command != "printf hello" || command.Text != "printf hello\nhello" || command.State != "failed" || command.ExitCode == nil || *command.ExitCode != 1 || command.DurationMS == nil || *command.DurationMS != 123 {
+		t.Fatal(command)
+	}
+	tool := activity(json.RawMessage(`{"id":"tool","type":"mcpToolCall","server":"docs","tool":"fetch_document","status":"inProgress"}`))
+	if tool.ToolName != "fetch_document" || tool.ToolServer != "docs" || tool.State != "running" {
+		t.Fatal(tool)
+	}
+	file := activity(json.RawMessage(`{"id":"file","type":"fileChange","status":"completed","changes":[{"path":"src/old.c","kind":{"type":"update","move_path":"src/new.c"},"diff":"@@ -1 +1 @@\n-old\n+new"}]}`))
+	if len(file.Files) != 1 || file.Files[0].Kind != "rename" || file.Files[0].Path != "src/new.c" || file.Files[0].PreviousPath != "src/old.c" || file.Files[0].Patch == "" {
+		t.Fatal(file)
+	}
+	raw, _ := json.Marshal(map[string]any{"id": "large", "type": "fileChange", "changes": []any{map[string]any{"path": "src/code.c", "kind": map[string]any{"type": "update"}, "diff": strings.Repeat("x", protocol.MaxText*3)}}})
+	bounded := activity(raw)
+	if bounded.ContextBytes() > protocol.MaxText || !bounded.Truncated {
+		t.Fatal("structured activity exceeded byte budget", bounded.ContextBytes())
+	}
+}

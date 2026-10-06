@@ -33,13 +33,31 @@ public struct RelaySession: Codable, Identifiable, Sendable {
         }
     }
 }
-public struct Activity: Codable, Identifiable, Sendable {
+public struct ChangedFile: Codable, Sendable, Equatable {
+    public let path: String; public let kind: String; public let previousPath: String?; public let patch: String?
+}
+public struct LiveActivity: Codable, Sendable, Equatable {
+    public let itemId: String; public let kind: String; public let label: String; public let state: String; public let timestamp: String
+    public var title: String {
+        switch kind { case "terminal": "Terminale"; case "tool": "MCP"; case "file": "File"; case "diff": "Diff"; case "assistant": state == "running" ? "Codex sta scrivendo" : "Risposta completata"; default: "Attività" }
+    }
+    public var detail: String { label.isEmpty ? title : title + " · " + label }
+}
+public struct Activity: Codable, Identifiable, Sendable, Equatable {
     public var id: String; public var kind: String; public var text: String; public var timestamp: String?; public var clientId: String?
     public var questions: [AsyncQuestion]?; public var truncated: Bool?
+    public var state: String?; public var command: String?; public var exitCode: Int?; public var durationMs: Int?
+    public var toolName: String?; public var toolServer: String?; public var files: [ChangedFile]?
+    public var commandOutput: String {
+        guard let command, !command.isEmpty else { return text }
+        if text == command { return "" }
+        if text.hasPrefix(command + "\n") { return String(text.dropFirst(command.count + 1)) }
+        return text
+    }
     public init(id: String, kind: String, text: String, timestamp: String? = nil, clientId: String? = nil, questions: [AsyncQuestion]? = nil, truncated: Bool? = nil) { self.id = id; self.kind = kind; self.text = text; self.timestamp = timestamp; self.clientId = clientId; self.questions = questions; self.truncated = truncated }
-    public var contextBytes: Int { text.utf8.count + (questions ?? []).reduce(0) { $0 + $1.title.utf8.count + ($1.options ?? []).reduce(0) { $0 + $1.utf8.count } } }
+    public var contextBytes: Int { text.utf8.count + (questions ?? []).reduce(0) { $0 + $1.title.utf8.count + ($1.options ?? []).reduce(0) { $0 + $1.utf8.count } } + (command?.utf8.count ?? 0) + (toolName?.utf8.count ?? 0) + (toolServer?.utf8.count ?? 0) + (files ?? []).reduce(0) { $0 + $1.path.utf8.count + $1.kind.utf8.count + ($1.previousPath?.utf8.count ?? 0) + ($1.patch?.utf8.count ?? 0) } }
 }
-public struct AsyncQuestion: Codable, Sendable {
+public struct AsyncQuestion: Codable, Sendable, Equatable {
     public let title: String; public let options: [String]?
     public init(title: String, options: [String]? = nil) { self.title = title; self.options = options }
 }
@@ -52,8 +70,9 @@ public struct PendingRequest: Codable, Identifiable, Sendable {
     public let questions: [Question]?; public let expiresAt: String; public let canApprove: Bool
     public let payload: RequestPayload?
 }
-public struct Snapshot: Decodable, Sendable { public let machines: [Machine]; public let sessions: [RelaySession]; public let requests: [PendingRequest] }
+public struct Snapshot: Decodable, Sendable { public let machines: [Machine]; public let sessions: [RelaySession]; public let requests: [PendingRequest]; public let liveActivities: [String: LiveActivity]? }
 public struct RelayEvent: Decodable, Sendable {
+    public let liveActivity: LiveActivity?
     public let eventId: String?; public let kind: String; public let sessionId: String; public let session: RelaySession?
     public let request: PendingRequest?; public let requestId: String?; public let activity: Activity?
     public let text: String?; public let itemId: String?; public let turnId: String?; public let clientId: String?

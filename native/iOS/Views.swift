@@ -8,7 +8,7 @@ enum RelaySpacing {
 }
 
 struct RootView: View {
-    @EnvironmentObject var relay: RelayController
+    @Environment(RelayController.self) private var relay
     @State private var destination = 0
     var body: some View {
         Group {
@@ -37,7 +37,7 @@ struct RootView: View {
     }
 }
 struct PairingView: View {
-    @EnvironmentObject var relay: RelayController
+    @Environment(RelayController.self) private var relay
     @State private var url = ""
     @State private var code = ""
     var body: some View {
@@ -53,7 +53,7 @@ struct PairingView: View {
     }
 }
 struct FleetView: View {
-    @EnvironmentObject var relay: RelayController
+    @Environment(RelayController.self) private var relay
     @State private var filter = "ALL"
     @State private var search = ""
     private var browsingAll: Bool { !search.isEmpty || filter != "ALL" }
@@ -116,7 +116,7 @@ struct FleetView: View {
 }
 
 struct FleetSessionRow: View {
-    @EnvironmentObject var relay: RelayController
+    @Environment(RelayController.self) private var relay
     let session: RelaySession
     private var status: String { session.displayStatus(machine: relay.machines[session.machineId], connected: relay.online) }
     var body: some View {
@@ -129,6 +129,9 @@ struct FleetSessionRow: View {
                         .font(.caption).foregroundStyle(statusColor(status))
                 }
                 Text(session.title).font(.body.weight(.semibold)).lineLimit(2).foregroundStyle(.primary)
+                if status == "WORKING", let activity = relay.liveActivities[session.id] {
+                    Text(activity.detail).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                }
                 HStack {
                     Text(session.project).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     Spacer()
@@ -156,7 +159,7 @@ struct ElapsedLabel: View {
 }
 
 struct NeedsYouView: View {
-    @EnvironmentObject var relay: RelayController
+    @Environment(RelayController.self) private var relay
     private var requests: [PendingRequest] { relay.requests.values.sorted { $0.id < $1.id } }
     var body: some View {
         List {
@@ -180,7 +183,7 @@ struct NeedsYouView: View {
     }
 }
 struct PendingView: View {
-    @EnvironmentObject var relay: RelayController
+    @Environment(RelayController.self) private var relay
     let request: PendingRequest
     @State private var answers: [String: String] = [:]
     var body: some View {
@@ -216,7 +219,7 @@ struct PendingView: View {
     }
 }
 struct MCPRequestForm: View {
-    @EnvironmentObject var relay: RelayController
+    @Environment(RelayController.self) private var relay
     let request: PendingRequest
     @State private var fields: [String: String] = [:]
     @State private var raw = "{}"
@@ -276,7 +279,7 @@ struct MCPRequestForm: View {
     }
 }
 struct DevicesView: View {
-    @EnvironmentObject var relay: RelayController
+    @Environment(RelayController.self) private var relay
     @State private var add = false
     @State private var kind = "operator"
     @State private var name = "iPhone"
@@ -385,13 +388,13 @@ func statusColor(_ status: String) -> Color { status == "NEEDS_YOU" ? .orange : 
     }
 }
 @MainActor private struct RelayPreview<Content: View>: View {
-    @StateObject private var relay: RelayController
+    @State private var relay: RelayController
     private let content: Content
     init(status: String = "WORKING", paired: Bool = true, @ViewBuilder content: () -> Content) {
-        _relay = StateObject(wrappedValue: PreviewData.controller(status: status, paired: paired))
+        _relay = State(initialValue: PreviewData.controller(status: status, paired: paired))
         self.content = content()
     }
-    var body: some View { NavigationStack { content }.environmentObject(relay).preferredColorScheme(.dark).tint(.white) }
+    var body: some View { NavigationStack { content }.environment(relay).preferredColorScheme(.dark).tint(.white) }
 }
 #Preview("Abbinamento · isolato") { RelayPreview(paired: false) { PairingView() } }
 #Preview("Fleet · isolata") { RelayPreview { FleetView() } }
@@ -400,8 +403,8 @@ func statusColor(_ status: String) -> Color { status == "NEEDS_YOU" ? .orange : 
 #Preview("Sessione · Needs You") { RelayPreview(status: "NEEDS_YOU") { SessionView() } }
 #Preview("Dispositivi · isolati") { RelayPreview { DevicesView() } }
 @MainActor private struct ConversationPreview: View {
-    @StateObject private var relay = PreviewData.conversation()
-    var body: some View { NavigationStack { SessionView() }.environmentObject(relay).preferredColorScheme(.dark).tint(.white) }
+    @State private var relay = PreviewData.conversation()
+    var body: some View { NavigationStack { SessionView() }.environment(relay).preferredColorScheme(.dark).tint(.white) }
 }
 #Preview("Chat · riferimento iPhone") { ConversationPreview() }
 #endif

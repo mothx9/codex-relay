@@ -63,15 +63,44 @@ type Capabilities struct {
 	CanInterrupt bool `json:"can_interrupt"`
 	CanAnswer    bool `json:"can_answer"`
 }
+type FileChange struct {
+	Path         string `json:"path"`
+	Kind         string `json:"kind"`
+	PreviousPath string `json:"previous_path,omitempty"`
+	Patch        string `json:"patch,omitempty"`
+}
 type Activity struct {
-	Truncated bool            `json:"truncated,omitempty"`
-	ID        string          `json:"id"`
-	TurnID    string          `json:"turn_id,omitempty"`
-	Kind      string          `json:"kind"`
-	Text      string          `json:"text"`
-	Timestamp time.Time       `json:"timestamp"`
-	ClientID  string          `json:"client_id,omitempty"`
-	Questions []AsyncQuestion `json:"questions,omitempty"`
+	State      string          `json:"state,omitempty"`
+	Command    string          `json:"command,omitempty"`
+	ExitCode   *int            `json:"exit_code,omitempty"`
+	DurationMS *int64          `json:"duration_ms,omitempty"`
+	ToolName   string          `json:"tool_name,omitempty"`
+	ToolServer string          `json:"tool_server,omitempty"`
+	Files      []FileChange    `json:"files,omitempty"`
+	Truncated  bool            `json:"truncated,omitempty"`
+	ID         string          `json:"id"`
+	TurnID     string          `json:"turn_id,omitempty"`
+	Kind       string          `json:"kind"`
+	Text       string          `json:"text"`
+	Timestamp  time.Time       `json:"timestamp"`
+	ClientID   string          `json:"client_id,omitempty"`
+	Questions  []AsyncQuestion `json:"questions,omitempty"`
+}
+
+// ContextBytes counts retained user-visible content, including structured
+// metadata. It deliberately excludes transport identity and scalar state.
+func (a Activity) ContextBytes() int {
+	n := len(a.Text) + len(a.Command) + len(a.ToolName) + len(a.ToolServer)
+	for _, f := range a.Files {
+		n += len(f.Path) + len(f.Kind) + len(f.PreviousPath) + len(f.Patch)
+	}
+	for _, q := range a.Questions {
+		n += len(q.Title)
+		for _, o := range q.Options {
+			n += len(o)
+		}
+	}
+	return n
 }
 
 // Canonical nonblocking questions carried by an app-server agentMessage. They
@@ -116,25 +145,36 @@ type PendingRequest struct {
 	NotifyKey   string          `json:"notify_key,omitempty"`
 	CanApprove  bool            `json:"can_approve"`
 }
+
+// LiveActivity is a bounded, ephemeral operational summary for Fleet. It
+// contains no transcript, terminal output, arguments or model reasoning.
+type LiveActivity struct {
+	ItemID    string    `json:"item_id"`
+	Kind      string    `json:"kind"`
+	Label     string    `json:"label"`
+	State     string    `json:"state"`
+	Timestamp time.Time `json:"timestamp"`
+}
 type Event struct {
-	ID        string          `json:"event_id"`
-	MachineID string          `json:"machine_id"`
-	SessionID string          `json:"session_id"`
-	Timestamp time.Time       `json:"timestamp"`
-	Kind      string          `json:"kind"`
-	Sequence  uint64          `json:"sequence"`
-	Epoch     string          `json:"epoch"`
-	RawEvent  string          `json:"raw_event,omitempty"`
-	Session   *Session        `json:"session,omitempty"`
-	Request   *PendingRequest `json:"request,omitempty"`
-	RequestID string          `json:"request_id,omitempty"`
-	Activity  *Activity       `json:"activity,omitempty"`
-	TurnID    string          `json:"turn_id,omitempty"`
-	ItemID    string          `json:"item_id,omitempty"`
-	Text      string          `json:"text,omitempty"`
-	NotifyKey string          `json:"notify_key,omitempty"`
-	FollowUps []FollowUp      `json:"follow_ups,omitempty"`
-	ClientID  string          `json:"client_id,omitempty"`
+	LiveActivity *LiveActivity   `json:"live_activity,omitempty"`
+	ID           string          `json:"event_id"`
+	MachineID    string          `json:"machine_id"`
+	SessionID    string          `json:"session_id"`
+	Timestamp    time.Time       `json:"timestamp"`
+	Kind         string          `json:"kind"`
+	Sequence     uint64          `json:"sequence"`
+	Epoch        string          `json:"epoch"`
+	RawEvent     string          `json:"raw_event,omitempty"`
+	Session      *Session        `json:"session,omitempty"`
+	Request      *PendingRequest `json:"request,omitempty"`
+	RequestID    string          `json:"request_id,omitempty"`
+	Activity     *Activity       `json:"activity,omitempty"`
+	TurnID       string          `json:"turn_id,omitempty"`
+	ItemID       string          `json:"item_id,omitempty"`
+	Text         string          `json:"text,omitempty"`
+	NotifyKey    string          `json:"notify_key,omitempty"`
+	FollowUps    []FollowUp      `json:"follow_ups,omitempty"`
+	ClientID     string          `json:"client_id,omitempty"`
 }
 type Command struct {
 	HistoryCursor string              `json:"history_cursor,omitempty"`
@@ -162,9 +202,10 @@ type Result struct {
 	FollowUps     []FollowUp `json:"follow_ups,omitempty"`
 }
 type Snapshot struct {
-	Machines []Machine        `json:"machines"`
-	Sessions []Session        `json:"sessions"`
-	Requests []PendingRequest `json:"requests"`
+	LiveActivities map[string]LiveActivity `json:"live_activities,omitempty"`
+	Machines       []Machine               `json:"machines"`
+	Sessions       []Session               `json:"sessions"`
+	Requests       []PendingRequest        `json:"requests"`
 }
 type Message struct {
 	HistoryRequestID string           `json:"history_request_id,omitempty"`

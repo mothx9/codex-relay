@@ -39,8 +39,8 @@ import XCTest
         XCTAssertFalse(send.isEnabled)
         composer.tap(); composer.typeText("Mantieni il testo corrente.")
         XCTAssertTrue(send.isEnabled); XCTAssertTrue(send.isHittable)
-        let done = app.buttons["composer.dismissKeyboard"]
-        XCTAssertTrue(done.waitForExistence(timeout: 5)); done.tap()
+        XCTAssertFalse(app.buttons["composer.dismissKeyboard"].exists)
+        app.scrollViews.firstMatch.swipeDown()
         let terminal = app.buttons["tool.terminal.preview-command-0"]
         for _ in 0..<25 {
             if terminal.isHittable { break }
@@ -131,7 +131,7 @@ import XCTest
         XCTAssertEqual(canonical.count, 1)
         // Background and foreground reconstruct the current Codex state.
         XCUIDevice.shared.press(.home); app.activate()
-        wait { app.staticTexts["session.connection"].exists && app.staticTexts["session.connection"].label.contains("Live") }
+        wait { app.staticTexts["session.connection"].exists && (app.staticTexts["session.connection"].value as? String) == "Live" }
         // Hub connectivity precedes the asynchronous Codex history response.
         wait { canonical.count == 1 }
         XCTAssertEqual(canonical.count, 1)

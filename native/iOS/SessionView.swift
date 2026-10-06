@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SessionView: View {
-    @EnvironmentObject var relay: RelayController
+    @Environment(RelayController.self) private var relay
     @State private var draft = ""
     @State private var steer = false
     @State private var expectedTurn = ""
@@ -54,10 +54,6 @@ struct SessionView: View {
                         } label: { Image(systemName: "ellipsis").frame(minWidth: 44, minHeight: 44) }
                             .accessibilityLabel("Azioni della sessione")
                     }
-                    ToolbarItemGroup(placement: .keyboard) {
-                        Spacer()
-                        Button("Fine") { composing = false }.accessibilityIdentifier("composer.dismissKeyboard")
-                    }
                 }
                 .confirmationDialog("Interrompere il turno in corso?", isPresented: $interrupt, titleVisibility: .visible) {
                     Button("Interrompi", role: .destructive) { Task { await relay.action("interrupt", expectedTurn: interruptTurn) } }
@@ -73,11 +69,15 @@ struct SessionView: View {
                 ScrollView {
                     // Keep stable geometry when reading older history and returning
                     // from the keyboard; the selected-session memory is bounded.
-                    VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: RelaySpacing.page) {
                         HStack(spacing: 6) {
                             Circle().fill(machineOnline(session) ? statusColor(session.status) : .secondary).frame(width: 6, height: 6)
-                            Text("\(conversationStatus(session.status)) · \(machineOnline(session) ? relay.connection : "Macchina offline")")
-                                .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("session.connection")
+                            Text(machineOnline(session) ? conversationStatus(session.status) : "Macchina offline")
+                                .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("session.connection").accessibilityValue(machineOnline(session) ? "Live" : "Offline")
+                            if machineOnline(session), session.status == "WORKING" { ElapsedLabel(start: session.turnStarted) }
+                        }
+                        if machineOnline(session), session.status == "WORKING", let activity = relay.liveActivities[session.id] {
+                            Text(activity.detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                         }
                         if relay.historyLoading {
                             ProgressView("Caricamento cronologia…").font(.caption).frame(maxWidth: .infinity)
@@ -97,7 +97,7 @@ struct SessionView: View {
                         }
                         ForEach(TranscriptGroup.make(relay.chat.items)) { group in
                             if group.kind == .message, let activity = group.items.first {
-                                ChatMessageView(activity: activity)
+                                ChatMessageView(activity: activity).equatable()
                             } else {
                                 ToolSummaryView(group: group) { tools = group }
                             }
@@ -231,7 +231,7 @@ private struct ComposerSurface: ViewModifier {
     }
 }
 
-private struct ChatMessageView: View {
+private struct ChatMessageView: View, Equatable {
     let activity: Activity
     private var user: Bool { activity.kind == "userMessage" }
     var body: some View {
@@ -272,7 +272,7 @@ private struct ChatMessageView: View {
 }
 
 private struct OutgoingMessageView: View {
-    @EnvironmentObject var relay: RelayController
+    @Environment(RelayController.self) private var relay
     let item: Outgoing
     let session: RelaySession
     private var caption: String {
@@ -325,7 +325,10 @@ private struct ToolSummaryView: View {
                 Image(systemName: toolIcon(group.kind)).font(.body).foregroundStyle(.secondary)
                 VStack(alignment: .leading, spacing: 5) {
                     Text(toolTitle(group.kind)).font(.subheadline.weight(.semibold))
-                    Text(toolCount(group)).font(.caption).foregroundStyle(.secondary)
+                    Text(toolCount(group) + (group.items.contains { $0.state == "running" } ? " · in corso" : "")).font(.caption).foregroundStyle(.secondary)
+                    if let active = group.items.last(where: { $0.state == "running" }), let detail = active.command ?? active.toolName {
+                        Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
                 }
                 Spacer()
                 Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
@@ -338,21 +341,38 @@ private struct ToolSummaryView: View {
 
 private struct ToolDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(RelayController.self) private var relay
     let group: TranscriptGroup
+    private var liveGroup: TranscriptGroup { TranscriptGroup.make(relay.chat.items).first { $0.id == group.id } ?? group }
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 24) {
                     Text("Attività recente della sessione.")
                         .font(.footnote).foregroundStyle(.secondary)
-                    ForEach(group.items) { item in
+                    ForEach(liveGroup.items) { item in
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(item.kind == "command_output" ? "Output" : toolTitle(group.kind)).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                            HStack {
+                                Text(item.toolName ?? toolTitle(group.kind)).font(.subheadline.weight(.semibold))
+                                Spacer()
+                                if item.state == "running" { ProgressView().controlSize(.small) }
+                                Text(activityState(item.state)).font(.caption).foregroundStyle(.secondary)
+                            }
+                            if let server = item.toolServer { Text(server).font(.caption).foregroundStyle(.secondary) }
+                            if let command = item.command {
+                                ScrollView(.horizontal) { Text(command).font(.callout.monospaced()).textSelection(.enabled) }
+                                    .contextMenu { Button("Copia comando", systemImage: "doc.on.doc") { UIPasteboard.general.string = command } }
+                            }
+                            HStack {
+                                if let code = item.exitCode { Text("Exit \(code)") }
+                                if let milliseconds = item.durationMs { Text(String(format: "%.1f s", Double(milliseconds) / 1000)) }
+                                if item.truncated == true { Text("Contenuto parziale") }
+                            }.font(.caption).foregroundStyle(.secondary)
                             ScrollView(.horizontal) {
-                                Text(item.text).font(.callout.monospaced()).textSelection(.enabled)
+                                Text(item.command != nil ? item.commandOutput : item.text).font(.callout.monospaced()).textSelection(.enabled)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .accessibilityIdentifier("activity." + item.kind + "." + item.id)
-                            }
+                            }.contextMenu { Button("Copia output", systemImage: "doc.on.doc") { UIPasteboard.general.string = item.command != nil ? item.commandOutput : item.text } }
                         }
                     }
                 }.padding(20)
@@ -439,4 +459,8 @@ private struct ChatMarkdown: View {
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
+}
+
+private func activityState(_ state: String?) -> String {
+    switch state { case "running": "In corso"; case "completed": "Completato"; case "failed": "Fallito"; case "declined": "Rifiutato"; default: "" }
 }

@@ -39,29 +39,30 @@ type flight struct {
 	created                         time.Time
 }
 type Hub struct {
-	mu            sync.Mutex
-	wg            sync.WaitGroup
-	closing       bool
-	store         *store.Store
-	config        Config
-	origin        string
-	secure        bool
-	machines      map[string]protocol.Machine
-	sessions      map[string]protocol.Session
-	requests      map[string]protocol.PendingRequest
-	agents        map[string]*agentPeer
-	operators     map[*operator]bool
-	flights       map[string]flight
-	answering     map[string]string
-	buffers       map[string]*Recent
-	push          *push.Worker
-	loginMu       sync.Mutex
-	loginWindow   time.Time
-	loginAttempts int
-	pairMu        sync.Mutex
-	pairings      map[string]pairing
-	pairWindow    time.Time
-	pairAttempts  int
+	mu             sync.Mutex
+	wg             sync.WaitGroup
+	closing        bool
+	store          *store.Store
+	config         Config
+	origin         string
+	secure         bool
+	machines       map[string]protocol.Machine
+	sessions       map[string]protocol.Session
+	requests       map[string]protocol.PendingRequest
+	agents         map[string]*agentPeer
+	operators      map[*operator]bool
+	flights        map[string]flight
+	answering      map[string]string
+	buffers        map[string]*Recent
+	liveActivities map[string]protocol.LiveActivity
+	push           *push.Worker
+	loginMu        sync.Mutex
+	loginWindow    time.Time
+	loginAttempts  int
+	pairMu         sync.Mutex
+	pairings       map[string]pairing
+	pairWindow     time.Time
+	pairAttempts   int
 }
 
 func New(s *store.Store, c Config) (*Hub, error) {
@@ -156,7 +157,10 @@ func (h *Hub) maintain(now time.Time) {
 	}
 }
 func (h *Hub) snapshot() protocol.Snapshot {
-	snap := protocol.Snapshot{Machines: []protocol.Machine{}, Sessions: []protocol.Session{}, Requests: []protocol.PendingRequest{}}
+	snap := protocol.Snapshot{LiveActivities: map[string]protocol.LiveActivity{}, Machines: []protocol.Machine{}, Sessions: []protocol.Session{}, Requests: []protocol.PendingRequest{}}
+	for id, activity := range h.liveActivities {
+		snap.LiveActivities[id] = activity
+	}
 	for _, m := range h.machines {
 		snap.Machines = append(snap.Machines, m)
 	}
@@ -235,6 +239,9 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	for sid, s := range h.sessions {
 		if s.MachineID == id {
 			delete(h.sessions, sid)
+			if a.epoch != msg.Epoch {
+				delete(h.liveActivities, sid)
+			}
 		}
 	}
 	for rid, r := range h.requests {
@@ -246,6 +253,11 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	h.machines[id] = m
 	for _, s := range msg.Sessions {
 		h.sessions[s.ID] = s
+	}
+	for sid := range h.liveActivities {
+		if s, exists := h.sessions[sid]; !exists || (s.Status != protocol.Working && s.Status != protocol.NeedsYou) {
+			delete(h.liveActivities, sid)
+		}
 	}
 	for _, r := range msg.Requests {
 		h.requests[r.ID] = r
@@ -311,6 +323,7 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 			return err
 		}
 	}
+	h.updateLiveActivity(e)
 	if b := h.buffers[e.SessionID]; b != nil {
 		b.Apply(e)
 	}
