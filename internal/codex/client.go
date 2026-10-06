@@ -265,6 +265,14 @@ func (a *Adapter) emit(e protocol.Event) {
 	// app-server events must never reach the Hub in reversed sequence order.
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	// Async RPC work may have captured older session metadata. Publish the
+	// current state under the same lock as the cursor, never that stale copy.
+	if e.Session != nil {
+		if current, ok := a.sessions[e.Session.ThreadID]; ok {
+			current = a.capabilities(current)
+			e.Session = &current
+		}
+	}
 	a.sequence++
 	e.Sequence = a.sequence
 	e.Epoch = a.epoch

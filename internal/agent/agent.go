@@ -18,6 +18,7 @@ import (
 
 type Config struct {
 	HubURL, TokenFile, MachineID, Name string
+	Version                            string
 	Insecure                           bool
 	Codex                              codex.Config
 	Open                               func(context.Context, codex.Config) (codex.Backend, error)
@@ -96,7 +97,7 @@ func Run(ctx context.Context, cfg Config) error {
 	if err != nil {
 		version = "unavailable"
 	}
-	machine := protocol.Machine{ID: cfg.MachineID, Name: cfg.Name, Status: protocol.Online, CodexVersion: version, Adapter: "shared"}
+	machine := protocol.Machine{ID: cfg.MachineID, Name: cfg.Name, Status: protocol.Online, AgentVersion: cfg.Version, CodexVersion: version, Adapter: "shared"}
 	if cfg.Codex.Private {
 		machine.Adapter = "private"
 	}
@@ -163,10 +164,13 @@ func serve(ctx context.Context, p *protocol.Peer, b codex.Backend, m protocol.Ma
 func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m protocol.Machine, cache map[string]protocol.Result, order *[]string, refreshEvery time.Duration) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	started := time.Now()
 	sessions, requests, e := b.Snapshot(ctx)
 	if e != nil {
 		return e
 	}
+	m.Freshness.SnapshotMS = float64(time.Since(started).Microseconds()) / 1000
+	revision := uint64(1)
 	epoch, watermark := b.Cursor()
 	forwarded := watermark
 	m.LastSeen = time.Now().UTC()
@@ -175,7 +179,7 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 	}); ok {
 		m.Account = reader.Account(ctx)
 	}
-	p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", Machine: &m, Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
+	p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", SnapshotRevision: revision, Machine: &m, Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
 	commands := make(chan protocol.Command, 32)
 	readerDone := make(chan struct{})
 	defer func() { p.Close(); <-readerDone }()
@@ -249,10 +253,13 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 			m.LastSeen = time.Now().UTC()
 			p.Enqueue(protocol.Message{Type: "heartbeat", Machine: &m})
 		case <-refresh.C:
+			started = time.Now()
 			sessions, requests, e = b.Snapshot(ctx)
 			if e != nil {
 				return e
 			}
+			m.Freshness.SnapshotMS = float64(time.Since(started).Microseconds()) / 1000
+			revision++
 			nextEpoch, nextWatermark := b.Cursor()
 			if nextEpoch != epoch {
 				return errors.New("Codex epoch changed")
@@ -280,7 +287,7 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 				}
 			}
 			watermark = nextWatermark
-			p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", Machine: &m, Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
+			p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", SnapshotRevision: revision, Machine: &m, Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
 		}
 	}
 }

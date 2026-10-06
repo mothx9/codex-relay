@@ -221,6 +221,7 @@ type Snapshot struct {
 	Requests       []PendingRequest        `json:"requests"`
 }
 type Message struct {
+	SnapshotRevision uint64           `json:"snapshot_revision,omitempty"`
 	HistoryRequestID string           `json:"history_request_id,omitempty"`
 	Version          int              `json:"version,omitempty"`
 	Type             string           `json:"type"`

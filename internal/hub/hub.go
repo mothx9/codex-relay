@@ -21,15 +21,16 @@ type Config struct {
 	APNS                  *push.APNS
 }
 type agentPeer struct {
-	peer         *protocol.Peer
-	epoch        string
-	sequence     uint64
-	seen         map[string]bool
-	seenOrder    []string
-	lastSeen     time.Time
-	token        string
-	connectedAt  time.Time
-	connectionID string
+	peer             *protocol.Peer
+	epoch            string
+	sequence         uint64
+	snapshotRevision uint64
+	seen             map[string]bool
+	seenOrder        []string
+	lastSeen         time.Time
+	token            string
+	connectedAt      time.Time
+	connectionID     string
 }
 type operator struct {
 	peer    *protocol.Peer
@@ -220,7 +221,7 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 			return errors.New("invalid request")
 		}
 	}
-	if a.epoch == msg.Epoch && msg.Sequence < a.sequence {
+	if a.epoch == msg.Epoch && (msg.Sequence < a.sequence || (msg.SnapshotRevision != 0 && msg.SnapshotRevision <= a.snapshotRevision)) {
 		return nil
 	}
 	// A reachable Agent with unavailable Codex must retain last-known state.
@@ -312,6 +313,7 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 		}
 		h.notifyRequest(r)
 	}
+	a.snapshotRevision = msg.SnapshotRevision
 	a.epoch = msg.Epoch
 	a.sequence = msg.Sequence
 	a.lastSeen = m.LastSeen

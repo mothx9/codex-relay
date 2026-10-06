@@ -252,7 +252,7 @@ func codexFlags(fs *flag.FlagSet, c *codex.Config) {
 func runAgent(ctx context.Context, args []string) error {
 	fs := flags("agent")
 	host, _ := os.Hostname()
-	c := agent.Config{}
+	c := agent.Config{Version: version}
 	fs.StringVar(&c.HubURL, "hub-url", "", "Hub HTTP(S) URL")
 	fs.StringVar(&c.MachineID, "machine", host, "registered machine ID")
 	fs.StringVar(&c.Name, "name", host, "display name")

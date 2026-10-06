@@ -181,3 +181,24 @@ func TestOrderingAndRestartRouting(t *testing.T) {
 		t.Fatal("persisted sensitive request context")
 	}
 }
+
+func TestSnapshotRevisionRejectsEqualWatermarkReplay(t *testing.T) {
+	h, db, srv := testHub(t, filepath.Join(t.TempDir(), "db"))
+	defer srv.Close()
+	defer db.Close()
+	a := &agentPeer{}
+	h.agents["m"] = a
+	s := protocol.Session{ID: "m~t", MachineID: "m", ThreadID: "t", Status: protocol.Working}
+	msg := protocol.Message{Version: protocol.Version, Machine: &protocol.Machine{ID: "m"}, Epoch: "e", Sequence: 5, SnapshotRevision: 2, Sessions: []protocol.Session{s}}
+	if err := h.announce("m", a, msg); err != nil {
+		t.Fatal(err)
+	}
+	msg.SnapshotRevision = 1
+	msg.Sessions[0].Status = protocol.Ready
+	if err := h.announce("m", a, msg); err != nil {
+		t.Fatal(err)
+	}
+	if h.sessions[s.ID].Status != protocol.Working {
+		t.Fatal("older equal-watermark snapshot regressed state")
+	}
+}

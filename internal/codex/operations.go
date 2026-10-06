@@ -35,17 +35,39 @@ func (a *Adapter) Snapshot(ctx context.Context) ([]protocol.Session, []protocol.
 		}
 		cursor = page.NextCursor
 	}
-	var raw json.RawMessage
-	var e error
-	var loaded struct {
-		Data []string `json:"data"`
-	}
-	raw, e = a.rpc(ctx, "thread/loaded/list", map[string]any{"limit": protocol.MaxSessions})
-	if e != nil {
-		return nil, nil, e
-	}
-	if e = decode(raw, &loaded); e != nil {
-		return nil, nil, e
+	// Loaded threads are independently paginated: historical recency must never
+	// decide which live subscriptions and pending requests are recovered.
+	var loaded struct{ Data []string }
+	cursor = ""
+	seenCursors := map[string]bool{}
+	for {
+		var page struct {
+			Data       []string `json:"data"`
+			NextCursor string   `json:"nextCursor"`
+		}
+		params := map[string]any{"limit": 100}
+		if cursor != "" {
+			params["cursor"] = cursor
+		}
+		raw, err := a.rpc(ctx, "thread/loaded/list", params)
+		if err != nil {
+			return nil, nil, err
+		}
+		if err = decode(raw, &page); err != nil {
+			return nil, nil, err
+		}
+		loaded.Data = append(loaded.Data, page.Data...)
+		if len(loaded.Data) > protocol.MaxSessions {
+			return nil, nil, errors.New("live session capacity exceeded")
+		}
+		if page.NextCursor == "" {
+			break
+		}
+		if seenCursors[page.NextCursor] {
+			return nil, nil, errors.New("loaded thread cursor repeated")
+		}
+		seenCursors[page.NextCursor] = true
+		cursor = page.NextCursor
 	}
 	threads := map[string]thread{}
 	for _, t := range all {
@@ -60,7 +82,8 @@ func (a *Adapter) Snapshot(ctx context.Context) ([]protocol.Session, []protocol.
 		if !a.cfg.Private || sub {
 			s, err := a.attach(ctx, id)
 			if err != nil {
-				continue
+				// Incomplete replay must not be published as a fresh snapshot.
+				return nil, nil, err
 			}
 			_ = s
 		} else {
@@ -94,6 +117,15 @@ func (a *Adapter) Snapshot(ctx context.Context) ([]protocol.Session, []protocol.
 			current[id] = existing
 		}
 	}
+	// Requests observed even outside both pages pin their session in the hot set.
+	for _, p := range a.requests {
+		id := p.Request.ThreadID
+		s, exists := a.sessions[id]
+		if !exists {
+			s = protocol.Session{ID: p.Request.SessionID, MachineID: a.cfg.MachineID, ThreadID: id, Title: "Thread " + protocol.Clip(id, 8), ReadOnly: true}
+		}
+		current[id] = a.capabilities(s)
+	}
 	a.sessions = current
 	// Keep bounded metadata. Live subscribed threads take precedence over old history.
 	out := make([]protocol.Session, 0, len(a.sessions))
@@ -101,6 +133,12 @@ func (a *Adapter) Snapshot(ctx context.Context) ([]protocol.Session, []protocol.
 		out = append(out, s)
 	}
 	sort.Slice(out, func(i, j int) bool {
+		hot := func(s protocol.Session) bool {
+			return loadedSet[s.ThreadID] || s.Status == protocol.Working || s.Status == protocol.NeedsYou
+		}
+		if hot(out[i]) != hot(out[j]) {
+			return hot(out[i])
+		}
 		if out[i].ReadOnly != out[j].ReadOnly {
 			return !out[i].ReadOnly
 		}
@@ -108,6 +146,10 @@ func (a *Adapter) Snapshot(ctx context.Context) ([]protocol.Session, []protocol.
 	})
 	if len(out) > protocol.MaxSessions {
 		for _, s := range out[protocol.MaxSessions:] {
+			if loadedSet[s.ThreadID] || s.Status == protocol.Working || s.Status == protocol.NeedsYou {
+				a.mu.Unlock()
+				return nil, nil, errors.New("live session capacity exceeded")
+			}
 			delete(a.sessions, s.ThreadID)
 		}
 		out = out[:protocol.MaxSessions]
