@@ -148,6 +148,9 @@ func clipAsyncQuestions(in []protocol.AsyncQuestion) ([]protocol.AsyncQuestion, 
 	return out, truncated
 }
 func (a *Adapter) handle(m rpcMessage) {
+	if a.accountEvent(m) {
+		return
+	}
 	var p struct {
 		ThreadID  string          `json:"threadId"`
 		TurnID    string          `json:"turnId"`
@@ -199,6 +202,18 @@ func (a *Adapter) handle(m rpcMessage) {
 	}
 	ev := protocol.Event{SessionID: s.ID, RawEvent: m.Method, TurnID: p.TurnID, ItemID: p.ItemID}
 	switch m.Method {
+	case "thread/tokenUsage/updated":
+		var value struct {
+			Usage protocol.TokenUsage `json:"tokenUsage"`
+		}
+		if json.Unmarshal(m.Params, &value) != nil {
+			a.mu.Unlock()
+			return
+		}
+		value.Usage.ObservedAt = time.Now().UTC()
+		value.Usage.Source = "codex/thread/tokenUsage/updated"
+		s.TokenUsage = &value.Usage
+		ev.Kind = "session"
 	case "thread/started":
 		ev.Kind = "session"
 	case "thread/status/changed":

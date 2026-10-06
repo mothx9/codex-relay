@@ -326,7 +326,7 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 	if current := h.agents[id]; current != nil && current != a {
 		return errors.New("stale connection")
 	}
-	if e.MachineID != id || e.Epoch != a.epoch || e.ID == "" || e.SessionID == "" {
+	if e.MachineID != id || e.Epoch != a.epoch || e.ID == "" || (e.SessionID == "" && e.Kind != "account") {
 		return errors.New("invalid event identity")
 	}
 	if e.Request != nil {
@@ -363,6 +363,15 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 		m.Freshness.AgentToHub.Observe(a.lastSeen.Sub(e.Timestamp))
 	}
 	h.machines[id] = m
+	if e.Kind == "account" {
+		if e.Account != nil {
+			m.Account = e.Account
+			h.machines[id] = m
+		}
+		snap := h.snapshot()
+		h.broadcast(protocol.Message{Type: "snapshot", Snapshot: &snap}, "")
+		return nil
+	}
 	if e.Request != nil && e.Request.MachineID == id && e.Request.SessionID == e.SessionID && e.Request.SessionID == protocol.SessionID(id, e.Request.ThreadID) {
 		h.ensurePendingSession(*e.Request, a.epoch, a.lastSeen)
 	}

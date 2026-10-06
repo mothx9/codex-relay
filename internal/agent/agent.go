@@ -130,7 +130,7 @@ func Run(ctx context.Context, cfg Config) error {
 				m := machine
 				m.Status = protocol.Degraded
 				m.LastSeen = time.Now().UTC()
-				p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", Machine: &m, Epoch: protocol.ID()})
+				p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", Machine: machineCopy(m), Epoch: protocol.ID()})
 				_ = wait(ctx, nil, backoff(attempt, cfg.RetryMin))
 				p.Close()
 			}
@@ -179,7 +179,7 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 	}); ok {
 		m.Account = reader.Account(ctx)
 	}
-	p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", SnapshotRevision: revision, Machine: &m, Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
+	p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", SnapshotRevision: revision, Machine: machineCopy(m), Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
 	commands := make(chan protocol.Command, 32)
 	readerDone := make(chan struct{})
 	defer func() { p.Close(); <-readerDone }()
@@ -251,7 +251,7 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 			forwarded = ev.Sequence
 		case <-heartbeat.C:
 			m.LastSeen = time.Now().UTC()
-			p.Enqueue(protocol.Message{Type: "heartbeat", Machine: &m})
+			p.Enqueue(protocol.Message{Type: "heartbeat", Machine: machineCopy(m)})
 		case <-refresh.C:
 			started = time.Now()
 			sessions, requests, e = b.Snapshot(ctx)
@@ -286,8 +286,16 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 					return errors.New("Codex disconnected")
 				}
 			}
+			if reader, ok := b.(interface {
+				Account(context.Context) *protocol.Account
+			}); ok {
+				m.Account = reader.Account(ctx)
+			}
 			watermark = nextWatermark
-			p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", SnapshotRevision: revision, Machine: &m, Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
+			p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", SnapshotRevision: revision, Machine: machineCopy(m), Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
 		}
 	}
 }
+
+// Queued messages own their metadata; the writer runs concurrently with refresh.
+func machineCopy(m protocol.Machine) *protocol.Machine { return &m }

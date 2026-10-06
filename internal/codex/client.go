@@ -99,6 +99,7 @@ type Adapter struct {
 	epoch            string
 	sequence         uint64
 	snapshotSequence uint64
+	account          *protocol.Account
 	queue            bool
 	queueSignals     chan string
 	subscribeSignals chan string

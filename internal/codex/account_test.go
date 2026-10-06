@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/gorilla/websocket"
+	"github.com/mothx9/codex-relay/internal/protocol"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -52,5 +53,33 @@ func TestAccountViewExcludesAuthenticationAndRouting(t *testing.T) {
 	raw, _ := json.Marshal(view)
 	if strings.Contains(string(raw), "PRIVATE_") {
 		t.Fatal("account authority data forwarded")
+	}
+}
+
+func TestAccountEventsAllowlistAndSparseMerge(t *testing.T) {
+	a := &Adapter{cfg: Config{MachineID: "m"}, events: make(chan protocol.Event, 8), done: make(chan struct{}), sessions: map[string]protocol.Session{}}
+	a.handle(rpcMessage{Method: "account/updated", Params: json.RawMessage(`{"authMode":"chatgpt","planType":"pro","accessToken":"SECRET","refreshToken":"SECRET"}`)})
+	a.handle(rpcMessage{Method: "account/rateLimits/updated", Params: json.RawMessage(`{"rateLimits":{"primary":{"usedPercent":10},"credits":{"hasCredits":true,"unlimited":false,"balance":"12"},"token":"SECRET"}}`)})
+	a.handle(rpcMessage{Method: "account/rateLimits/updated", Params: json.RawMessage(`{"rateLimits":{"secondary":{"usedPercent":20}}}`)})
+	var last protocol.Event
+	for i := 0; i < 3; i++ {
+		last = <-a.events
+	}
+	b, _ := json.Marshal(last)
+	if strings.Contains(string(b), "SECRET") || last.Account.Plan != "pro" || last.Account.Limits.Primary.UsedPercent != 10 || last.Account.Limits.Secondary.UsedPercent != 20 || last.Account.Source == "" || last.Account.ObservedAt.IsZero() {
+		t.Fatal("account update lost metadata or exposed secret", string(b))
+	}
+	a.handle(rpcMessage{Method: "account/updated", Params: json.RawMessage(`{"authMode":null,"planType":null}`)})
+	if (<-a.events).Account.Limits != nil {
+		t.Fatal("logout retained old account quotas")
+	}
+}
+func TestTokenUsageIsAccountingOnly(t *testing.T) {
+	a := &Adapter{cfg: Config{MachineID: "m"}, events: make(chan protocol.Event, 8), done: make(chan struct{}), sessions: map[string]protocol.Session{"t": {ID: "m~t", ThreadID: "t"}}}
+	a.handle(rpcMessage{Method: "thread/tokenUsage/updated", Params: json.RawMessage(`{"threadId":"t","tokenUsage":{"total":{"totalTokens":100,"inputTokens":90,"outputTokens":10,"text":"PRIVATE"},"last":{"totalTokens":30}}}`)})
+	ev := <-a.events
+	b, _ := json.Marshal(ev)
+	if strings.Contains(string(b), "PRIVATE") || ev.Session.TokenUsage.Total.Total != 100 {
+		t.Fatal("unsafe or missing accounting")
 	}
 }

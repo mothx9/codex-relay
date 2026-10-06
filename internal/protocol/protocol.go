@@ -39,11 +39,15 @@ type Machine struct {
 
 // Account contains public account metadata, never authentication material.
 type Account struct {
-	Kind  string `json:"kind"`
-	Email string `json:"email,omitempty"`
-	Plan  string `json:"plan,omitempty"`
+	Source     string         `json:"source,omitempty"`
+	ObservedAt time.Time      `json:"observed_at,omitempty"`
+	Limits     *AccountLimits `json:"limits,omitempty"`
+	Kind       string         `json:"kind"`
+	Email      string         `json:"email,omitempty"`
+	Plan       string         `json:"plan,omitempty"`
 }
 type Session struct {
+	TokenUsage     *TokenUsage  `json:"token_usage,omitempty"`
 	Fresh          bool         `json:"fresh"`
 	ObservedAt     time.Time    `json:"observed_at,omitempty"`
 	AgentEpoch     string       `json:"agent_epoch,omitempty"`
@@ -166,6 +170,7 @@ type LiveActivity struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 type Event struct {
+	Account       *Account        `json:"account,omitempty"`
 	HubObservedAt time.Time       `json:"hub_observed_at,omitempty"`
 	LiveActivity  *LiveActivity   `json:"live_activity,omitempty"`
 	ID            string          `json:"event_id"`
