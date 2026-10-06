@@ -242,6 +242,9 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 		return h.store.SaveMachine(m)
 	}
 	m := *msg.Machine
+	if m.Account == nil {
+		m.Account = h.machines[id].Account
+	}
 	m.Freshness = h.machines[id].Freshness
 	m.Freshness.ConnectionID = a.connectionID
 	m.Freshness.Epoch, m.Freshness.ProtocolVersion = msg.Epoch, msg.Version

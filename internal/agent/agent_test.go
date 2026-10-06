@@ -42,7 +42,13 @@ func (b *refreshBackend) Events() <-chan protocol.Event { return b.events }
 func (b *refreshBackend) Done() <-chan struct{}         { return b.done }
 func (b *refreshBackend) Close()                        {}
 
-func TestRefreshKeepsProtocolVersionOnSameConnection(t *testing.T) {
+// Simulates an unavailable account provider: control must remain live until shutdown.
+func (b *refreshBackend) Account(ctx context.Context) *protocol.Account {
+	<-ctx.Done()
+	return nil
+}
+
+func TestRefreshAndLiveSnapshotProceedWhileAccountReadBlocked(t *testing.T) {
 	received := make(chan protocol.Message, 3)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)

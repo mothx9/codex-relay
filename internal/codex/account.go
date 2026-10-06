@@ -40,6 +40,7 @@ func (a *Adapter) Account(ctx context.Context) *protocol.Account {
 	}
 	a.account = account
 	a.mu.Unlock()
+	a.emit(protocol.Event{Kind: "account", Account: account, RawEvent: "account/read"})
 	return account
 }
 

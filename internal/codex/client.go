@@ -268,6 +268,9 @@ func (a *Adapter) emit(e protocol.Event) {
 	defer a.mu.Unlock()
 	// Async RPC work may have captured older session metadata. Publish the
 	// current state under the same lock as the cursor, never that stale copy.
+	if e.Account != nil && a.account != nil {
+		e.Account = a.account
+	}
 	if e.Session != nil {
 		if current, ok := a.sessions[e.Session.ThreadID]; ok {
 			current = a.capabilities(current)

@@ -125,6 +125,25 @@ import XCTest
         app.tabBars.buttons["Needs You"].tap()
         XCTAssertFalse(app.buttons.containing(.staticText, identifier: config.sessionTitle).firstMatch.exists)
     }
+    func testLiveLastKnownWorkingAcrossAgentSilence() throws {
+        guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires a paired read-only MacBook session.") }
+        let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
+        guard !config.sendTurn && config.sessionID.hasPrefix("macbook~") else { throw XCTSkip("Read-only MacBook observation only.") }
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launch()
+        let row = app.buttons["session." + config.sessionID]
+        XCTAssertTrue(row.waitForExistence(timeout: 30)); row.tap()
+        let connection = app.staticTexts["session.connection"]
+        wait(20) { connection.value as? String == "Live" }
+        print("M1_AGENT_SILENCE_READY")
+        wait(120) { connection.value as? String == "Offline" }
+        XCTAssertTrue(app.staticTexts["Ultimo stato: In corso"].exists)
+        let stale = XCTAttachment(screenshot: app.screenshot()); stale.name = "M1 offline last-known Working"; stale.lifetime = .keepAlways; add(stale)
+        print("M1_OFFLINE_LAST_KNOWN_CONFIRMED")
+        wait(45) { connection.value as? String == "Live" }
+        XCTAssertFalse(app.staticTexts["Ultimo stato: In corso"].exists)
+        let current = XCTAttachment(screenshot: app.screenshot()); current.name = "M1 reconnect current state"; current.lifetime = .keepAlways; add(current)
+    }
     func testLiveCompleteMessageClipboard() throws {
         guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires a canonical read-only copy target.") }
         let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))

@@ -174,11 +174,6 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 	epoch, watermark := b.Cursor()
 	forwarded := watermark
 	m.LastSeen = time.Now().UTC()
-	if reader, ok := b.(interface {
-		Account(context.Context) *protocol.Account
-	}); ok {
-		m.Account = reader.Account(ctx)
-	}
 	p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", SnapshotRevision: revision, Machine: machineCopy(m), Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
 	commands := make(chan protocol.Command, 32)
 	readerDone := make(chan struct{})
@@ -231,6 +226,31 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 			}
 		}
 	}()
+	// Account/quota RPCs are optional diagnostics, never a prerequisite for
+	// current execution state. A slow provider must not stall pending requests.
+	accountRefresh := make(chan struct{}, 1)
+	accountDone := make(chan struct{})
+	defer func() { cancel(); <-accountDone }()
+	go func() {
+		defer close(accountDone)
+		reader, ok := b.(interface {
+			Account(context.Context) *protocol.Account
+		})
+		if !ok {
+			return
+		}
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-p.Done:
+				return
+			case <-accountRefresh:
+				reader.Account(ctx)
+			}
+		}
+	}()
+	accountRefresh <- struct{}{}
 	heartbeat := time.NewTicker(25 * time.Second)
 	defer heartbeat.Stop()
 	refresh := time.NewTicker(refreshEvery)
@@ -286,10 +306,9 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 					return errors.New("Codex disconnected")
 				}
 			}
-			if reader, ok := b.(interface {
-				Account(context.Context) *protocol.Account
-			}); ok {
-				m.Account = reader.Account(ctx)
+			select {
+			case accountRefresh <- struct{}{}:
+			default:
 			}
 			watermark = nextWatermark
 			p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", SnapshotRevision: revision, Machine: machineCopy(m), Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
