@@ -54,6 +54,34 @@ import XCTest
         XCTAssertTrue(composer.isHittable)
         XCTAssertEqual(composer.value as? String, "Mantieni il testo corrente.")
     }
+    func testLiveReadOnlyHistoryNavigation() throws {
+        guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else {
+            throw XCTSkip("Requires the paired Hub and a read-only history target.")
+        }
+        let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launch()
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 15))
+        search.tap(); search.typeText(config.sessionTitle)
+        let session = app.buttons["session." + config.sessionID]
+        XCTAssertTrue(session.waitForExistence(timeout: 15)); session.tap()
+        let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
+        XCTAssertTrue(composer.waitForExistence(timeout: 15)); XCTAssertTrue(composer.isHittable)
+        let older = app.buttons["history.older"]
+        let transcript = app.scrollViews.firstMatch
+        for _ in 0..<12 {
+            if older.isHittable { break }
+            transcript.swipeDown(velocity: .fast)
+        }
+        XCTAssertTrue(older.isHittable)
+        let before = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.'")).count
+        older.tap()
+        wait(15) { older.isEnabled && app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.'")).count > before }
+        XCTAssertTrue(composer.isHittable)
+        let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Live canonical history pagination"; capture.lifetime = .keepAlways; add(capture)
+        // No attach, send, approval, interruption or other Codex mutation.
+    }
     func testLivePairingKeychainFleetAndCanonicalTurn() throws {
         guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else {
             throw XCTSkip("Requires an owner-supplied live acceptance configuration and isolated thread.")
@@ -71,13 +99,13 @@ import XCTest
             code.tap(); code.typeText(config.code)
             app.buttons["pairing.submit"].tap()
         }
-        wait { app.staticTexts["fleet.connection"].exists && app.staticTexts["fleet.connection"].label.hasPrefix("Live") }
+        wait { app.staticTexts["fleet.connection"].exists && app.staticTexts["fleet.connection"].label.contains("macchine online") }
         for machine in config.machineIDs {
             XCTAssertGreaterThan(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "session." + machine + "~")).count, 0)
         }
         // A process restart must recover the paired credential from Keychain.
         app.terminate(); app.launch()
-        wait { app.staticTexts["fleet.connection"].exists && app.staticTexts["fleet.connection"].label.hasPrefix("Live") }
+        wait { app.staticTexts["fleet.connection"].exists && app.staticTexts["fleet.connection"].label.contains("macchine online") }
         XCTAssertFalse(app.textFields["pairing.url"].exists)
         let search = app.searchFields.firstMatch
         search.tap(); search.typeText(config.sessionTitle)

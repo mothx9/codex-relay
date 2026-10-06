@@ -1,17 +1,39 @@
 import SwiftUI
 
+enum RelaySpacing {
+    static let small: CGFloat = 4
+    static let compact: CGFloat = 6
+    static let row: CGFloat = 12
+    static let page: CGFloat = 16
+}
+
 struct RootView: View {
     @EnvironmentObject var relay: RelayController
-    @State private var devices = false
+    @State private var destination = 0
     var body: some View {
+        Group {
+            if relay.credential == nil { NavigationStack { PairingView().navigationTitle("Codex Relay") } }
+            else {
+                TabView(selection: $destination) {
+                    stack("Codex Relay", tab: 0) { FleetView() }
+                        .tabItem { Label("Fleet", systemImage: "square.grid.2x2") }.tag(0)
+                    stack("Needs You", tab: 1) { NeedsYouView() }
+                        .tabItem { Label("Needs You", systemImage: "bubble.left.and.exclamationmark.bubble.right") }
+                        .badge(relay.requests.count).tag(1)
+                    stack("Impostazioni", tab: 2) { DevicesView() }
+                        .tabItem { Label("Impostazioni", systemImage: "gearshape") }.tag(2)
+                }
+            }
+        }
+        .alert("Codex Relay", isPresented: Binding(get: { relay.error != nil }, set: { if !$0 { relay.error = nil } })) { Button("OK") { relay.error = nil } } message: { Text(relay.error ?? "") }
+    }
+    private func stack<Content: View>(_ title: String, tab: Int, @ViewBuilder content: () -> Content) -> some View {
         NavigationStack {
-            Group { if relay.credential == nil { PairingView() } else { FleetView() } }
-                .navigationTitle("CODEX RELAY").navigationBarTitleDisplayMode(.inline)
-                .toolbar { if relay.credential != nil { ToolbarItem(placement: .topBarTrailing) { Button("Dispositivi", systemImage: "desktopcomputer") { devices = true } } } }
-                .navigationDestination(isPresented: Binding(get: { !relay.selected.isEmpty }, set: { if !$0 { relay.closeDetail() } })) { SessionView() }
-                .sheet(isPresented: $devices) { NavigationStack { DevicesView().toolbar { ToolbarItem(placement: .confirmationAction) { Button("Chiudi") { devices = false } } } } }
-                .alert("Codex Relay", isPresented: Binding(get: { relay.error != nil }, set: { if !$0 { relay.error = nil } })) { Button("OK") { relay.error = nil } } message: { Text(relay.error ?? "") }
-        }.tint(.white)
+            content().navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+                .navigationDestination(isPresented: Binding(get: { destination == tab && !relay.selected.isEmpty }, set: { if !$0 && destination == tab { relay.closeDetail() } })) {
+                    SessionView().toolbar(.hidden, for: .tabBar)
+                }
+        }
     }
 }
 struct PairingView: View {
@@ -34,32 +56,127 @@ struct FleetView: View {
     @EnvironmentObject var relay: RelayController
     @State private var filter = "ALL"
     @State private var search = ""
-    private let statuses = ["ALL", "NEEDS_YOU", "WORKING", "READY", "INACTIVE", "FAILED"]
-    var visible: [RelaySession] { relay.sessions.values.filter { (filter == "ALL" || $0.status == filter) && (search.isEmpty || "\($0.title) \($0.project) \($0.machineId)".localizedCaseInsensitiveContains(search)) }.sorted { $0.updatedAt > $1.updatedAt } }
+    private var browsingAll: Bool { !search.isEmpty || filter != "ALL" }
+    private var sorted: [RelaySession] { relay.sessions.values.sorted { $0.updatedAt == $1.updatedAt ? $0.id < $1.id : $0.updatedAt > $1.updatedAt } }
+    private func state(_ session: RelaySession) -> String { session.displayStatus(machine: relay.machines[session.machineId], connected: relay.online) }
+    private var visible: [RelaySession] { sorted.filter { (filter == "ALL" || filter == "HISTORY" || state($0) == filter) && (search.isEmpty || "\($0.title) \($0.project) \($0.machineId)".localizedCaseInsensitiveContains(search)) } }
     var body: some View {
-        VStack(spacing: 0) {
-            Text(relay.connection).font(.caption.monospaced()).foregroundStyle(relay.online ? .green : .secondary).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal).accessibilityIdentifier("fleet.connection")
-            ScrollView(.horizontal, showsIndicators: false) { HStack { ForEach(statuses, id: \.self) { value in
-                Button { filter = value } label: { Text("\(statusLabel(value)) \(relay.sessions.values.filter { value == "ALL" || $0.status == value }.count)").font(.caption).padding(8).background(filter == value ? Color.white.opacity(0.13) : Color.clear).clipShape(RoundedRectangle(cornerRadius: 5)) }
-            } }.padding(.horizontal) }
-            List {
-                ForEach(visible) { session in
-                    let displayStatus = session.displayStatus(machine: relay.machines[session.machineId], connected: relay.online)
-                    Button { relay.open(session.id) } label: {
-                        HStack(alignment: .top) {
-                            Image(systemName: displayStatus == "OFFLINE" ? "network.slash" : displayStatus == "NEEDS_YOU" ? "exclamationmark.circle.fill" : "circle.fill").font(.caption).foregroundStyle(statusColor(displayStatus)).accessibilityHidden(true)
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text(relay.machines[session.machineId]?.name ?? session.machineId).font(.caption.monospaced()).foregroundStyle(.secondary)
-                                Text(session.title).font(.headline).lineLimit(2)
-                                Text(session.project).font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer(); Text(statusLabel(displayStatus)).font(.caption).foregroundStyle(statusColor(displayStatus))
-                        }.foregroundStyle(.primary).padding(.vertical, 4)
-                    }.accessibilityIdentifier("session." + session.id)
+        List {
+            if !browsingAll {
+                Section {
+                    VStack(alignment: .leading, spacing: RelaySpacing.row) {
+                        Text(relay.online ? "\(relay.machines.values.filter { $0.status == "ONLINE" }.count) macchine online" : "Connessione al Hub…")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("fleet.connection")
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: RelaySpacing.page) { machineLabels }
+                            VStack(alignment: .leading, spacing: RelaySpacing.compact) { machineLabels }
+                        }
+                    }.padding(.vertical, RelaySpacing.compact)
+                }.listRowBackground(Color.clear).listRowSeparator(.hidden)
+                sessionSection("Needs You", sessions: sorted.filter { state($0) == "NEEDS_YOU" })
+                sessionSection("In corso", sessions: sorted.filter { state($0) == "WORKING" })
+                sessionSection("Recenti", sessions: Array(sorted.filter { !["WORKING", "NEEDS_YOU"].contains(state($0)) }.prefix(12)))
+                Section {
+                    Button { filter = "HISTORY" } label: { Label("Tutte le sessioni · \(relay.sessions.count)", systemImage: "clock.arrow.circlepath") }
                 }
-                if visible.isEmpty { Text(relay.online ? "Nessuna sessione" : "Connessione al Hub…").foregroundStyle(.secondary) }
-            }.listStyle(.plain)
-        }.searchable(text: $search, prompt: "Sessione, macchina o progetto")
+            } else {
+                Section(filter == "HISTORY" || filter == "ALL" ? "Sessioni" : statusLabel(filter)) {
+                    ForEach(visible) { session in FleetSessionRow(session: session) }
+                    if visible.isEmpty && filter != "HISTORY" { ContentUnavailableView.search(text: search) }
+                }
+            }
+        }
+        .listStyle(.insetGrouped).listSectionSpacing(RelaySpacing.row)
+        .searchable(text: $search, prompt: "Sessione, macchina o progetto")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Picker("Mostra", selection: $filter) {
+                        Text("Panoramica").tag("ALL")
+                        Text("Tutte le sessioni").tag("HISTORY")
+                        ForEach(["NEEDS_YOU", "WORKING", "READY", "FAILED", "OFFLINE"], id: \.self) { Text(statusLabel($0)).tag($0) }
+                    }
+                } label: { Image(systemName: filter == "ALL" ? "line.3.horizontal.decrease" : "line.3.horizontal.decrease.circle.fill").frame(minWidth: 44, minHeight: 44) }
+                    .accessibilityLabel("Filtra sessioni")
+            }
+        }
+    }
+    private var machineLabels: some View {
+        ForEach(relay.machines.values.sorted { $0.name < $1.name }) { machine in
+            let online = relay.online && machine.status == "ONLINE"
+            Label(machine.name, systemImage: online ? "checkmark.circle.fill" : "network.slash")
+                .font(.caption.weight(.medium)).foregroundStyle(online ? Color.primary : Color.secondary)
+                .accessibilityLabel("\(machine.name), \(online ? "online" : "offline")").accessibilityIdentifier("fleet.machine." + machine.id)
+        }
+    }
+    @ViewBuilder private func sessionSection(_ title: String, sessions: [RelaySession]) -> some View {
+        if !sessions.isEmpty { Section(title) { ForEach(sessions) { FleetSessionRow(session: $0) } } }
+    }
+}
+
+struct FleetSessionRow: View {
+    @EnvironmentObject var relay: RelayController
+    let session: RelaySession
+    private var status: String { session.displayStatus(machine: relay.machines[session.machineId], connected: relay.online) }
+    var body: some View {
+        Button { relay.open(session.id) } label: {
+            VStack(alignment: .leading, spacing: RelaySpacing.compact) {
+                HStack {
+                    Text(relay.machines[session.machineId]?.name ?? session.machineId).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    Spacer()
+                    Label(statusLabel(status), systemImage: status == "OFFLINE" ? "network.slash" : status == "NEEDS_YOU" ? "exclamationmark.bubble.fill" : status == "WORKING" ? "circle.dotted" : status == "FAILED" ? "exclamationmark.circle" : "checkmark")
+                        .font(.caption).foregroundStyle(statusColor(status))
+                }
+                Text(session.title).font(.body.weight(.semibold)).lineLimit(2).foregroundStyle(.primary)
+                HStack {
+                    Text(session.project).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Spacer()
+                    if status == "WORKING" { ElapsedLabel(start: session.turnStarted) }
+                }
+            }.padding(.vertical, RelaySpacing.small).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+        }.buttonStyle(.plain).alignmentGuide(.listRowSeparatorLeading) { _ in 0 }.accessibilityIdentifier("session." + session.id)
+    }
+}
+
+struct ElapsedLabel: View {
+    let start: String?
+    private var date: Date? {
+        guard let start else { return nil }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: start) ?? ISO8601DateFormatter().date(from: start)
+    }
+    var body: some View {
+        if let date, date.timeIntervalSince1970 > 0 {
+            Text(date, style: .timer).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                .multilineTextAlignment(.trailing).fixedSize().accessibilityLabel("Durata del turno").accessibilityValue(Text(date, style: .timer))
+        }
+    }
+}
+
+struct NeedsYouView: View {
+    @EnvironmentObject var relay: RelayController
+    private var requests: [PendingRequest] { relay.requests.values.sorted { $0.id < $1.id } }
+    var body: some View {
+        List {
+            if requests.isEmpty {
+                ContentUnavailableView("Nessuna richiesta", systemImage: "checkmark.bubble", description: Text("Le decisioni e le approvazioni delle tue macchine appariranno qui."))
+                    .listRowBackground(Color.clear)
+            } else {
+                ForEach(requests) { request in
+                    Button { relay.open(request.sessionId) } label: {
+                        VStack(alignment: .leading, spacing: RelaySpacing.compact) {
+                            Text(relay.machines[request.machineId]?.name ?? request.machineId).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                            Text(relay.sessions[request.sessionId]?.title ?? "Sessione Codex").font(.body.weight(.semibold))
+                            Label(request.kind == "user_input" ? "Codex ha una domanda" : "Approvazione richiesta", systemImage: "exclamationmark.bubble")
+                                .font(.subheadline).foregroundStyle(.orange)
+                            if !relay.online || relay.machines[request.machineId]?.status != "ONLINE" { Text("Macchina offline").font(.caption).foregroundStyle(.secondary) }
+                        }.padding(.vertical, RelaySpacing.compact)
+                    }.buttonStyle(.plain).accessibilityIdentifier("request." + request.id)
+                }
+            }
+        }.listStyle(.insetGrouped)
     }
 }
 struct PendingView: View {
@@ -211,7 +328,7 @@ struct DevicesView: View {
                 Link("Apri ChatGPT → Impostazioni → Sicurezza", destination: URL(string: "https://chatgpt.com/")!)
             }
             Section { Button("Esci e revoca questo accesso", role: .destructive) { Task { await relay.logout() } } }
-        }.navigationTitle("Dispositivi").task { await relay.loadDevices() }
+        }.navigationTitle("Impostazioni").task { await relay.loadDevices() }
             .confirmationDialog("Eliminare \(removing?.machine.name ?? "") dal Hub? La credenziale verrà revocata; Codex continuerà localmente.", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) { Button("Elimina e revoca", role: .destructive) { if let id = removing?.id { Task { await relay.manageMachine(id, action: "remove") } }; removing = nil } }
     }
 }

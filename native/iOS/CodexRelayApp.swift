@@ -21,7 +21,7 @@ import UserNotifications
     }
     var body: some Scene {
         WindowGroup {
-            RootView().environmentObject(relay).preferredColorScheme(.dark)
+            RootView().environmentObject(relay)
                 #if canImport(UIKit)
                 .onAppear {
                     notifications.onToken = { token in relay.apnsToken = token; Task { await relay.registerNativePush() } }
