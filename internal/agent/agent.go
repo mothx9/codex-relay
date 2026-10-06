@@ -158,6 +158,9 @@ func Run(ctx context.Context, cfg Config) error {
 	return ctx.Err()
 }
 func serve(ctx context.Context, p *protocol.Peer, b codex.Backend, m protocol.Machine, cache map[string]protocol.Result, order *[]string) error {
+	return serveRefreshing(ctx, p, b, m, cache, order, 2*time.Minute)
+}
+func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m protocol.Machine, cache map[string]protocol.Result, order *[]string, refreshEvery time.Duration) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	sessions, requests, e := b.Snapshot(ctx)
@@ -225,7 +228,7 @@ func serve(ctx context.Context, p *protocol.Peer, b codex.Backend, m protocol.Ma
 	}()
 	heartbeat := time.NewTicker(25 * time.Second)
 	defer heartbeat.Stop()
-	refresh := time.NewTicker(2 * time.Minute)
+	refresh := time.NewTicker(refreshEvery)
 	defer refresh.Stop()
 	for {
 		select {
@@ -249,7 +252,7 @@ func serve(ctx context.Context, p *protocol.Peer, b codex.Backend, m protocol.Ma
 				return e
 			}
 			epoch, watermark = b.Cursor()
-			p.Enqueue(protocol.Message{Type: "announce", Machine: &m, Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
+			p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", Machine: &m, Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
 		}
 	}
 }
