@@ -18,6 +18,7 @@ import Foundation
 }
 extension RelayController {
     func enableNativePush() async {
+        guard !previewOnly else { return }
         do {
             guard nativePushAvailable else { throw HubFailure.message("Configura APNs sul Hub prima di abilitare le notifiche.") }
             let accepted = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])

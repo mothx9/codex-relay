@@ -201,3 +201,51 @@ struct DevicesView: View {
 }
 func statusLabel(_ status: String) -> String { ["ALL": "All", "NEEDS_YOU": "Needs you", "WORKING": "Working", "READY": "Ready", "INACTIVE": "Inactive", "FAILED": "Failed"][status] ?? status }
 func statusColor(_ status: String) -> Color { status == "NEEDS_YOU" ? .orange : status == "WORKING" ? .green : status == "FAILED" ? .red : .secondary }
+
+#if DEBUG
+// Explicitly sandboxed fixtures: no Keychain access, Hub transport or notification consent.
+@MainActor private enum PreviewData {
+    static func decode<T: Decodable>(_ text: String, as: T.Type = T.self) -> T {
+        try! RelayJSON.decoder().decode(T.self, from: Data(text.utf8))
+    }
+    static func controller(status: String = "WORKING", paired: Bool = true) -> RelayController {
+        let relay = RelayController(preview: true)
+        guard paired else { return relay }
+        relay.credential = decode(#"{"id":"preview-device","token":"fictional-preview-only","kind":"operator","expires_at":"2027-01-01T00:00:00Z","hub_url":"https://preview.invalid"}"#)
+        let machines: [Machine] = decode(#"[{"id":"workstation","name":"WORKSTATION","status":"ONLINE","last_seen":"2026-10-06T12:00:00Z","codex_version":"0.160.1","account":{"kind":"chatgpt","email":"demo@example.invalid","plan":"plus"}},{"id":"laptop","name":"LAPTOP","status":"ONLINE","last_seen":"2026-10-06T12:00:00Z"},{"id":"node","name":"NODE","status":"OFFLINE","last_seen":"2026-10-06T11:00:00Z"}]"#)
+        relay.machines = Dictionary(uniqueKeysWithValues: machines.map { ($0.id, $0) })
+        var session: RelaySession = decode(#"{"id":"workstation~preview","machine_id":"workstation","thread_id":"preview","title":"Verifica controlli nativi","project":"Demo","cwd":"/demo","branch":"main","status":"WORKING","updated_at":"2026-10-06T12:00:00Z","turn_id":"preview-turn","read_only":false,"capabilities":{"can_send":true,"can_follow_up":true,"can_steer":true,"can_interrupt":true,"can_answer":true}}"#)
+        session.status = status; relay.sessions = [session.id: session]; relay.selected = session.id
+        relay.online = true; relay.connection = "Preview · dati fittizi"
+        relay.chat.put(Activity(id: "demo-user", kind: "userMessage", text: "Verifica lo stato della sessione."))
+        relay.chat.put(Activity(id: "demo-agent", kind: "agentMessage", text: "La verifica è in corso. Puoi aggiungere un follow-up."))
+        if status == "WORKING" {
+            let id = try! relay.outbox.add(id: "preview-follow-up", session: session.id, kind: "follow_up", text: "Al termine riporta i controlli eseguiti.")
+            relay.outbox.sending(id)
+            relay.outbox.result(decode(#"{"id":"preview-follow-up","ok":true}"#))
+        }
+        if status == "NEEDS_YOU" {
+            let request: PendingRequest = decode(#"{"request_id":"preview-question","session_id":"workstation~preview","machine_id":"workstation","kind":"user_input","description":"Seleziona la verifica da eseguire.","cwd":"/demo","expires_at":"2027-01-01T00:00:00Z","can_approve":true,"questions":[{"id":"scope","header":"Verifica","question":"Quale controllo eseguo?","options":[{"label":"Completo","description":"Esegue tutti i controlli della demo."},{"label":"Rapido","description":"Controlla soltanto lo stato."}]}]}"#)
+            relay.requests = [request.id: request]
+        }
+        relay.registry = decode(#"{"operators":[{"id":"preview-device","name":"iPhone demo","created_at":"2026-10-06T00:00:00Z","expires_at":"2027-01-01T00:00:00Z","last_seen":"2026-10-06T12:00:00Z","revoked":false}],"machines":[],"current_device_id":"preview-device","hub_url":"https://preview.invalid","chatgpt_device_management":false}"#)
+        relay.registry = DeviceRegistry(operators: relay.registry!.operators, machines: machines.map { MachineDevice(machine: $0, access: $0.status == "OFFLINE" ? "PAUSED" : "ALLOWED") }, currentDeviceId: "preview-device", hubUrl: "https://preview.invalid", chatgptDeviceManagement: false)
+        return relay
+    }
+}
+@MainActor private struct RelayPreview<Content: View>: View {
+    @StateObject private var relay: RelayController
+    private let content: Content
+    init(status: String = "WORKING", paired: Bool = true, @ViewBuilder content: () -> Content) {
+        _relay = StateObject(wrappedValue: PreviewData.controller(status: status, paired: paired))
+        self.content = content()
+    }
+    var body: some View { NavigationStack { content }.environmentObject(relay).preferredColorScheme(.dark).tint(.white) }
+}
+#Preview("Abbinamento · isolato") { RelayPreview(paired: false) { PairingView() } }
+#Preview("Fleet · isolata") { RelayPreview { FleetView() } }
+#Preview("Sessione · Ready") { RelayPreview(status: "READY") { SessionView() } }
+#Preview("Sessione · Follow-up in coda") { RelayPreview { SessionView() } }
+#Preview("Sessione · Needs You") { RelayPreview(status: "NEEDS_YOU") { SessionView() } }
+#Preview("Dispositivi · isolati") { RelayPreview { DevicesView() } }
+#endif

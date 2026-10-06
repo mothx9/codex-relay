@@ -10,6 +10,8 @@
 /native/.build/
 /native/*.xcconfig
 xcuserdata/
+.DS_Store
+/native/CodexRelay.xcodeproj/project.xcworkspace/
 *.mobileprovision
 *.p8
 *.p12

@@ -14,6 +14,8 @@ open native/CodexRelay.xcodeproj
 
 Select an installed iPhone simulator and Run, or connect your iPhone and configure your own signing team. Simulator compilation is not proof of physical device installation, account signing or push delivery.
 
+`Views.swift` includes isolated SwiftUI previews for pairing, Fleet, Ready, queued Follow-up, Needs You and device management. Open Xcode's Canvas to render them. Fixtures use fictional `.invalid` addresses. Preview controllers skip Keychain loading, disable Hub transports and pairing, and never request notification consent; they cannot operate the installed Fleet. The normal simulator app remains the client for actual Hub acceptance.
+
 On the Hub, deploy the new Go code first: rc.3 does not have the new pairing/device APIs. Mint a code with `codex-relay pair --hub-url "$RELAY_HUB_URL" --data-dir "$HOME/.local/share/codex-relay/hub" --name iPhone`. Enter the real HTTPS origin and 8 digits in the app. Do not paste the bootstrap token. Codes expire in five minutes, are one-use and disappear on Hub restart. The client credential is revocable, expires after 90 days and is stored in Keychain (`AfterFirstUnlockThisDeviceOnly`).
 
 The app uses authenticated WSS for Fleet/status/chat, explicit capabilities for control and a RAM-only bounded outbox. READY submits a New Turn; WORKING submits Follow-up by default; Steer and Interrupt are explicit advanced actions; pending input/command/file approval uses Answer. Disconnect never automatically resends a command. Opening a session fetches bounded Codex history/queue through its agent.

@@ -29,11 +29,16 @@ import UIKit
     private var paused = false
     private var commands: Set<String> = []
     private var lastBackground: Date?
+    let previewOnly: Bool
 
-    init() { credential = CredentialVault.load(); if credential != nil { connect() } }
-    var api: HubAPI? { credential.flatMap { try? HubAPI(url: $0.hubUrl, token: $0.token) } }
+    init(preview: Bool = false) {
+        previewOnly = preview || ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+        if !previewOnly { credential = CredentialVault.load(); if credential != nil { connect() } }
+    }
+    var api: HubAPI? { previewOnly ? nil : credential.flatMap { try? HubAPI(url: $0.hubUrl, token: $0.token) } }
     var current: RelaySession? { sessions[selected] }
     func pair(url: String, code: String) async {
+        guard !previewOnly else { return }
         guard !busy else { return }; busy = true; defer { busy = false }
         do {
             let api = try HubAPI(url: url)
@@ -43,6 +48,7 @@ import UIKit
         } catch { self.error = error.localizedDescription }
     }
     func connect() {
+        guard !previewOnly else { return }
         stop(); guard let api, !paused else { return }; generation = UUID(); let generation = generation
         loop = Task { [weak self] in
             var attempt = 0
@@ -142,7 +148,7 @@ import UIKit
         guard let api else { return }; do { let _: Ack = try await api.fetch("api/devices/\(id)/revoke", body: [:]); if id == credential?.id { forget() } else { await loadDevices() } } catch { self.error = error.localizedDescription }
     }
     func logout() async { if let api { _ = try? await api.fetch("api/logout", body: [:], as: Ack.self) }; forget() }
-    func forget() { stop(); CredentialVault.clear(); credential = nil; machines = [:]; sessions = [:]; requests = [:]; registry = nil; pairCode = nil; selected = ""; chat = RecentChat(); outbox = Outbox(); connection = "Accesso richiesto" }
+    func forget() { guard !previewOnly else { return }; stop(); CredentialVault.clear(); credential = nil; machines = [:]; sessions = [:]; requests = [:]; registry = nil; pairCode = nil; selected = ""; chat = RecentChat(); outbox = Outbox(); connection = "Accesso richiesto" }
     func background() { paused = true; lastBackground = Date(); stop(); chat = RecentChat() }
     func foreground() { paused = false; outbox.prune(active: ""); if let lastBackground, Date().timeIntervalSince(lastBackground) > 300 { outbox = Outbox() }; connect() }
     private func stop() { generation = UUID(); loop?.cancel(); loop = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; transport?.invalidateAndCancel(); transport = nil; online = false; commands.removeAll(); outbox.disconnected() }
