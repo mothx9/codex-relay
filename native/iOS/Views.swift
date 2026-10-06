@@ -54,6 +54,8 @@ struct PairingView: View {
 }
 struct FleetView: View {
     @Environment(RelayController.self) private var relay
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var filter = "ALL"
     @State private var search = ""
     private var browsingAll: Bool { !search.isEmpty || filter != "ALL" }
@@ -68,12 +70,12 @@ struct FleetView: View {
                         Text(relay.online ? "\(relay.machines.values.filter { $0.status == "ONLINE" }.count) macchine online" : "Connessione al Hub…")
                             .font(.subheadline).foregroundStyle(.secondary)
                             .accessibilityIdentifier("fleet.connection")
-                        ViewThatFits(in: .horizontal) {
-                            HStack(spacing: RelaySpacing.page) { machineLabels }
-                            VStack(alignment: .leading, spacing: RelaySpacing.compact) { machineLabels }
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .leading), count: typeSize.isAccessibilitySize ? 1 : 3), alignment: .leading, spacing: RelaySpacing.row) {
+                            machineLabels
                         }
-                    }.padding(.vertical, RelaySpacing.compact)
-                }.listRowBackground(Color.clear).listRowSeparator(.hidden)
+                    }.padding(.vertical, RelaySpacing.small)
+                }.listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 4, trailing: 4))
+                    .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 sessionSection("Needs You", sessions: sorted.filter { state($0) == "NEEDS_YOU" })
                 sessionSection("In corso", sessions: sorted.filter { state($0) == "WORKING" })
                 sessionSection("Recenti", sessions: Array(sorted.filter { !["WORKING", "NEEDS_YOU"].contains(state($0)) }.prefix(12)))
@@ -88,6 +90,7 @@ struct FleetView: View {
             }
         }
         .listStyle(.insetGrouped).listSectionSpacing(RelaySpacing.row)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: sorted.filter { state($0) == "NEEDS_YOU" }.map(\.id).sorted())
         .searchable(text: $search, prompt: "Sessione, macchina o progetto")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -105,46 +108,103 @@ struct FleetView: View {
     private var machineLabels: some View {
         ForEach(relay.machines.values.sorted { $0.name < $1.name }) { machine in
             let online = relay.online && machine.status == "ONLINE"
-            VStack(alignment: .leading, spacing: 3) {
-                Label(machine.name, systemImage: online ? "checkmark.circle" : "network.slash")
-                    .font(.caption.weight(.medium))
-                let active = relay.sessions.values.filter { $0.machineId == machine.id && ["WORKING", "NEEDS_YOU"].contains($0.status) }.count
-                Text(online ? (active == 0 ? "Nessun lavoro in corso" : "\(active) \(active == 1 ? "sessione attiva" : "sessioni attive")") : relay.machineConnectionLabel(machine.id))
-                    .font(.caption2).foregroundStyle(.secondary)
-            }.foregroundStyle(online ? Color.primary : Color.secondary)
-                .accessibilityElement(children: .combine).accessibilityIdentifier("fleet.machine." + machine.id)
+            let active = relay.sessions.values.filter { $0.machineId == machine.id && ["WORKING", "NEEDS_YOU"].contains($0.status) }.count
+            VStack(alignment: .leading, spacing: RelaySpacing.small) {
+                HStack(spacing: 5) {
+                    Image(systemName: online ? "checkmark.circle.fill" : "network.slash")
+                        .foregroundStyle(online ? Color.accentColor : Color.secondary)
+                    Text(machine.name).lineLimit(1)
+                }.font(.caption.weight(.semibold))
+                Text(online ? (active == 0 ? "Disponibile" : "\(active) in corso") : relay.machineConnectionLabel(machine.id))
+                    .font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(machine.name + ", " + relay.machineConnectionLabel(machine.id))
+                .accessibilityValue(online ? (active == 0 ? "Nessun lavoro in corso" : "\(active) sessioni attive") : "")
+                .accessibilityIdentifier("fleet.machine." + machine.id)
         }
     }
     @ViewBuilder private func sessionSection(_ title: String, sessions: [RelaySession]) -> some View {
-        if !sessions.isEmpty { Section(title) { ForEach(sessions) { FleetSessionRow(session: $0) } } }
+        if !sessions.isEmpty {
+            Section {
+                ForEach(sessions) { FleetSessionRow(session: $0) }
+            } header: {
+                HStack {
+                    Text(title)
+                    Text("\(sessions.count)").font(.caption.monospacedDigit()).foregroundStyle(.tertiary)
+                }.textCase(nil).font(.subheadline.weight(.semibold))
+            }
+        }
     }
 }
 
 struct FleetSessionRow: View {
     @Environment(RelayController.self) private var relay
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let session: RelaySession
     private var status: String { session.displayStatus(machine: relay.machines[session.machineId], connected: relay.online) }
     var body: some View {
         Button { relay.open(session.id) } label: {
             VStack(alignment: .leading, spacing: RelaySpacing.compact) {
-                HStack {
-                    Text(relay.machines[session.machineId]?.name ?? session.machineId).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    Spacer()
-                    Label(status == "OFFLINE" ? "Stato non aggiornato" : statusLabel(status), systemImage: status == "OFFLINE" ? "network.slash" : status == "NEEDS_YOU" ? "exclamationmark.bubble.fill" : status == "WORKING" ? "circle.dotted" : status == "FAILED" ? "exclamationmark.circle" : "checkmark")
-                        .font(.caption).foregroundStyle(statusColor(status))
-                }
+                HStack(spacing: RelaySpacing.compact) {
+                    Text(relay.machines[session.machineId]?.name ?? session.machineId).fontWeight(.semibold)
+                    if !session.project.isEmpty { Text("·"); Text(session.project).lineLimit(1) }
+                    Spacer(minLength: 4)
+                    SessionStatusMark(status: status)
+                }.font(.caption).foregroundStyle(.secondary)
                 Text(session.title).font(.body.weight(.semibold)).lineLimit(2).foregroundStyle(.primary)
-                if status == "OFFLINE" { Text(relay.machineConnectionLabel(session.machineId)).font(.caption).foregroundStyle(.secondary) }
-                if status == "WORKING", let activity = relay.liveActivities[session.id] {
-                    Text(activity.detail).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-                }
-                HStack {
-                    Text(session.project).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                    Spacer()
+                HStack(alignment: .firstTextBaseline, spacing: RelaySpacing.compact) {
+                    if status == "WORKING", let activity = relay.liveActivities[session.id] {
+                        Text(activity.detail).lineLimit(1)
+                            .contentTransition(.opacity)
+                            .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: activity.itemId)
+                    } else {
+                        Text(status == "OFFLINE" ? relay.machineConnectionLabel(session.machineId) : statusLabel(status)).lineLimit(2)
+                    }
+                    Spacer(minLength: 4)
                     if status == "WORKING" { ElapsedLabel(start: session.turnStarted) }
-                }
-            }.padding(.vertical, RelaySpacing.small).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-        }.buttonStyle(.plain).alignmentGuide(.listRowSeparatorLeading) { _ in 0 }.accessibilityIdentifier("session." + session.id)
+                }.font(.caption).foregroundStyle(.secondary)
+            }.padding(.vertical, RelaySpacing.compact).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+        }.buttonStyle(RelayRowPressStyle()).alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            .accessibilityIdentifier("session." + session.id)
+    }
+}
+
+/// Animate semantic state changes only; deltas keep their existing view identity.
+struct SessionStatusMark: View {
+    let status: String
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private var symbol: String {
+        switch status {
+        case "WORKING": "circle.dotted"
+        case "NEEDS_YOU": "exclamationmark.bubble.fill"
+        case "FAILED": "exclamationmark.circle.fill"
+        case "OFFLINE": "network.slash"
+        case "INACTIVE": "moon"
+        default: "checkmark.circle"
+        }
+    }
+    var body: some View {
+        Group {
+            if status == "WORKING" && !reduceMotion {
+                ProgressView().controlSize(.mini).tint(statusColor(status))
+            } else {
+                Image(systemName: symbol).foregroundStyle(statusColor(status))
+                    .contentTransition(.symbolEffect(.replace))
+            }
+        }.frame(width: 16, height: 16)
+            .transaction { if reduceMotion { $0.animation = nil; $0.disablesAnimations = true } }
+            .accessibilityLabel(status == "OFFLINE" ? "Stato non aggiornato" : statusLabel(status))
+    }
+}
+
+struct RelayRowPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.opacity(configuration.isPressed ? 0.65 : 1)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: configuration.isPressed)
     }
 }
 
@@ -293,60 +353,165 @@ struct MCPRequestForm: View {
 }
 struct DevicesView: View {
     @Environment(RelayController.self) private var relay
-    @State private var add = false
+    @State private var localSignOut = false
+    @State private var revokeAccess = false
+    var body: some View {
+        List {
+            Section {
+                LabeledContent { Text(relay.online ? "Connesso" : "Non connesso").foregroundStyle(.secondary) } label: { Label("Hub", systemImage: "network") }
+                NavigationLink { HubDetailsView() } label: { Label("Connessione e diagnostica", systemImage: "info.circle") }
+                NavigationLink { NotificationSettingsView() } label: { Label("Notifiche", systemImage: "bell.badge") }
+            }
+            Section("Macchine") {
+                ForEach(relay.registry?.machines ?? []) { device in
+                    NavigationLink { MachineSettingsView(id: device.id) } label: {
+                        HStack(spacing: RelaySpacing.row) {
+                            Image(systemName: "desktopcomputer").foregroundStyle(.secondary)
+                            VStack(alignment: .leading, spacing: RelaySpacing.small) {
+                                Text(device.machine.name)
+                                Text(relay.machineConnectionLabel(device.id)).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }.padding(.vertical, RelaySpacing.small)
+                    }
+                }
+                SettingsFeedback(id: "devices")
+            }
+            Section {
+                Link(destination: URL(string: "https://chatgpt.com/")!) { Label("Account ChatGPT", systemImage: "person.crop.circle") }
+            } footer: { Text("Gli account Codex sono visibili nei dettagli di ogni macchina. Le altre sessioni ChatGPT si gestiscono nelle impostazioni di sicurezza di ChatGPT.") }
+            Section("Accesso") {
+                ForEach(relay.registry?.operators ?? []) { device in
+                    NavigationLink {
+                        List {
+                            LabeledContent("Dispositivo", value: device.name)
+                            LabeledContent("Accesso", value: device.revoked ? "Revocato" : "Autorizzato")
+                            LabeledContent("Scadenza", value: String(device.expiresAt.prefix(10)))
+                            if !device.revoked {
+                                Button("Revoca accesso", role: .destructive) { Task { await relay.revokeDevice(device.id) } }
+                                    .disabled(relay.settingsProgress[device.id] != nil)
+                            }
+                            SettingsFeedback(id: device.id)
+                        }.navigationTitle(device.name).navigationBarTitleDisplayMode(.inline)
+                    } label: {
+                        Label(device.name + (device.id == relay.credential?.id ? " · questo iPhone" : ""), systemImage: "iphone")
+                    }
+                }
+                NavigationLink { EnrollmentView() } label: { Label("Abbina un dispositivo", systemImage: "plus.circle") }
+            }
+            Section {
+                Button("Revoca questo accesso", role: .destructive) { revokeAccess = true }
+                    .disabled(relay.settingsProgress["logout"] != nil)
+                Button("Esci su questo iPhone", role: .destructive) { localSignOut = true }
+                SettingsFeedback(id: "logout")
+            } footer: { Text("La revoca disabilita la credenziale sul Hub. L’uscita locale rimuove soltanto l’accesso salvato su questo iPhone.") }
+        }.navigationTitle("Impostazioni").task { await relay.loadDevices() }
+            .confirmationDialog("Uscire su questo iPhone? La credenziale sul Hub rimarrà valida.", isPresented: $localSignOut, titleVisibility: .visible) {
+                Button("Esci localmente", role: .destructive) { relay.forget() }
+            }
+            .confirmationDialog("Revocare l’accesso di questo iPhone sul Hub? Per rientrare servirà un nuovo abbinamento.", isPresented: $revokeAccess, titleVisibility: .visible) {
+                Button("Revoca ed esci", role: .destructive) { Task { await relay.logout() } }
+            }
+    }
+}
+
+private struct SettingsFeedback: View {
+    @Environment(RelayController.self) private var relay
+    let id: String
+    var body: some View {
+        if let progress = relay.settingsProgress[id] { ProgressView(progress).font(.caption) }
+        if let error = relay.settingsErrors[id] { Text(error).font(.caption).foregroundStyle(.orange) }
+    }
+}
+
+private struct HubDetailsView: View {
+    @Environment(RelayController.self) private var relay
+    var body: some View {
+        List {
+            LabeledContent("Connessione", value: relay.online ? "Attiva" : relay.connection)
+            Section("Hub") { Text(relay.credential?.hubUrl ?? "").font(.footnote).textSelection(.enabled) }
+            Section { Text("La cronologia appartiene a Codex. Relay mantiene il contesto della conversazione soltanto in memoria.").font(.footnote).foregroundStyle(.secondary) }
+        }.navigationTitle("Connessione").navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct MachineSettingsView: View {
+    @Environment(RelayController.self) private var relay
+    let id: String
+    @State private var removing = false
+    var body: some View {
+        List {
+            if let device = relay.registry?.machines.first(where: { $0.id == id }) {
+                Section {
+                    LabeledContent("Relay", value: relay.machineConnectionLabel(id))
+                    LabeledContent("Codex", value: device.machine.codexVersion ?? "Non disponibile")
+                    if let account = device.machine.account {
+                        LabeledContent("Account", value: account.email ?? account.kind)
+                        if let plan = account.plan { LabeledContent("Piano", value: plan) }
+                    }
+                }
+                Section {
+                    if device.access != "REVOKED" {
+                        Button(device.access == "PAUSED" ? "Riprendi Relay" : "Metti in pausa Relay") {
+                            Task { await relay.manageMachine(id, action: device.access == "PAUSED" ? "resume" : "pause") }
+                        }.disabled(relay.settingsProgress[id] != nil)
+                    }
+                    SettingsFeedback(id: id)
+                } footer: { Text("La pausa sospende solo il collegamento a Relay. Il lavoro Codex continua sulla macchina.") }
+                Section {
+                    Button("Rimuovi macchina e revoca credenziale", role: .destructive) { removing = true }
+                        .disabled(relay.settingsProgress[id] != nil)
+                }
+            } else { Text("Macchina rimossa dal Hub.").foregroundStyle(.secondary) }
+        }.navigationTitle(relay.machines[id]?.name ?? id).navigationBarTitleDisplayMode(.inline)
+            .confirmationDialog("Rimuovere questa macchina dal Hub e revocare la credenziale? Codex continuerà localmente.", isPresented: $removing, titleVisibility: .visible) {
+                Button("Rimuovi e revoca", role: .destructive) { Task { await relay.manageMachine(id, action: "remove") } }
+            }
+    }
+}
+
+private struct EnrollmentView: View {
+    @Environment(RelayController.self) private var relay
     @State private var kind = "operator"
     @State private var name = "iPhone"
     @State private var machine = ""
-    @State private var removing: MachineDevice?
     var body: some View {
-        List {
-            Section("Hub canonico") { Text(relay.credential?.hubUrl ?? "").font(.caption.monospaced()); Text("Un solo Hub · un’unica Fleet").foregroundStyle(.secondary) }
-            #if canImport(UIKit)
-            Section("Notifiche native") {
-                Text(relay.nativePushAvailable ? relay.notificationStatus : "APNs non configurato sul Hub. Servono firma e capability Push Notifications Apple.").font(.caption).foregroundStyle(.secondary)
-                Button("Abilita notifiche") { Task { await relay.enableNativePush() } }.disabled(!relay.nativePushAvailable)
-                Button("Invia prova") { Task { await relay.testNativePush() } }.disabled(!relay.nativePushAvailable)
-                Button("Disabilita notifiche") { Task { await relay.disableNativePush() } }
-            }
-            #endif
-            Section("Macchine Codex") {
-                ForEach(relay.registry?.machines ?? []) { device in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(device.machine.name).font(.headline)
-                        Text(relay.machineConnectionLabel(device.id)).font(.subheadline).foregroundStyle(.secondary)
-                        Text("\(device.access) · Codex \(device.machine.codexVersion ?? "—")").font(.caption)
-                        if let account = device.machine.account { Text("\(account.email ?? account.kind) · \(account.plan ?? "")").font(.caption).foregroundStyle(.secondary) }
-                        HStack {
-                            if device.access != "REVOKED" { Button(device.access == "PAUSED" ? "Riprendi Relay" : "Metti in pausa Relay") { Task { await relay.manageMachine(device.id, action: device.access == "PAUSED" ? "resume" : "pause") } }.buttonStyle(.bordered) }
-                            Button("Elimina", role: .destructive) { removing = device }.buttonStyle(.bordered)
-                        }
-                    }.padding(.vertical, 4)
-                }
-                Text("La pausa sospende solo il collegamento a Relay. Il lavoro Codex continua sulla macchina.").font(.caption).foregroundStyle(.secondary)
-            }
-            Section("Client abbinati") {
-                ForEach(relay.registry?.operators ?? []) { device in
-                    VStack(alignment: .leading) {
-                        Text(device.name + (device.id == relay.credential?.id ? " · questo iPhone" : ""))
-                        Text(device.revoked ? "Accesso revocato" : "Accesso valido fino al \(device.expiresAt.prefix(10))").font(.caption).foregroundStyle(.secondary)
-                        if !device.revoked { Button("Revoca accesso", role: .destructive) { Task { await relay.revokeDevice(device.id) } } }
-                    }
-                }
-            }
-            Section("Aggiungi dispositivo") {
+        Form {
+            Section {
                 Picker("Tipo", selection: $kind) { Text("iPhone / operatore").tag("operator"); Text("Macchina Codex").tag("agent") }
                 TextField("Nome", text: $name)
-                if kind == "agent" { TextField("ID macchina (es. laptop)", text: $machine).textInputAutocapitalization(.never).autocorrectionDisabled() }
-                Button("Genera codice monouso") { Task { await relay.createCode(kind: kind, name: name, machine: machine) } }.disabled(name.isEmpty || (kind == "agent" && machine.isEmpty))
-                if let pair = relay.pairCode { Text(pair.code.prefix(4) + " " + pair.code.suffix(4)).font(.largeTitle.monospaced()).textSelection(.enabled); Text("Valido 5 minuti · una sola volta").font(.caption); if pair.kind == "agent" { Text("Sulla nuova macchina usa codex-relay pair --kind agent --hub-url URL --code-file FILE --out TOKEN. Poi installa l’agent.").font(.caption.monospaced()).textSelection(.enabled) } }
+                if kind == "agent" { TextField("ID macchina", text: $machine).textInputAutocapitalization(.never).autocorrectionDisabled() }
+                Button("Genera codice monouso") { Task { await relay.createCode(kind: kind, name: name, machine: machine) } }
+                    .disabled(name.isEmpty || (kind == "agent" && machine.isEmpty) || relay.settingsProgress["pairing"] != nil)
+                SettingsFeedback(id: "pairing")
             }
-            Section("Account ChatGPT") {
-                Text("Qui vedi l’account utilizzato da Codex sulle macchine Relay. Le altre sessioni ChatGPT si gestiscono nelle impostazioni di sicurezza di ChatGPT.").font(.caption).foregroundStyle(.secondary)
-                Link("Apri ChatGPT → Impostazioni → Sicurezza", destination: URL(string: "https://chatgpt.com/")!)
+            if let pair = relay.pairCode {
+                Section {
+                    Text(pair.code.prefix(4) + " " + pair.code.suffix(4)).font(.title.monospaced()).textSelection(.enabled)
+                    Text("Valido 5 minuti · una sola volta").font(.caption).foregroundStyle(.secondary)
+                    if pair.kind == "agent" { Text("Sulla nuova macchina usa codex-relay pair con questo codice, poi installa l’agent.").font(.footnote) }
+                }
             }
-            Section { Button("Esci e revoca questo accesso", role: .destructive) { Task { await relay.logout() } } }
-        }.navigationTitle("Impostazioni").task { await relay.loadDevices() }
-            .confirmationDialog("Eliminare \(removing?.machine.name ?? "") dal Hub? La credenziale verrà revocata; Codex continuerà localmente.", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) { Button("Elimina e revoca", role: .destructive) { if let id = removing?.id { Task { await relay.manageMachine(id, action: "remove") } }; removing = nil } }
+        }.navigationTitle("Abbina dispositivo").navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct NotificationSettingsView: View {
+    @Environment(RelayController.self) private var relay
+    var body: some View {
+        List {
+            Section("Disponibilità") {
+                LabeledContent("Permesso iOS", value: relay.notificationPermission)
+                LabeledContent("APNs sul Hub", value: relay.nativePushAvailable ? "Configurato" : "Non configurato")
+                LabeledContent("Token Apple", value: relay.apnsToken == nil ? "Non ottenuto" : "Ottenuto")
+                LabeledContent("Registrazione Relay", value: relay.pushRegistered ? "Confermata" : "Non verificata")
+            }
+            Section {
+                Button("Abilita notifiche") { Task { await relay.enableNativePush() } }.disabled(!relay.nativePushAvailable)
+                Button("Invia prova") { Task { await relay.testNativePush() } }.disabled(!relay.nativePushAvailable || !relay.pushRegistered)
+                Button("Disabilita notifiche") { Task { await relay.disableNativePush() } }
+                Text(relay.notificationStatus).font(.caption).foregroundStyle(.secondary)
+            } footer: { if !relay.nativePushAvailable { Text("Il collegamento a Codex resta attivo. Le notifiche push richiedono APNs sul Hub e la capability Apple Push Notifications, non disponibile con Personal Team.") } }
+        }.navigationTitle("Notifiche").navigationBarTitleDisplayMode(.inline).task { await relay.refreshNotificationPermission() }
     }
 }
 func statusLabel(_ status: String) -> String { ["OFFLINE": "Relay non connesso", "ALL": "Tutte", "NEEDS_YOU": "Serve una risposta", "WORKING": "In corso", "READY": "Pronta", "INACTIVE": "Inattiva", "FAILED": "Errore"][status] ?? status }

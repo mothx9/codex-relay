@@ -17,11 +17,24 @@ import Foundation
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions { [.banner, .sound] }
 }
 extension RelayController {
+    func refreshNotificationPermission() async {
+        guard !previewOnly else { return }
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        switch settings.authorizationStatus {
+        case .authorized: notificationPermission = "Consentito"
+        case .denied: notificationPermission = "Negato"
+        case .notDetermined: notificationPermission = "Non richiesto"
+        case .provisional: notificationPermission = "Provvisorio"
+        case .ephemeral: notificationPermission = "Temporaneo"
+        @unknown default: notificationPermission = "Non disponibile"
+        }
+    }
     func enableNativePush() async {
         guard !previewOnly else { return }
         do {
             guard nativePushAvailable else { throw HubFailure.message("Configura APNs sul Hub prima di abilitare le notifiche.") }
             let accepted = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+            await refreshNotificationPermission()
             if !accepted { notificationStatus = "Permesso notifiche negato. Puoi abilitarlo nelle Impostazioni iOS."; return }
             notificationStatus = "Registro questo iPhone con Apple…"; UIApplication.shared.registerForRemoteNotifications()
         } catch { self.error = error.localizedDescription }
@@ -31,11 +44,11 @@ extension RelayController {
         struct Registration: Encodable, Sendable { let token: String; let environment: String; let privacy: Bool }
         let environment = Bundle.main.object(forInfoDictionaryKey: "RelayAPNSEnvironment") as? String ?? "sandbox"
         let privacy = UserDefaults.standard.object(forKey: "relay.pushPrivacy") as? Bool ?? true
-        do { let _: Ack = try await api.post("api/native-push/subscribe", body: Registration(token: apnsToken, environment: environment, privacy: privacy)); notificationStatus = "Notifiche registrate. La ricezione va verificata sull’iPhone." } catch { self.error = error.localizedDescription }
+        do { let _: Ack = try await api.post("api/native-push/subscribe", body: Registration(token: apnsToken, environment: environment, privacy: privacy)); pushRegistered = true; notificationStatus = "Notifiche registrate. La ricezione va verificata sull’iPhone." } catch { self.error = error.localizedDescription }
     }
     func disableNativePush() async {
         guard let api else { return }
-        do { let _: Ack = try await api.fetch("api/native-push/unsubscribe", body: [:]); notificationStatus = "Notifiche disabilitate per questo dispositivo"; UIApplication.shared.unregisterForRemoteNotifications() } catch { self.error = error.localizedDescription }
+        do { let _: Ack = try await api.fetch("api/native-push/unsubscribe", body: [:]); pushRegistered = false; notificationStatus = "Notifiche disabilitate per questo dispositivo"; UIApplication.shared.unregisterForRemoteNotifications() } catch { self.error = error.localizedDescription }
     }
     func testNativePush() async {
         guard let api else { return }

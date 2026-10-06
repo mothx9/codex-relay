@@ -1,5 +1,15 @@
 import SwiftUI
 
+private struct CompleteMessageKey: EnvironmentKey {
+    static let defaultValue: String? = nil
+}
+extension EnvironmentValues {
+    var completeMessage: String? {
+        get { self[CompleteMessageKey.self] }
+        set { self[CompleteMessageKey.self] = newValue }
+    }
+}
+
 struct ChatMarkdown: View {
     let text: String
     let identifier: String
@@ -23,6 +33,7 @@ struct ChatMarkdown: View {
 }
 
 private struct MarkdownBlockView: View {
+    @Environment(\.completeMessage) private var completeMessage
     let block: RichBlock
     let identifier: String
     var body: some View {
@@ -76,7 +87,10 @@ private struct MarkdownBlockView: View {
     private func inline(_ spans: [RichSpan]) -> some View {
         Text(styled(spans)).textSelection(.enabled)
             .contextMenu {
-                Button("Copia testo", systemImage: "doc.on.doc") { UIPasteboard.general.string = spans.map(\.text).joined() }
+                if let completeMessage {
+                    Button("Copia messaggio completo", systemImage: "doc.on.doc") { UIPasteboard.general.string = completeMessage }
+                }
+                Button("Copia questo paragrafo", systemImage: "text.alignleft") { UIPasteboard.general.string = spans.map(\.text).joined() }
                 ForEach(Array(Set(spans.compactMap(\.link))).sorted(), id: \.self) { destination in
                     if let url = RichDocument.webURL(destination) {
                         Menu(destination) {
@@ -117,6 +131,7 @@ enum CodePalette {
 }
 
 struct CodeBlockView: View {
+    @Environment(\.completeMessage) private var completeMessage
     let code: String
     let language: String?
     @State private var tokens: [CodeToken] = []
@@ -142,7 +157,10 @@ struct CodeBlockView: View {
                     .frame(maxWidth: .infinity, alignment: .leading).padding(RelaySpacing.row)
             }
         }.background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
-            .contextMenu { Button("Copia codice", systemImage: "doc.on.doc") { UIPasteboard.general.string = code } }
+            .contextMenu {
+                Button("Copia codice", systemImage: "doc.on.doc") { UIPasteboard.general.string = code }
+                if let completeMessage { Button("Copia messaggio completo", systemImage: "text.alignleft") { UIPasteboard.general.string = completeMessage } }
+            }
             .task(id: code + (language ?? "")) {
                 let source = code; let syntax = language
                 let parsed = await Task.detached(priority: .userInitiated) { CodeTokens.tokenize(source, language: syntax) }.value
@@ -218,6 +236,7 @@ struct TerminalOutputView: View {
                     ForEach(Array(chunks.enumerated()), id: \.offset) { _, chunk in
                         Text(chunk).font(.caption.monospaced()).textSelection(.enabled)
                             .fixedSize(horizontal: true, vertical: true)
+                            .contextMenu { Button("Copia output completo", systemImage: "doc.on.doc") { UIPasteboard.general.string = text } }
                     }
                     Color.clear.frame(height: 1).id("output.latest")
                 }.padding(10)

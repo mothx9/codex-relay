@@ -21,12 +21,19 @@ import UIKit
     private var restoredWatch = false
     private var historyCorrelated = false
     private var issuedHistoryIDs: [String] = []
+    var queueEditError: String?
+    var queueEditingID: String?
+    private var queueWaiters: [String: CheckedContinuation<Bool, Never>] = [:]
     var outbox = Outbox()
     var selected: String = ""
     var online = false
     var connection = "Accesso richiesto"
     var error: String?
     var registry: DeviceRegistry?
+    var settingsProgress: [String: String] = [:]
+    var settingsErrors: [String: String] = [:]
+    var notificationPermission = "Da verificare"
+    var pushRegistered = false
     var pairCode: PairCode?
     var busy = false
     var nativePushAvailable = false
@@ -81,7 +88,7 @@ import UIKit
                     }
                 } catch {
                     guard self.generation == generation, !Task.isCancelled else { return }
-                    self.online = false; self.restoredWatch = false; self.historyLoading = false; self.historyRequestID = nil; self.outbox.disconnected(); self.commands.removeAll(); self.socket?.cancel(with: .goingAway, reason: nil); self.transport?.invalidateAndCancel()
+                    self.online = false; self.restoredWatch = false; self.historyLoading = false; self.historyRequestID = nil; self.outbox.disconnected(); for id in Array(self.queueWaiters.keys) { self.finishQueueEditUnknown(id) }; self.commands.removeAll(); self.socket?.cancel(with: .goingAway, reason: nil); self.transport?.invalidateAndCancel()
                     self.connection = "Offline · riconnessione"
                     if let hubError = error as? HubFailure {
                         if hubError.authenticationRequired { self.forget(); self.error = hubError.localizedDescription; return }
@@ -161,7 +168,10 @@ import UIKit
                 }
                 outbox.queue(session: selected, entries: result.followUps ?? [])
             }
-            if !result.ok && !handledHistory { error = result.error ?? "Comando rifiutato." }
+            if let waiter = queueWaiters.removeValue(forKey: result.id) {
+                queueEditError = result.ok ? nil : result.error ?? "Modifica non riuscita. Il testo è conservato."
+                waiter.resume(returning: result.ok)
+            } else if !result.ok && !handledHistory { error = result.error ?? "Comando rifiutato." }
         default: break
         }
     }
@@ -218,6 +228,41 @@ import UIKit
             return true
         } catch { self.error = error.localizedDescription; return false }
     }
+    func editQueued(_ item: Outgoing, text: String) async -> Bool {
+        guard queueEditingID == nil, let current, current.id == item.sessionId, online,
+              machines[current.machineId]?.status == "ONLINE", current.allows("queue_update"),
+              let present = outbox.items.first(where: { $0.id == item.id }), present.phase == .queued,
+              present.queueId == item.queueId, present.queueRevision == item.queueRevision,
+              item.queueEditable, let queueID = item.queueId, let revision = item.queueRevision,
+              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, text.utf8.count <= 16384 else {
+            queueEditError = "Il messaggio non è più modificabile in coda. Il testo resta nel composer."
+            return false
+        }
+        guard outbox.items.filter({ $0.phase != .materialized && $0.id != item.id }).reduce(text.utf8.count, { $0 + $1.text.utf8.count }) <= 131072 else {
+            queueEditError = "La coda locale è piena. Riduci il testo prima di salvare."
+            return false
+        }
+        queueEditingID = item.id; queueEditError = nil
+        defer { queueEditingID = nil }
+        let id = UUID().uuidString
+        return await withCheckedContinuation { continuation in
+            queueWaiters[id] = continuation
+            Task {
+                let sent = await sendCommand(["id": id, "kind": "queue_update", "session_id": item.sessionId, "queue_id": queueID, "queue_client_id": item.id, "queue_revision": revision, "text": text])
+                if !sent { finishQueueEditUnknown(id) }
+                else {
+                    try? await Task.sleep(for: .seconds(35))
+                    finishQueueEditUnknown(id)
+                }
+            }
+        }
+    }
+    private func finishQueueEditUnknown(_ id: String) {
+        guard let waiter = queueWaiters.removeValue(forKey: id) else { return }
+        queueEditError = "Esito sconosciuto. Verifica la coda Codex prima di riprovare; il testo è conservato."
+        waiter.resume(returning: false)
+    }
+
     func retry(_ item: Outgoing, as kind: String? = nil) async {
         guard item.sessionId == selected else { return }
         let kind = kind ?? item.kind
@@ -250,18 +295,41 @@ import UIKit
         guard let socket, online else { return false }
         do { let data = try JSONSerialization.data(withJSONObject: message); try await socket.send(.data(data)); return true } catch { self.error = "Connessione interrotta."; return false }
     }
-    func loadDevices() async { guard let api else { return }; do { registry = try await api.fetch("api/devices") } catch { self.error = error.localizedDescription } }
+    func loadDevices() async {
+        guard let api else { return }
+        do { registry = try await api.fetch("api/devices"); settingsErrors["devices"] = nil }
+        catch { settingsErrors["devices"] = error.localizedDescription }
+    }
     func createCode(kind: String, name: String, machine: String = "") async {
-        guard let api else { return }; do { pairCode = try await api.fetch("api/pairing/code", body: ["kind": kind, "name": name, "machine": machine]) } catch { self.error = error.localizedDescription }
+        guard let api, settingsProgress["pairing"] == nil else { return }
+        settingsProgress["pairing"] = "Generazione codice…"; settingsErrors["pairing"] = nil
+        defer { settingsProgress["pairing"] = nil }
+        do { pairCode = try await api.fetch("api/pairing/code", body: ["kind": kind, "name": name, "machine": machine]) }
+        catch { settingsErrors["pairing"] = error.localizedDescription }
     }
-    func manageMachine(_ id: String, action: String) async { guard let api else { return }; do { let _: Ack = try await api.fetch("api/machines/\(id)/\(action)", body: [:]); await loadDevices() } catch { self.error = error.localizedDescription } }
+    func manageMachine(_ id: String, action: String) async {
+        guard let api, settingsProgress[id] == nil else { return }
+        settingsProgress[id] = action == "resume" ? "Ripresa del collegamento…" : action == "pause" ? "Pausa del collegamento…" : "Rimozione…"
+        settingsErrors[id] = nil; defer { settingsProgress[id] = nil }
+        do { let _: Ack = try await api.fetch("api/machines/\(id)/\(action)", body: [:]); await loadDevices() }
+        catch { settingsErrors[id] = error.localizedDescription }
+    }
     func revokeDevice(_ id: String) async {
-        guard let api else { return }; do { let _: Ack = try await api.fetch("api/devices/\(id)/revoke", body: [:]); if id == credential?.id { forget() } else { await loadDevices() } } catch { self.error = error.localizedDescription }
+        guard let api, settingsProgress[id] == nil else { return }
+        settingsProgress[id] = "Revoca in corso…"; settingsErrors[id] = nil; defer { settingsProgress[id] = nil }
+        do { let _: Ack = try await api.fetch("api/devices/\(id)/revoke", body: [:]); if id == credential?.id { forget() } else { await loadDevices() } }
+        catch { settingsErrors[id] = error.localizedDescription }
     }
-    func logout() async { if let api { _ = try? await api.fetch("api/logout", body: [:], as: Ack.self) }; forget() }
-    func forget() { guard !previewOnly else { return }; stop(); CredentialVault.clear(); credential = nil; machines = [:]; sessions = [:]; liveActivities = [:]; requests = [:]; registry = nil; pairCode = nil; selected = ""; chat = RecentChat(); outbox = Outbox(); connection = "Accesso richiesto" }
+    func logout() async {
+        guard let api, settingsProgress["logout"] == nil else { return }
+        settingsProgress["logout"] = "Revoca di questo accesso…"; settingsErrors["logout"] = nil
+        defer { settingsProgress["logout"] = nil }
+        do { let _: Ack = try await api.fetch("api/logout", body: [:]); forget() }
+        catch { settingsErrors["logout"] = "Accesso non revocato. " + error.localizedDescription }
+    }
+    func forget() { guard !previewOnly else { return }; stop(); CredentialVault.clear(); credential = nil; pushRegistered = false; settingsErrors = [:]; machines = [:]; sessions = [:]; liveActivities = [:]; requests = [:]; registry = nil; pairCode = nil; selected = ""; chat = RecentChat(); outbox = Outbox(); connection = "Accesso richiesto" }
     func background() { guard !previewOnly else { return }; paused = true; lastBackground = Date(); stop() }
     func foreground() { guard !previewOnly else { return }; paused = false; outbox.prune(active: ""); if let lastBackground, Date().timeIntervalSince(lastBackground) > 300 { outbox = Outbox(); chat = RecentChat(); historyCursor = nil }; connect() }
-    private func stop() { chat.endHistory(); restoredWatch = false; historyLoading = false; historyRequestID = nil; generation = UUID(); loop?.cancel(); loop = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; transport?.invalidateAndCancel(); transport = nil; online = false; commands.removeAll(); outbox.disconnected() }
+    private func stop() { for id in Array(queueWaiters.keys) { finishQueueEditUnknown(id) }; chat.endHistory(); restoredWatch = false; historyLoading = false; historyRequestID = nil; generation = UUID(); loop?.cancel(); loop = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; transport?.invalidateAndCancel(); transport = nil; online = false; commands.removeAll(); outbox.disconnected() }
 }
 private struct AckBootstrap: Decodable, Sendable { let version: Int; let secure: Bool; let nativePush: Bool? }

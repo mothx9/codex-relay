@@ -48,15 +48,15 @@ Create a private Hub JSON config and PKCS8 `.p8` key, both mode 0600. Example **
 
 Use the Hub installer with `--apns-config /private/path/apns.json`, a verified rc.4 `--binary`, and a topic matching the signed app bundle ID. It stores a private path record and retains the flag on later installs that omit it. `--apns-config none` explicitly disables the flag without deleting owner keys. Manually configured services require an explicit path before migration so the setting cannot be silently dropped. Restart an already-running Hub after changing its unit, then verify bootstrap reports native push available. The Hub sends outbound HTTPS/HTTP2 to fixed Apple production/sandbox endpoints. Native registrations are tied to paired operator devices; revoke/expiry stops delivery and removal deletes the registration. Unregistered/bad tokens are retired. Privacy is on by default; prompt and command text never appears in push. Notification payloads carry the session identity for direct navigation. No Apple credential goes to an agent.
 
-After deployment and signing, enable notifications from Dispositivi on the physical iPhone. Open a session before sending the test so its tap has a session destination. Actual closed-app receipt and tap must be confirmed physically; mocked provider tests prove request structure/signing, not real delivery.
+After deployment and signing, enable notifications from Settings → Notifications on the physical iPhone. Open a session before sending the test so its tap has a session destination. Actual closed-app receipt and tap must be confirmed physically; mocked provider tests prove request structure/signing, not real delivery.
 
 ## Native realtime wave in progress
 
 The root now has Fleet, Needs You and Settings destinations. Fleet prioritizes online sessions needing input and actively working sessions, then twelve recent sessions; all history remains searchable and filterable. Rows derive their display state from both Hub connectivity and machine status and show the canonical turn start timer. The request inbox opens the exact session by identity. System light/dark appearance is respected.
 
-The history/connectivity slice passed 19 Swift tests, Go vet and race tests, simulator build-for-testing, and CI at `e30022b`. After upgrading the existing Hub and agents in place, read-only live validation fetched two distinct canonical SPARK pages with correlated request IDs. A real-Hub XCUITest then passed search, opening the existing session, scrolling to older history, fetching an additional page, and keeping the composer reachable. No Codex workload was modified and no new thread was created for these checks. Fleet was reviewed with actual Hub data in light and dark appearances; the simulator remains connected to the real Hub. Operational activity now carries command/tool lifecycle, exit status, duration and file metadata instead of flattening these fields into text. The Hub emits a separate RAM-only Fleet activity summary; assistant/terminal output still goes only to session watchers. Repeated output chunks do not fan out Fleet updates. Native uses property-level Observation and equatable message views, and the open tool sheet resolves its current group from live chat state. The custom keyboard Done button has been removed. Twenty Swift tests, targeted Go tests/race checks and another real-Hub history XCUITest passed for this slice. Rich Markdown, the complete activity renderers and the rest of the full native wave remain in progress.
+The history/connectivity slice passed 19 Swift tests, Go vet and race tests, simulator build-for-testing, and CI at `e30022b`. After upgrading the existing Hub and agents in place, read-only live validation fetched two distinct canonical SPARK pages with correlated request IDs. A real-Hub XCUITest then passed search, opening the existing session, scrolling to older history, fetching an additional page, and keeping the composer reachable. No Codex workload was modified and no new thread was created for these checks. Fleet was reviewed with actual Hub data in light and dark appearances; the simulator remains connected to the real Hub. Operational activity now carries command/tool lifecycle, exit status, duration and file metadata instead of flattening these fields into text. The Hub emits a separate RAM-only Fleet activity summary; assistant/terminal output still goes only to session watchers. Repeated output chunks do not fan out Fleet updates. Native uses property-level Observation and equatable message views, and the open tool sheet resolves its current group from live chat state. The custom keyboard Done button has been removed. Twenty Swift tests, targeted Go tests/race checks and another real-Hub history XCUITest passed for this slice. Subsequent presentation and live acceptance work is recorded below.
 
-## Current verification and gaps
+## Initial installation verification (historical)
 
 Go tests, race tests, nine browser control tests, fourteen Swift core tests, four installer tests and a real Xcode 27 simulator build pass. Live simulator acceptance passed OTP pairing to the existing HTTPS Hub, Fleet from the three production hosts, Keychain recovery after process restart, an isolated New Turn, a fresh Codex reply, one canonical user bubble with no optimistic duplicate, and foreground reconnect. It passed again with the conversation redesign. An isolated UI test covers the fixed composer with long history and keyboard, question cards, tool details and draft retention. The physical app was signed, installed, trusted and opened on the owner's iPhone; the owner also confirmed pairing. The redesigned chat was subsequently signed, installed and launched successfully. Physical control E2E and real APNs receipt/tap remain pending. Native permission/MCP forms compile and schema handling is covered by core tests; live approval acceptance, asynchronous-question replies, Follow-up, Steer/Interrupt and recovery coverage remain pending.
 
@@ -65,3 +65,77 @@ Temporary bootstrap failures retry with backoff; 401/403 retires the local revok
 `CodexRelayUITests` includes an isolated chat test and an opt-in live acceptance test. The live case skips without `AcceptanceConfig.json` in the built test bundle. The private configuration supplies `origin`, `code`, `machineIDs`, `sessionID`, `sessionTitle` and `sendTurn`. Use a freshly generated OTP and a dedicated isolated thread, never an unrelated working session. Build for testing with local simulator signing, place the configuration in the built test bundle, then run `test-without-building` with parallel testing disabled on the intended simulator. `-collect-test-diagnostics never` avoids an observed Xcode simulator-diagnostics collection hang after successful tests; test assertions still run. Keep configurations, screenshots and result bundles outside Git. Suspend any rebuild watcher while the test runs and restore it afterwards. CI compiles the test target without private configuration and does not claim a live acceptance run.
 
 There is deliberately no automatic transcript/outbox persistence and no background WebSocket service. Foreground reconnect reconstructs current state from the Hub/Codex. A queued Follow-up remains owned by Codex even if the app is terminated.
+
+
+## Native presentation and canonical queue editing (October 2026)
+
+Fleet uses a compact equal-width machine strip on standard iPhone text sizes,
+with a vertical accessible layout at accessibility Dynamic Type sizes. Machine
+connectivity is independent of whether Codex has active work. Session rows show
+machine/project, title, current actual activity and turn duration. Operation
+cards have colored command previews, semantic lifecycle indicators and a bounded
+live output tail. Detail views retain selectable full bounded output and diffs.
+Transitions are keyed to lifecycle or activity identity, not every output chunk;
+Reduce Motion disables movement.
+
+Queued plain-text messages can be edited through the message action or the
+session menu. Relay calls Codex `thread/queue/update` with the existing queue ID,
+checks the client identity and observed content revision, and reconciles the same
+bubble. It never deletes and re-adds a message to implement editing. Attachment
+and annotated text submissions are not offered as editable. A dispatched or
+changed queue entry is rejected with the attempted text retained. This check is
+not an atomic compare-and-swap across other clients: Codex exposes no content
+revision parameter for its update RPC. Unknown outcomes require verification.
+Steer remains a separate current-turn action with expected-turn identity.
+
+Settings separates machine details, device access, enrollment, Hub diagnostics
+and notifications. Pause only suspends Relay; removal revokes enrollment.
+Confirmed server revocation and local sign-out are separate operations. Failed
+logout/revocation preserves the local credential and reports a contextual error.
+Notification permission, Hub APNs availability, Apple token acquisition and
+Relay registration are reported separately; successful registration is not a
+claim of delivered push.
+
+Read-only real-Hub UI tests cover history pagination, activity details and
+Settings navigation. `testOwnedLiveTerminalAndQueueEdit` is opt-in, requires a
+specifically named owned validation thread and checks output before completion,
+queued editing and canonical bubble reconciliation. Its driver and private
+configuration stay outside Git. Never run mutating acceptance against real
+project work; reuse and archive the one owned thread afterward.
+
+
+A real queued-follow-up acceptance exposed an additional transport loss: the
+agent advanced the periodic announce cursor over transcript events accumulated
+while `Snapshot` was running. Metadata snapshots contain no transcript, so the
+Hub could never reconstruct those discarded deltas/items for an already open
+conversation. The agent now forwards events through that cursor before the
+announce. Concurrent adapter producers publish sequence numbers and events
+under one lock. Regression tests verify both the final-response refresh race
+and ordered concurrent publication; this is independent of SwiftUI rendering.
+
+
+Whole-message copy is offered inside each paragraph/code context menu, so nested
+Markdown menus do not hide it. Command output has an explicit per-command copy
+menu; the activity sheet can copy all outputs in the group. Manual text
+selection remains scoped to each native text block. Initial history hydration
+positions the conversation at recent content, and pending requests have a
+"Go to request" action. The owner confirmed physical iPhone keyboard, horizontal
+scrolling and link interactions; their correction that copy selected individual
+blocks prompted these explicit complete-content actions.
+
+Live acceptance on one owned thread verified command output before completion,
+canonical Follow-up editing and exactly one user-message identity per dispatch.
+A supported input request appeared in Fleet, conversation and Inbox, then
+resolved from the owning client and remained resolved after app relaunch.
+Visual inspection additionally caught initial-history positioning and replay
+metadata issues. Reopened threads now subscribe on lifecycle events instead of
+waiting for the periodic inventory, and pending replay preserves canonical
+session title/project. The single validation thread was reused and archived.
+
+Latest local validation: 33 Swift core tests, Go vet and full race tests, nine
+browser control tests and four installer tests passed. Simulator build-for-testing
+and the physical signed build/install/launch passed. Physical keyboard, horizontal
+scrolling and links were owner-confirmed. Full-message copy was installed after
+that confirmation and remains a separate physical acceptance item. Remaining
+live qualification includes controlled MCP and file/diff progression, command
+approval, and real APNs delivery (external Apple/Hub capability required).
