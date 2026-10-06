@@ -32,14 +32,15 @@ type Worker struct {
 	subject string
 	queue   chan Notice
 	client  *http.Client
+	APNS    *APNS
 }
 
 func New(s *store.Store, k Keys, subject string) *Worker {
-	return &Worker{s, k, subject, make(chan Notice, 128), &http.Client{Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("push redirects disabled") }}}
+	return &Worker{store: s, keys: k, subject: subject, queue: make(chan Notice, 128), client: &http.Client{Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("push redirects disabled") }}}
 }
 func (w *Worker) PublicKey() string { return w.keys.Public }
 func (w *Worker) Enqueue(n Notice) {
-	if w.keys.Public == "" {
+	if w.keys.Public == "" && w.APNS == nil {
 		return
 	}
 	select {
@@ -85,11 +86,29 @@ func (w *Worker) Run(ctx context.Context) {
 			return
 		case n := <-w.queue:
 			subscriptions, e := w.store.Subscriptions()
-			if e != nil || len(subscriptions) == 0 {
+			native, nativeErr := w.store.APNSSubscriptions()
+			if e != nil || nativeErr != nil || (len(subscriptions) == 0 && (w.APNS == nil || len(native) == 0)) {
 				continue
 			}
 			once, e := w.store.NotifyOnce(n.Key)
 			if e != nil || !once {
+				continue
+			}
+			if w.APNS != nil {
+				for _, sub := range native {
+					if ctx.Err() != nil {
+						return
+					}
+					gone, err := w.APNS.Send(ctx, n, sub)
+					if gone {
+						_ = w.store.UnsubscribeAPNS(sub.DeviceID)
+					}
+					if err != nil {
+						slog.Warn("native push delivery failed")
+					}
+				}
+			}
+			if w.keys.Public == "" {
 				continue
 			}
 			for _, sub := range subscriptions {

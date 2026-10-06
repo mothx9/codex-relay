@@ -30,6 +30,14 @@ type Machine struct {
 	CodexVersion string    `json:"codex_version,omitempty"`
 	Adapter      string    `json:"adapter,omitempty"`
 	LastSeen     time.Time `json:"last_seen"`
+	Account      *Account  `json:"account,omitempty"`
+}
+
+// Account contains public account metadata, never authentication material.
+type Account struct {
+	Kind  string `json:"kind"`
+	Email string `json:"email,omitempty"`
+	Plan  string `json:"plan,omitempty"`
 }
 type Session struct {
 	ID             string       `json:"id"`

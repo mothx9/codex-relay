@@ -24,7 +24,7 @@
       <a class="brand" href="/">CODEX RELAY</a
       ><span id="connection" role="status">Connessione…</span>
       <div class="header-actions">
-        <button id="settings-toggle" title="Notifiche e privacy">
+        <button id="devices-toggle" hidden>Dispositivi</button><button id="settings-toggle" title="Notifiche e privacy">
           Notifiche</button
         ><button id="logout">Esci</button>
       </div>
@@ -32,7 +32,9 @@
     <main>
       <section id="login-view" hidden>
         <h1>Le tue sessioni, ovunque.</h1>
-        <p>Accedi con il token bootstrap del tuo hub.</p>
+        <p>Usa un codice monouso generato dal Hub o da un dispositivo già abbinato.</p>
+<form id="pair-form"><label for="pair-code">Codice di 8 cifre</label><input id="pair-code" inputmode="numeric" autocomplete="one-time-code" maxlength="9" required /><button type="submit">Abbina dispositivo</button></form>
+<details><summary>Accesso amministratore</summary>
         <form id="login-form">
           <label for="login-token">Token operatore</label
           ><input
@@ -42,7 +44,7 @@
             required
           /><button type="submit">Accedi</button>
           <p id="login-error" role="alert"></p>
-        </form>
+        </form></details>
       </section>
       <section id="settings" hidden aria-label="Notifiche">
         <h2>Notifiche</h2>
@@ -61,7 +63,8 @@
         </div>
         <p id="push-status" role="status"></p>
       </section>
-      <section id="fleet-view" hidden>
+      <section id="devices" hidden aria-label="Dispositivi"><h2>Dispositivi</h2><div id="devices-list"></div><h3>Aggiungi dispositivo</h3><form id="device-code-form"><label>Tipo<select id="device-kind"><option value="operator">iPhone / operatore</option><option value="agent">Macchina Codex</option></select></label><label>Nome<input id="device-name" maxlength="64" value="iPhone" required /></label><label>ID macchina (solo agent)<input id="device-machine" maxlength="64" pattern="[A-Za-z0-9_-]*" /></label><button>Genera codice monouso</button></form><p id="device-code" role="status"></p><p>Gli account Codex sono quelli letti sulle macchine Relay. Le altre sessioni ChatGPT si gestiscono in ChatGPT → Impostazioni → Sicurezza.</p><a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">Apri ChatGPT</a></section>
+<section id="fleet-view" hidden>
         <nav id="tabs" aria-label="Stato sessioni"></nav>
         <div class="toolbar">
           <input

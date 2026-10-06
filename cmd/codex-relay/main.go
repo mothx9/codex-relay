@@ -28,7 +28,7 @@ import (
 	"time"
 )
 
-var version = "0.1.0-rc.3"
+var version = "0.1.0-rc.4"
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -40,7 +40,7 @@ func main() {
 }
 func run(ctx context.Context, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: codex-relay hub|agent|doctor|version|token")
+		return errors.New("usage: codex-relay hub|agent|doctor|version|token|pair")
 	}
 	switch args[0] {
 	case "version":
@@ -54,8 +54,10 @@ func run(ctx context.Context, args []string) error {
 		return doctor(ctx, args[1:])
 	case "token":
 		return tokens(args[1:])
+	case "pair":
+		return pairingCommand(ctx, args[1:])
 	case "help", "--help", "-h":
-		fmt.Println("codex-relay hub|agent|doctor|version|token\nUse <command> --help for options.")
+		fmt.Println("codex-relay hub|agent|doctor|version|token|pair\nUse <command> --help for options.")
 		return nil
 	default:
 		return errors.New("unknown command")
@@ -115,6 +117,7 @@ func runHub(ctx context.Context, args []string) error {
 	key := fs.String("tls-key", "", "TLS private key file")
 	subject := fs.String("push-subject", "", "VAPID contact: mailto:... or https://...")
 	disablePush := fs.Bool("disable-push", false, "disable Web Push")
+	apnsConfig := fs.String("apns-config", "", "0600 APNs JSON configuration for native iPhone push")
 	if e := fs.Parse(args); e != nil {
 		return e
 	}
@@ -179,6 +182,28 @@ func runHub(ctx context.Context, args []string) error {
 	if *subject == "" {
 		*subject = "https://github.com/mothx9/codex-relay"
 	}
+	var nativePush *push.APNS
+	if *apnsConfig != "" {
+		raw, err := secret(*apnsConfig)
+		if err != nil {
+			return err
+		}
+		var config push.APNSConfig
+		if err = json.Unmarshal(raw, &config); err != nil {
+			return errors.New("invalid APNs configuration")
+		}
+		if !filepath.IsAbs(config.KeyFile) {
+			config.KeyFile = filepath.Join(filepath.Dir(*apnsConfig), config.KeyFile)
+		}
+		key, err := secret(config.KeyFile)
+		if err != nil {
+			return err
+		}
+		nativePush, err = push.NewAPNS(config, key)
+		if err != nil {
+			return err
+		}
+	}
 	if !strings.HasPrefix(*subject, "mailto:") && !strings.HasPrefix(*subject, "https://") {
 		return errors.New("VAPID subject must be mailto: or https://")
 	}
@@ -187,7 +212,7 @@ func runHub(ctx context.Context, args []string) error {
 		return e
 	}
 	defer s.Close()
-	h, e := hub.New(s, hub.Config{PublicURL: *public, AdminToken: strings.TrimSpace(string(admin)), PushKeys: keys, PushSubject: *subject})
+	h, e := hub.New(s, hub.Config{PublicURL: *public, AdminToken: strings.TrimSpace(string(admin)), PushKeys: keys, PushSubject: *subject, APNS: nativePush})
 	if e != nil {
 		return e
 	}

@@ -25,6 +25,12 @@ func (h *Hub) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { jsonResponse(w, map[string]string{"status": "ok"}) })
 	mux.HandleFunc("POST /api/login", h.login)
 	mux.HandleFunc("POST /api/logout", h.logout)
+	mux.HandleFunc("POST /api/pairing/code", h.createPairing)
+	mux.HandleFunc("POST /api/pairing/exchange", h.exchangePairing)
+	mux.HandleFunc("GET /api/devices", h.devices)
+	mux.HandleFunc("POST /api/devices/{id}/revoke", h.revokeDevice)
+	mux.HandleFunc("POST /api/devices/{id}/remove", h.removeDevice)
+	mux.HandleFunc("POST /api/machines/{id}/{action}", h.manageMachine)
 	mux.HandleFunc("GET /api/bootstrap", h.bootstrap)
 	mux.HandleFunc("GET /api/ui", h.ui)
 	mux.HandleFunc("GET /api/agent", h.agent)
@@ -44,6 +50,8 @@ func (h *Hub) Handler() http.Handler {
 	mux.HandleFunc("POST /api/push/subscribe", h.subscribePush)
 	mux.HandleFunc("POST /api/push/unsubscribe", h.unsubscribePush)
 	mux.HandleFunc("POST /api/push/test", h.testPush)
+	mux.HandleFunc("POST /api/native-push/subscribe", h.subscribeAPNS)
+	mux.HandleFunc("POST /api/native-push/unsubscribe", h.unsubscribeAPNS)
 	mux.Handle("/", web.Handler())
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -84,12 +92,24 @@ func (h *Hub) mutation(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 func (h *Hub) auth(w http.ResponseWriter, r *http.Request) (string, time.Time, bool) {
+	if authorization := r.Header.Get("Authorization"); authorization != "" {
+		if !strings.HasPrefix(authorization, "Bearer ") {
+			http.Error(w, "Device authentication rejected", 401)
+			return "", time.Time{}, false
+		}
+		token := strings.TrimPrefix(authorization, "Bearer ")
+		_, expires, ok := h.store.DeviceLogin(token)
+		if !ok {
+			http.Error(w, "Device access expired or revoked", 401)
+		}
+		return token, expires, ok
+	}
 	c, e := r.Cookie(cookieName)
 	if e != nil {
 		http.Error(w, "Login required", 401)
 		return "", time.Time{}, false
 	}
-	expires, ok := h.store.Login(c.Value)
+	_, expires, ok := h.store.OperatorLogin(c.Value)
 	if !ok {
 		http.Error(w, "Login expired", 401)
 	}
@@ -141,6 +161,7 @@ func (h *Hub) logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.store.Logout(token)
+	_ = h.store.RevokeDeviceToken(token)
 	h.mu.Lock()
 	for o := range h.operators {
 		if o.token == token {
@@ -155,7 +176,7 @@ func (h *Hub) bootstrap(w http.ResponseWriter, r *http.Request) {
 	if _, _, ok := h.auth(w, r); !ok {
 		return
 	}
-	jsonResponse(w, map[string]any{"version": protocol.Version, "push_public_key": h.push.PublicKey(), "secure": h.secure})
+	jsonResponse(w, map[string]any{"version": protocol.Version, "push_public_key": h.push.PublicKey(), "secure": h.secure, "native_push": h.push.APNS != nil})
 }
 func (h *Hub) agent(w http.ResponseWriter, r *http.Request) {
 	id := r.Header.Get("X-Relay-Machine")
@@ -253,6 +274,7 @@ func (h *Hub) ui(w http.ResponseWriter, r *http.Request) {
 	defer p.Close()
 	go p.WriteLoop(r.Context())
 	o := &operator{peer: p, token: token, expires: expires}
+	_ = h.store.TouchDevice(token)
 	h.mu.Lock()
 	if h.closing {
 		h.mu.Unlock()
@@ -282,7 +304,7 @@ func (h *Hub) ui(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			return
 		}
-		if time.Now().After(expires) {
+		if _, _, valid := h.store.OperatorLogin(token); time.Now().After(expires) || !valid {
 			return
 		}
 		h.mu.Lock()
@@ -469,10 +491,26 @@ func (h *Hub) testPush(w http.ResponseWriter, r *http.Request) {
 	if _, _, ok := h.auth(w, r); !ok {
 		return
 	}
-	if h.push.PublicKey() == "" {
+	if h.push.PublicKey() == "" && h.push.APNS == nil {
 		http.Error(w, "Push not configured", 503)
 		return
 	}
-	h.push.Enqueue(push.Notice{Key: "test/" + protocol.ID(), Kind: "test"})
+	var input struct {
+		SessionID string `json:"session_id"`
+	}
+	if r.ContentLength != 0 && readJSON(w, r, &input) != nil {
+		http.Error(w, "Invalid push test", 400)
+		return
+	}
+	if input.SessionID != "" {
+		h.mu.Lock()
+		_, known := h.sessions[input.SessionID]
+		h.mu.Unlock()
+		if !known {
+			http.Error(w, "Unknown session", 404)
+			return
+		}
+	}
+	h.push.Enqueue(push.Notice{Key: "test/" + protocol.ID(), Kind: "test", SessionID: input.SessionID})
 	jsonResponse(w, map[string]bool{"queued": true})
 }

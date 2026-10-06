@@ -44,6 +44,9 @@ func Open(path string) (*Store, error) {
  CREATE TABLE IF NOT EXISTS pending_requests (id TEXT PRIMARY KEY, machine_id TEXT, session_id TEXT, thread_id TEXT, turn_id TEXT, kind TEXT, created_at TEXT, expires_at TEXT, status TEXT);
  CREATE TABLE IF NOT EXISTS agent_tokens (machine_id TEXT PRIMARY KEY, token_hash TEXT NOT NULL, revoked INTEGER NOT NULL DEFAULT 0);
  CREATE TABLE IF NOT EXISTS operator_sessions (token_hash TEXT PRIMARY KEY, expires_at INTEGER NOT NULL);
+ CREATE TABLE IF NOT EXISTS operator_devices (id TEXT PRIMARY KEY, name TEXT NOT NULL, token_hash TEXT UNIQUE NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, last_seen INTEGER NOT NULL, revoked INTEGER NOT NULL DEFAULT 0);
+ CREATE TABLE IF NOT EXISTS machine_access (machine_id TEXT PRIMARY KEY, paused INTEGER NOT NULL DEFAULT 0);
+ CREATE TABLE IF NOT EXISTS apns_subscriptions (device_id TEXT PRIMARY KEY REFERENCES operator_devices(id) ON DELETE CASCADE, token TEXT NOT NULL, environment TEXT NOT NULL, privacy INTEGER NOT NULL DEFAULT 1);
  CREATE TABLE IF NOT EXISTS push_subscriptions (endpoint TEXT PRIMARY KEY, subscription TEXT NOT NULL, privacy INTEGER NOT NULL DEFAULT 1);
  CREATE TABLE IF NOT EXISTS notification_events (id TEXT PRIMARY KEY, created_at INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS audit_events (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, action TEXT NOT NULL, machine_id TEXT, session_id TEXT, command_id TEXT, outcome TEXT);
@@ -66,7 +69,7 @@ func (s *Store) Revoke(machine string) error {
 }
 func (s *Store) Authenticate(machine, token string) bool {
 	var hash string
-	return s.DB.QueryRow(`SELECT token_hash FROM agent_tokens WHERE machine_id=? AND revoked=0`, machine).Scan(&hash) == nil && hash == Hash(token)
+	return s.DB.QueryRow(`SELECT t.token_hash FROM agent_tokens t LEFT JOIN machine_access a ON a.machine_id=t.machine_id WHERE t.machine_id=? AND t.revoked=0 AND coalesce(a.paused,0)=0`, machine).Scan(&hash) == nil && hash == Hash(token)
 }
 func (s *Store) NewLogin(token string, expires time.Time) error {
 	_, e := s.DB.Exec(`INSERT INTO operator_sessions VALUES(?,?)`, Hash(token), expires.Unix())

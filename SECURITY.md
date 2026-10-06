@@ -32,3 +32,14 @@ The Service Worker caches only the static application shell, never API responses
 ## Reporting
 
 For sensitive issues, contact the repository owner's GitHub profile before publishing credential-bearing evidence. Public reports must omit tokens, prompts, private paths and push endpoints. This is a young privileged tool: verified paths and remaining acceptance gaps are recorded in VALIDATION.md. Restrict ingress to trusted networks while performing initial acceptance.
+
+
+## Short device pairing
+
+Authenticated operators (or the local Hub owner via `codex-relay pair`) may mint an 8-digit random code. It is kept only as a hash in bounded Hub RAM (maximum eight pending codes), expires after five minutes, is tied to operator/agent enrollment, and is consumed atomically before credential issuance. Hub restart invalidates codes. Exchange attempts have a Hub-wide limit of 20 per minute; origin/CSRF checks apply to all requests. Anyone possessing a valid code can enroll, so display it privately. Pairing a machine never silently replaces an existing credential.
+
+Paired operator devices receive distinct random credentials, hashed in SQLite and valid for 90 days. Native clients store them in the iOS Keychain with `ThisDeviceOnly` protection; web clients use Secure/HttpOnly/SameSite cookies. No bootstrap token goes to the phone. Operators can revoke or remove devices; connected sockets close immediately, and HTTP/command routing rejects revoked access. All paired operators have full single-user control privileges; there is no multi-user role model.
+
+Pausing/removing an agent changes its Relay access and derived Fleet metadata. It does not stop Codex, delete its threads, log out the OpenAI account or change the machine network. Machine account data is restricted to the official `account/read` type/email/plan view; token/workspace-routing data is discarded. OpenAI account-wide session management is outside the app-server protocol.
+
+Optional native APNs uses an owner-supplied ES256 key, never checked in. Config and key files require mode 0600. The Hub alone signs provider requests and connects to fixed Apple APNs endpoints; agent hosts remain unaware of notifications. Registrations are bound to paired device IDs; expired/revoked devices receive no push. Private lock-screen text is the default. Apple development team, signing/provisioning and Push Notifications capability are required for real native delivery; tests with an HTTP fake are not delivery proof.

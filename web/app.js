@@ -127,6 +127,8 @@ function render() {
       : "Offline · riconnessione";
   $("logout").hidden = !state.authenticated;
   $("settings-toggle").hidden = !state.authenticated;
+  $("devices-toggle").hidden = !state.authenticated;
+  if (!state.authenticated) { $("devices").hidden = true; $("settings").hidden = true; $("device-code").textContent = ""; }
   $("login-view").hidden = state.authenticated;
   $("fleet-view").hidden = !state.authenticated || !!state.selected;
   $("detail-view").hidden = !state.authenticated || !state.selected;
@@ -658,6 +660,7 @@ function connect() {
     } catch {
       return;
     }
+    if (m.type === "devices_changed" && !$("devices").hidden) refreshDevices();
     if (m.type === "snapshot") {
       state.online = true;
       state.machines = new Map(m.snapshot.machines.map((v) => [v.id, v]));
@@ -983,3 +986,41 @@ setInterval(() => {
   if (state.authenticated && !document.hidden) scheduleRender();
 }, 60000);
 await bootstrap();
+
+$("pair-form").onsubmit = async (event) => {
+  event.preventDefault();
+  try {
+    await api("/api/pairing/exchange", { code: $("pair-code").value, kind: "operator" });
+    $("pair-code").value = "";
+    await bootstrap();
+  } catch (error) { $("login-error").textContent = error.message; }
+};
+async function refreshDevices() {
+  try {
+    const registry = await api("/api/devices");
+    const list = $("devices-list"); list.replaceChildren();
+    for (const {machine, access} of registry.machines) {
+      const row = node("section");
+      row.append(node("h3", `${machine.name} · ${machine.status}`), node("p", `${access} · Codex ${machine.codex_version || "—"}`));
+      if (machine.account) row.append(node("p", `${machine.account.email || machine.account.kind} · ${machine.account.plan || ""}`));
+      if (access !== "REVOKED") {
+        const toggle = node("button", access === "PAUSED" ? "Ricollega" : "Scollega");
+        toggle.onclick = async () => { try { await api(`/api/machines/${encodeURIComponent(machine.id)}/${access === "PAUSED" ? "resume" : "pause"}`, {}); await refreshDevices(); } catch (error) { toast(error.message); } }; row.append(toggle);
+      }
+      const remove = node("button", "Elimina e revoca");
+      remove.onclick = async () => { if (!confirm(`Eliminare ${machine.name} dal Hub? Codex continuerà localmente; per ricollegare la macchina servirà un nuovo codice.`)) return; try { await api(`/api/machines/${encodeURIComponent(machine.id)}/remove`, {}); await refreshDevices(); } catch (error) { toast(error.message); } }; row.append(remove); list.append(row);
+    }
+    for (const device of registry.operators) {
+      const row = node("section"); row.append(node("h3", device.name + (device.id === registry.current_device_id ? " · questo dispositivo" : "")), node("p", device.revoked ? "Revocato" : `Accesso valido fino al ${device.expires_at.slice(0,10)}`));
+      for (const action of device.revoked ? ["remove"] : ["revoke", "remove"]) {
+        const b = node("button", action === "remove" ? "Elimina" : "Revoca accesso");
+        b.onclick = async () => { if (!confirm(`${action === "remove" ? "Eliminare" : "Revocare"} ${device.name}?`)) return; try { await api(`/api/devices/${encodeURIComponent(device.id)}/${action}`, {}); await refreshDevices(); } catch (error) { toast(error.message); } }; row.append(b);
+      } list.append(row);
+    }
+  } catch (error) { toast(error.message); }
+}
+$("devices-toggle").onclick = () => { $("devices").hidden = !$("devices").hidden; if (!$("devices").hidden) refreshDevices(); };
+$("device-code-form").onsubmit = async (event) => {
+  event.preventDefault();
+  try { const pair = await api("/api/pairing/code", { kind: $("device-kind").value, name: $("device-name").value, machine: $("device-machine").value }); $("device-code").textContent = `${pair.code.slice(0,4)} ${pair.code.slice(4)} · scade ${new Date(pair.expires_at).toLocaleTimeString()}`; setTimeout(() => { $("device-code").textContent = ""; }, 300000); } catch (error) { toast(error.message); }
+};

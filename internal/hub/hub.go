@@ -18,6 +18,7 @@ type Config struct {
 	PublicURL, AdminToken string
 	PushKeys              push.Keys
 	PushSubject           string
+	APNS                  *push.APNS
 }
 type agentPeer struct {
 	peer     *protocol.Peer
@@ -57,6 +58,10 @@ type Hub struct {
 	loginMu       sync.Mutex
 	loginWindow   time.Time
 	loginAttempts int
+	pairMu        sync.Mutex
+	pairings      map[string]pairing
+	pairWindow    time.Time
+	pairAttempts  int
 }
 
 func New(s *store.Store, c Config) (*Hub, error) {
@@ -68,6 +73,7 @@ func New(s *store.Store, c Config) (*Hub, error) {
 		return nil, errors.New("admin bootstrap token too short")
 	}
 	h := &Hub{store: s, config: c, origin: u.Scheme + "://" + u.Host, secure: u.Scheme == "https", machines: map[string]protocol.Machine{}, sessions: map[string]protocol.Session{}, requests: map[string]protocol.PendingRequest{}, agents: map[string]*agentPeer{}, operators: map[*operator]bool{}, flights: map[string]flight{}, answering: map[string]string{}, buffers: map[string]*Recent{}}
+	h.pairings = make(map[string]pairing)
 	snap, e := s.Load()
 	if e != nil {
 		return nil, e
@@ -79,6 +85,7 @@ func New(s *store.Store, c Config) (*Hub, error) {
 		h.sessions[v.ID] = v
 	}
 	h.push = push.New(s, c.PushKeys, c.PushSubject)
+	h.push.APNS = c.APNS
 	return h, nil
 }
 func (h *Hub) Close() {
@@ -116,7 +123,7 @@ func (h *Hub) maintain(now time.Time) {
 		}
 	}
 	for o := range h.operators {
-		if now.After(o.expires) {
+		if _, _, ok := h.store.OperatorLogin(o.token); now.After(o.expires) || !ok {
 			o.peer.Close()
 		}
 	}
@@ -208,6 +215,11 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	m.ID = id
 	m.LastSeen = time.Now().UTC()
 	m.Name = protocol.Clip(m.Name, 64)
+	if m.Account != nil {
+		m.Account.Kind = protocol.Clip(m.Account.Kind, 32)
+		m.Account.Email = protocol.Clip(m.Account.Email, 254)
+		m.Account.Plan = protocol.Clip(m.Account.Plan, 64)
+	}
 	if m.Status != protocol.Degraded {
 		m.Status = protocol.Online
 	}

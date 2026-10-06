@@ -166,6 +166,11 @@ func serve(ctx context.Context, p *protocol.Peer, b codex.Backend, m protocol.Ma
 	}
 	epoch, watermark := b.Cursor()
 	m.LastSeen = time.Now().UTC()
+	if reader, ok := b.(interface {
+		Account(context.Context) *protocol.Account
+	}); ok {
+		m.Account = reader.Account(ctx)
+	}
 	p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", Machine: &m, Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
 	commands := make(chan protocol.Command, 32)
 	readerDone := make(chan struct{})
