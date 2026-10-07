@@ -57,7 +57,11 @@ func (a *Adapter) nativeQueue(ctx context.Context, threadID string) ([]protocol.
 	bytes := 0
 	for _, q := range result.Data {
 		text := ""
+		imageCount := 0
 		for _, input := range q.Input {
+			if input.Type == "image" || input.Type == "localImage" {
+				imageCount++
+			}
 			if input.Type == "text" {
 				text += input.Text
 			}
@@ -68,7 +72,7 @@ func (a *Adapter) nativeQueue(ctx context.Context, threadID string) ([]protocol.
 		}
 		bytes += len(text)
 		editable := q.ClientID != "" && len(q.Input) == 1 && q.Input[0].Type == "text" && len(q.Input[0].Elements) == 0 && len(q.Input[0].Text) <= protocol.MaxText
-		out = append(out, protocol.FollowUp{ID: q.ID, ClientID: q.ClientID, Text: text, Editable: editable, Revision: fmt.Sprintf("%x", sha256.Sum256([]byte(text)))})
+		out = append(out, protocol.FollowUp{ImageCount: imageCount, ID: q.ID, ClientID: q.ClientID, Text: text, Editable: editable, Revision: fmt.Sprintf("%x", sha256.Sum256([]byte(text)))})
 	}
 	return out, nil
 }

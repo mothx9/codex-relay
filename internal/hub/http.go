@@ -367,7 +367,7 @@ func (h *Hub) route(o *operator, c protocol.Command) {
 		r := protocol.Failure(c, code)
 		o.peer.Enqueue(protocol.Message{Type: "result", Result: &r})
 	}
-	if len(c.ID) < 16 || len(c.ID) > 128 || len(c.Text) > protocol.MaxText || len(c.Content) > 64<<10 || len(c.CatalogueCursor) > 8192 || len(c.HistoryCursor) > 8192 || len(c.QueueID) > 256 || len(c.QueueClientID) > 128 || len(c.QueueRevision) > 64 {
+	if (len(c.Images) > 0 && c.Kind != protocol.NewTurn && c.Kind != protocol.FollowUpCommand && c.Kind != protocol.Steer) || protocol.ValidateImages(c.Images) != nil || len(c.ID) < 16 || len(c.ID) > 128 || len(c.Text) > protocol.MaxText || len(c.Content) > 64<<10 || len(c.CatalogueCursor) > 8192 || len(c.HistoryCursor) > 8192 || len(c.QueueID) > 256 || len(c.QueueClientID) > 128 || len(c.QueueRevision) > 64 {
 		fail(protocol.CodexRejected)
 		return
 	}

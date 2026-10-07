@@ -69,6 +69,17 @@ func activity(raw json.RawMessage) protocol.Activity {
 			if c.Type == "text" {
 				v.Text += c.Text
 			}
+			if c.Type == "image" || c.Type == "localImage" {
+				v.ImageCount++
+			}
+		}
+		if replies := questionReply(v.Text); len(replies) > 0 {
+			v.Replies = replies
+			answers := make([]string, len(replies))
+			for i, reply := range replies {
+				answers[i] = reply.Answer
+			}
+			v.Text = strings.Join(answers, "\n\n")
 		}
 	case "commandExecution":
 		v.Command = protocol.Clip(item.Command, 1024)
@@ -372,7 +383,7 @@ func (a *Adapter) handle(m rpcMessage) {
 				v.State = "completed"
 			}
 		}
-		if v.Text == "" && len(v.Questions) == 0 && v.Kind != "agentMessage" {
+		if v.Text == "" && v.ImageCount == 0 && len(v.Questions) == 0 && v.Kind != "agentMessage" {
 			a.mu.Unlock()
 			return
 		}
@@ -403,7 +414,7 @@ func (a *Adapter) handle(m rpcMessage) {
 	if m.Method == "turn/started" {
 		for _, raw := range p.Turn.Items {
 			v := activity(raw)
-			if v.Kind != "userMessage" || v.Text == "" {
+			if v.Kind != "userMessage" || (v.Text == "" && v.ImageCount == 0) {
 				continue
 			}
 			v.TurnID = p.Turn.ID

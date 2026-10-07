@@ -64,6 +64,10 @@ func Failure(c Command, code string) Result {
 
 // Adapter capabilities are explicit; status alone never grants control.
 func CheckControl(s Session, c Command) string {
+	if len(c.Images) > 0 && (!s.Capabilities.CanSendImages || (CommandKind(c.Kind) != NewTurn && CommandKind(c.Kind) != FollowUpCommand && CommandKind(c.Kind) != Steer)) {
+		return CodexRejected
+	}
+
 	if s.ReadOnly {
 		return SessionReadOnly
 	}

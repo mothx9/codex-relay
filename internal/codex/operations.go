@@ -268,7 +268,7 @@ func (a *Adapter) history(ctx context.Context, id, cursor string) ([]protocol.Ac
 	for i := len(r.Data) - 1; i >= 0; i-- {
 		entry := r.Data[i]
 		v := activity(entry.Item)
-		if v.Text == "" && len(v.Questions) == 0 {
+		if v.Text == "" && v.ImageCount == 0 && len(v.Questions) == 0 {
 			continue
 		}
 		v.TurnID = entry.TurnID
@@ -342,7 +342,10 @@ func (a *Adapter) Execute(ctx context.Context, c protocol.Command) protocol.Resu
 		if code := protocol.CheckControl(s, c); code != "" {
 			return protocol.Failure(c, code)
 		}
-		input := []map[string]any{{"type": "text", "text": c.Text, "text_elements": []any{}}}
+		if protocol.ValidateImages(c.Images) != nil {
+			return protocol.Failure(c, protocol.CodexRejected)
+		}
+		input := messageInput(c)
 		switch c.Kind {
 		case protocol.NewTurn:
 			_, err = a.rpc(ctx, "turn/start", map[string]any{"threadId": c.ThreadID, "input": input, "clientUserMessageId": c.ID})
@@ -536,4 +539,17 @@ func (a *Adapter) catalogue(ctx context.Context, c protocol.Command) protocol.Re
 		result.Sessions = append(result.Sessions, s)
 	}
 	return result
+}
+
+// Only the adapter knows the upstream image URL shape. No uploads, remote URL
+// fetches or files on the Agent are needed for a phone-originated image.
+func messageInput(c protocol.Command) []map[string]any {
+	input := make([]map[string]any, 0, 1+len(c.Images))
+	if c.Text != "" {
+		input = append(input, map[string]any{"type": "text", "text": c.Text, "text_elements": []any{}})
+	}
+	for _, image := range c.Images {
+		input = append(input, map[string]any{"type": "image", "url": "data:" + image.MediaType + ";base64," + image.Data})
+	}
+	return input
 }
