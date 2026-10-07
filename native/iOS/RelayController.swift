@@ -50,6 +50,7 @@ import UIKit
     var appleRegistrationFailed = false
     var localNoticePolicy = LocalNoticePolicy()
     var presentedNotices: [String] = []
+    var appliedNotificationBadge: Int?
     var offlineNoticeTasks: [String: Task<Void, Never>] = [:]
     var notificationPermission = String(localized: "Needs verification", bundle: relayLocalizationBundle)
     var pushRegistered = false
@@ -223,7 +224,7 @@ import UIKit
                         if result.errorCode == "MACHINE_OFFLINE" { restoredWatch = false }
                     }
                 }
-                outbox.queue(session: selected, entries: result.followUps ?? [])
+                if let entries = result.followUps { outbox.queue(session: selected, entries: entries) }
             }
             if let waiter = queueWaiters.removeValue(forKey: result.id) {
                 queueEditError = result.ok ? nil : result.error ?? String(localized: "Edit failed. Your text is retained.", bundle: relayLocalizationBundle)

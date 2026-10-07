@@ -12,6 +12,7 @@ struct SessionView: View {
     @State private var interruptTurn = ""
     @State private var context = false
     @State private var actionsOpen = false
+    @State private var queueDetails = false
     @State private var composerHeight: CGFloat = 44
     @State private var submitting = false
     @State private var scrollRequest = 0
@@ -30,6 +31,7 @@ struct SessionView: View {
                     composing = true
                 }
                 .simultaneousGesture(TapGesture().onEnded { actionsOpen = false })
+                queuedMessages(session)
                 SessionHeartbeat(session: session).padding(.horizontal, 20).padding(.top, 2)
                 composer(session).padding(.horizontal, 12).padding(.top, 4).padding(.bottom, 2)
             }
@@ -53,6 +55,18 @@ struct SessionView: View {
                           let failed = relay.outbox.items.first(where: { $0.id == id }) else { return }
                     draft = failed.text
                     steer = false
+                }
+                .sheet(isPresented: $queueDetails) {
+                    NavigationStack {
+                        ScrollView {
+                            VStack(spacing: 16) {
+                                ForEach(relay.outbox.pending(session: session.id)) { item in
+                                    OutgoingMessageView(item: item, session: session) { item in queueDetails = false; beginQueueEdit(item) }
+                                }
+                            }.padding()
+                        }.navigationTitle(String(localized: "Next up", bundle: relayLocalizationBundle))
+                            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(String(localized: "Close", bundle: relayLocalizationBundle)) { queueDetails = false } } }
+                    }
                 }
                 .sheet(isPresented: $context) { contextSheet(session) }
                 .onChange(of: session.turnId) { _, _ in actionsOpen = false }
@@ -145,6 +159,40 @@ struct SessionView: View {
                     }
 
             }
+        }
+    }
+
+    @ViewBuilder private func queuedMessages(_ session: RelaySession) -> some View {
+        let pending = relay.outbox.pending(session: session.id)
+        if !pending.isEmpty {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Label(String(localized: "Next up", bundle: relayLocalizationBundle), systemImage: "text.line.first.and.arrowtriangle.forward")
+                    Text("\(pending.count)").foregroundStyle(.secondary)
+                    Spacer()
+                    Button { queueDetails = true } label: { Image(systemName: "chevron.right").frame(width: 44, height: 24) }
+                        .accessibilityLabel(String(localized: "View queued messages", bundle: relayLocalizationBundle))
+                }.font(.caption.weight(.medium))
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(pending) { item in
+                            HStack(alignment: .top, spacing: 8) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.text).font(.subheadline).lineLimit(2)
+                                    Text(item.phase == .queued ? "FOLLOW-UP · QUEUED" : item.phase == .unconfirmed ? String(localized: "No longer queued · check conversation", bundle: relayLocalizationBundle) : item.phase == .failed ? item.error ?? "Send failed" : "Sending…")
+                                        .font(.caption2).foregroundStyle(item.phase == .failed ? RelayPalette.failure : .secondary)
+                                }.frame(maxWidth: .infinity, alignment: .leading)
+                                if item.phase == .queued && item.queueEditable {
+                                    Button { beginQueueEdit(item) } label: { Image(systemName: "pencil").frame(width: 44, height: 44) }
+                                        .disabled(!machineOnline(session) || !session.allows("queue_update"))
+                                        .accessibilityLabel(String(localized: "Edit queued message", bundle: relayLocalizationBundle))
+                                }
+                            }.padding(.vertical, 6).accessibilityElement(children: .contain).accessibilityIdentifier("queue." + item.id)
+                        }
+                    }
+                }.frame(maxHeight: pending.count == 1 ? 66 : 120)
+            }.padding(.horizontal, 20).padding(.vertical, 6)
+                .background(.primary.opacity(0.035)).accessibilityIdentifier("session.queue")
         }
     }
 
@@ -291,7 +339,7 @@ private struct SessionTranscript: View {
                                 ToolSummaryView(group: group) { path in tools = ActivitySelection(group: group, path: path) }
                             }
                         }
-                        ForEach(relay.outbox.visible(session: session.id)) { item in
+                        ForEach(relay.outbox.conversation(session: session.id)) { item in
                             OutgoingMessageView(item: item, session: session, onEdit: onEdit)
                         }
                         ForEach(relay.requests.values.filter { $0.sessionId == session.id }.sorted { $0.id < $1.id }) { request in
@@ -469,6 +517,7 @@ private struct OutgoingMessageView: View {
         let kind = item.kind == "follow_up" ? "FOLLOW-UP" : item.kind == "steer" ? "STEER" : String(localized: "NEW TURN", bundle: relayLocalizationBundle)
         let phase: String
         switch item.phase {
+        case .unconfirmed: phase = String(localized: "LEFT QUEUE · VERIFYING", bundle: relayLocalizationBundle)
         case .local, .sending, .steering: phase = String(localized: "SENDING…", bundle: relayLocalizationBundle)
         case .queued: phase = String(localized: "QUEUED", bundle: relayLocalizationBundle)
         case .dispatched: phase = String(localized: "RUNNING", bundle: relayLocalizationBundle)
@@ -495,6 +544,10 @@ private struct OutgoingMessageView: View {
                 if item.phase == .queued && item.queueEditable {
                     Button(String(localized: "Edit", bundle: relayLocalizationBundle), systemImage: "pencil") { onEdit(item) }.font(.caption).frame(minHeight: 44)
                         .disabled(!session.allows("queue_update") || !relay.online || relay.machines[session.machineId]?.status != "ONLINE" || relay.queueEditingID != nil)
+                }
+                if item.phase == .unconfirmed {
+                    Text(String(localized: "Codex no longer lists this message in the queue. Its outcome is not yet confirmed. Check the conversation before sending again.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
+                    Button(String(localized: "Discard", bundle: relayLocalizationBundle)) { relay.outbox.discard(item.id) }
                 }
                 if item.phase == .failed {
                     Text(item.error ?? String(localized: "Send failed", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.orange)

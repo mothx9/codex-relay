@@ -222,16 +222,67 @@ import XCTest
             XCTAssertTrue(banner.waitForExistence(timeout: 5), "Missing native banner: " + title)
             XCTAssertTrue(springboard.staticTexts["Workstation · compiler"].exists)
             let capture = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); capture.name = "local-banner-" + kind; capture.lifetime = .keepAlways; add(capture)
-            banner.swipeUp()
-            wait(10) { !banner.exists }
+            wait(12) { !banner.exists }
             app.buttons["notice." + kind].tap()
             XCTAssertFalse(banner.waitForExistence(timeout: 2), "Duplicate semantic alert")
         }
-        XCTAssertTrue(app.staticTexts["Attention: 2"].exists)
+        app.buttons["Read delivered alerts"].tap()
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        print("DELIVERED_RECEIPT", app.staticTexts["notice.delivered"].label)
+        XCTAssertTrue(app.staticTexts["notice.delivered"].label.contains("acceptance/failed"))
+        // Dismissing the banner must leave the delivered notice in the system list.
+        let top = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.01))
+        let bottom = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8))
+        top.press(forDuration: 0.1, thenDragTo: bottom)
+        springboard.swipeDown()
+        let retained = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        retained.name = "Local alerts retained in Notification Center"; retained.lifetime = .keepAlways; add(retained)
+        XCTAssertTrue(springboard.staticTexts["Codex needs attention"].waitForExistence(timeout: 5))
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        XCTAssertTrue(app.staticTexts["Attention: 2"].waitForExistence(timeout: 5))
         app.buttons["Clear attention"].tap()
         XCTAssertTrue(app.staticTexts["Attention: 0"].exists)
         app.buttons["Disable alerts"].tap()
         XCTAssertTrue(app.staticTexts["Local alerts off"].exists)
+    }
+    func testQueueRemainsOutsideConversationAfterCanonicalSteer() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--product-screenshot", "queue", "-AppleLanguages", "(en)"]
+        app.launch()
+        let queue = app.otherElements["session.queue"]
+        XCTAssertTrue(app.staticTexts["Next up"].waitForExistence(timeout: 10))
+        let transcript = app.scrollViews["session.transcript"]
+        XCTAssertFalse(transcript.staticTexts["Then update the installation guide."].exists)
+        XCTAssertTrue(app.staticTexts["Then update the installation guide."].isHittable)
+        XCTAssertTrue(transcript.staticTexts["Keep the change limited to validation."].exists)
+        let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
+        XCTAssertLessThan(app.staticTexts["FOLLOW-UP · QUEUED"].frame.maxY, composer.frame.minY)
+        let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Current-turn Steer and separate follow-up queue"; capture.lifetime = .keepAlways; add(capture)
+        app.buttons["Edit queued message"].tap()
+        XCTAssertEqual(composer.value as? String, "Then update the installation guide.")
+        XCTAssertEqual(app.buttons["composer.send"].label, "Save queued message")
+        _ = queue
+    }
+
+    func testExpandedActivityReplacesCollapsedPreview() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--product-screenshot", "conversation", "-AppleLanguages", "(en)"]
+        app.launch()
+        let group = app.buttons["tool.terminal.example-command"]
+        XCTAssertTrue(group.waitForExistence(timeout: 10))
+        let command = app.staticTexts.matching(NSPredicate(format: "label == %@", "cargo test --workspace"))
+        XCTAssertEqual(command.count, 1)
+        group.tap()
+        XCTAssertEqual(command.count, 1, "Expansion must replace, not repeat, the collapsed command")
+        XCTAssertFalse(app.buttons["activity.file.src/validation.rs"].exists)
+        XCTAssertTrue(app.buttons["tool.details.terminal.example-command"].exists)
+        let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Activity expanded without duplicate preview"; capture.lifetime = .keepAlways; add(capture)
+        group.tap()
+        XCTAssertEqual(command.count, 1)
+        XCTAssertTrue(app.buttons["activity.file.src/validation.rs"].exists)
     }
     func testWholeMessageCopyFromLastParagraph() {
         continueAfterFailure = false

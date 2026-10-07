@@ -97,6 +97,7 @@
 "Codex needs a decision" = "Codex needs a decision";
 "Codex needs attention" = "Codex needs attention";
 "Codex needs your input" = "Codex needs your input";
+"Codex no longer lists this message in the queue. Its outcome is not yet confirmed. Check the conversation before sending again." = "Codex no longer lists this message in the queue. Its outcome is not yet confirmed. Check the conversation before sending again.";
 "Codex not connected" = "Codex not connected";
 "Codex owns conversations and queued work" = "Codex owns conversations and queued work";
 "Codex requests permission" = "Codex requests permission";
@@ -237,6 +238,7 @@
 "JSON response matching the schema" = "JSON response matching the schema";
 "Keychain unavailable." = "Keychain unavailable.";
 "Known sessions" = "Known sessions";
+"LEFT QUEUE · VERIFYING" = "LEFT QUEUE · VERIFYING";
 "Last checked" = "Last checked";
 "Last disconnect" = "Last disconnect";
 "Last event" = "Last event";
@@ -284,8 +286,10 @@
 "Needs You, completion, failure and machines offline after a grace period. No notifications for individual commands or tokens. Lock-screen previews omit project and conversation content by default." = "Needs You, completion, failure and machines offline after a grace period. No notifications for individual commands or tokens. Lock-screen previews omit project and conversation content by default.";
 "Needs You, live questions, completion, failure and machines offline after a grace period. Previews omit conversation content. Completion is quiet in the session you are reading." = "Needs You, live questions, completion, failure and machines offline after a grace period. Previews omit conversation content. Completion is quiet in the session you are reading.";
 "Needs verification" = "Needs verification";
+"Next up" = "Next up";
 "No" = "No";
 "No account data yet" = "No account data yet";
+"No longer queued · check conversation" = "No longer queued · check conversation";
 "No output" = "No output";
 "No patch provided" = "No patch provided";
 "No pending requests" = "No pending requests";
@@ -500,6 +504,7 @@
 "Used on" = "Used on";
 "VERIFY OUTCOME" = "VERIFY OUTCOME";
 "Version" = "Version";
+"View queued messages" = "View queued messages";
 "Waiting for output…" = "Waiting for output…";
 "Waiting for tool result…" = "Waiting for tool result…";
 "Within limit" = "Within limit";

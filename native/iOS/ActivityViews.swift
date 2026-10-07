@@ -65,29 +65,31 @@ struct ToolSummaryView: View {
                 }.foregroundStyle(.primary).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
             }.buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("tool." + group.id)
                 .accessibilityValue(expanded ? String(localized: "Details expanded", bundle: relayLocalizationBundle) : String(localized: "Details collapsed", bundle: relayLocalizationBundle))
-            VStack(alignment: .leading, spacing: 8) {
-                if let command { operationPreview(command, icon: "terminal", text: ActivityPreview.command(command.command ?? "")) }
-                if let tool { operationPreview(tool, icon: "wrench.and.screwdriver", text: [tool.toolServer, tool.toolName].compactMap { $0 }.joined(separator: ".")) }
-                if !group.changedPaths.isEmpty {
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "doc.text").frame(width: 16, height: 44)
-                        VStack(alignment: .leading, spacing: 0) {
-                            ForEach(group.changedPaths.prefix(3), id: \.self) { path in
-                                Button { open(path) } label: {
-                                    HStack { Text(URL(fileURLWithPath: path).lastPathComponent).lineLimit(2); Spacer(); Image(systemName: "chevron.right").font(.caption2) }.frame(minHeight: 44).contentShape(Rectangle())
-                                }.buttonStyle(.plain).accessibilityIdentifier("activity.file." + path)
-                            }
-                            if group.changedPaths.count > 3 { Text("+\(group.changedPaths.count - 3)") }
-                        }.frame(maxWidth: .infinity, alignment: .leading)
-                    }.font(.caption).foregroundStyle(.secondary)
-                }
-            }.padding(.leading, 24)
+            if !expanded {
+                VStack(alignment: .leading, spacing: 8) {
+                    if let command { operationPreview(command, icon: "terminal", text: ActivityPreview.command(command.command ?? "")) }
+                    if let tool { operationPreview(tool, icon: "wrench.and.screwdriver", text: [tool.toolServer, tool.toolName].compactMap { $0 }.joined(separator: ".")) }
+                    if !group.changedPaths.isEmpty {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "doc.text").frame(width: 16, height: 44)
+                            VStack(alignment: .leading, spacing: 0) {
+                                ForEach(group.changedPaths.prefix(3), id: \.self) { path in
+                                    Button { open(path) } label: {
+                                        HStack { Text(URL(fileURLWithPath: path).lastPathComponent).lineLimit(2); Spacer(); Image(systemName: "chevron.right").font(.caption2) }.frame(minHeight: 44).contentShape(Rectangle())
+                                    }.buttonStyle(.plain).accessibilityIdentifier("activity.file." + path)
+                                }
+                                if group.changedPaths.count > 3 { Text("+\(group.changedPaths.count - 3)") }
+                            }.frame(maxWidth: .infinity, alignment: .leading)
+                        }.font(.caption).foregroundStyle(.secondary)
+                    }
+                }.padding(.leading, 24)
+            }
             if expanded, running > 0, let progress = current?.progress, !progress.isEmpty {
                 Text(progress).font(.caption).foregroundStyle(.secondary).lineLimit(3)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityIdentifier("tool.progress." + group.id)
             }
-            if running > 0, group.kind == .terminal, let item = current, !item.commandOutput.isEmpty {
+            if !expanded, running > 0, group.kind == .terminal, let item = current, !item.commandOutput.isEmpty {
                 // A bounded tail is a live preview, not another scrolling terminal.
                 Text(item.commandOutput.suffix(600).split(separator: "\n", omittingEmptySubsequences: false).suffix(1).joined(separator: "\n"))
                     .font(.caption2.monospaced()).foregroundStyle(.secondary).lineLimit(1)
@@ -103,7 +105,8 @@ struct ToolSummaryView: View {
                                 Image(systemName: item.command != nil ? "terminal" : item.toolName != nil ? "wrench.and.screwdriver" : "doc.text")
                                     .foregroundStyle(.secondary)
                                 Text(item.command.map(ActivityPreview.command) ?? item.toolName ?? ChangeOverview.paths([item]).map { URL(fileURLWithPath: $0).lastPathComponent }.joined(separator: ", "))
-                                    .lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
+                                    .font(item.command == nil ? .caption : .caption.monospaced())
+                                    .lineLimit(4).frame(maxWidth: .infinity, alignment: .leading)
                                 if item.state != nil { SessionStatusMark(status: item.state == "running" ? "WORKING" : item.state == "failed" ? "FAILED" : item.state == "completed" ? "READY" : "INACTIVE") }
                             }.font(.caption)
                             if item.command != nil, !item.commandOutput.isEmpty {

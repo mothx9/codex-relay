@@ -1,12 +1,15 @@
 import Foundation
-public enum DeliveryPhase: String, Sendable { case local = "LOCAL", sending = "SENDING", queued = "QUEUED", dispatched = "DISPATCHED", materialized = "MATERIALIZED", accepted = "ACCEPTED", steering = "STEERING", applied = "APPLIED", failed = "FAILED" }
+public enum DeliveryPhase: String, Sendable { case unconfirmed = "UNCONFIRMED", local = "LOCAL", sending = "SENDING", queued = "QUEUED", dispatched = "DISPATCHED", materialized = "MATERIALIZED", accepted = "ACCEPTED", steering = "STEERING", applied = "APPLIED", failed = "FAILED" }
 public struct Outgoing: Identifiable, Sendable {
     public let id: String; public let sessionId: String; public let kind: String; public var text: String; public var phase: DeliveryPhase = .local
-    public var queueId: String?; public var queueRevision: String?; public var queueEditable = false
+    public var queuePosition: Int?; public var queueId: String?; public var queueRevision: String?; public var queueEditable = false
     public var error: String?; public var errorCode: String?; public let expectedTurn: String?; public let created: Date
 }
 public struct Outbox: Sendable {
     public private(set) var items: [Outgoing] = []
+    // Canonical items can arrive before their queue snapshot or command result.
+    // Remember identities, never text, so a late queue read cannot resurrect them.
+    private var canonical: [(session: String, client: String)] = []
     public init() {}
     public mutating func add(id: String = UUID().uuidString, session: String, kind: String, text: String, expectedTurn: String? = nil, now: Date = Date()) throws -> String {
         if items.contains(where: { $0.id == id }) { return id }
@@ -19,8 +22,9 @@ public struct Outbox: Sendable {
     public mutating func sending(_ id: String) { update(id) { $0.phase = $0.kind == "steer" ? .steering : .sending } }
     public mutating func result(_ result: CommandResult) {
         update(result.id) {
-            if [.materialized, .dispatched].contains($0.phase) || ($0.phase == .queued && !result.ok) { return }
+            if [.materialized, .dispatched, .unconfirmed].contains($0.phase) || ($0.phase == .queued && !result.ok) { return }
             $0.phase = result.ok ? ($0.kind == "follow_up" ? .queued : $0.kind == "steer" ? .applied : .accepted) : .failed
+            $0.queueId = result.queueId ?? $0.queueId
             $0.error = result.error; $0.errorCode = result.errorCode
         }
     }
@@ -33,19 +37,39 @@ public struct Outbox: Sendable {
     public mutating func dispatched(session: String, clientId: String) { update(clientId) { if $0.sessionId == session && $0.phase != .materialized { $0.phase = .dispatched } } }
     public mutating func materialize(session: String, activity: Activity) {
         guard activity.kind == "userMessage", let id = activity.clientId else { return }
+        if !canonical.contains(where: { $0.session == session && $0.client == id }) {
+            canonical.append((session, id))
+            if canonical.count > 512 { canonical.removeFirst(canonical.count - 512) }
+        }
         update(id) { if $0.sessionId == session { $0.phase = .materialized; $0.text = ""; $0.error = nil; $0.errorCode = nil } }
     }
     public mutating func queue(session: String, entries: [FollowUp]) {
-        for entry in entries {
+        let present = Set(entries.map(\.clientId))
+        for index in items.indices where items[index].sessionId == session && items[index].phase == .queued && items[index].queueId != nil && !present.contains(items[index].id) {
+            // Absence proves only that it left the queue, never that it completed.
+            items[index].phase = .unconfirmed; items[index].queueEditable = false
+        }
+        for (position, entry) in entries.enumerated() {
+            guard !entry.clientId.isEmpty, !canonical.contains(where: { $0.session == session && $0.client == entry.clientId }) else { continue }
             guard let text = entry.text, !text.isEmpty else { continue }
             if !items.contains(where: { $0.id == entry.clientId }) { _ = try? add(id: entry.clientId, session: session, kind: "follow_up", text: text) }
             update(entry.clientId) { if $0.sessionId == session && ![.materialized, .dispatched].contains($0.phase) {
-                $0.phase = .queued; $0.text = text; $0.queueId = entry.id; $0.queueRevision = entry.revision; $0.queueEditable = entry.editable == true
+                $0.phase = .queued; $0.queuePosition = position; $0.text = text; $0.queueId = entry.id; $0.queueRevision = entry.revision; $0.queueEditable = entry.editable == true
                 $0.error = nil; $0.errorCode = nil
             } }
         }
     }
     public func visible(session: String) -> [Outgoing] { items.filter { $0.sessionId == session && $0.phase != .materialized } }
+    public func pending(session: String) -> [Outgoing] {
+        visible(session: session).filter { $0.kind == "follow_up" && $0.phase != .dispatched }.sorted {
+            let left = $0.queuePosition ?? Int.max, right = $1.queuePosition ?? Int.max
+            if left != right { return left < right }
+            return $0.created < $1.created
+        }
+    }
+    public func conversation(session: String) -> [Outgoing] {
+        visible(session: session).filter { $0.kind != "follow_up" || $0.phase == .dispatched }
+    }
     public mutating func discard(_ id: String) { items.removeAll { $0.id == id } }
     public mutating func prune(active: String, now: Date = Date()) { items.removeAll { $0.sessionId != active && now.timeIntervalSince($0.created) > 300 } }
     private mutating func update(_ id: String, _ action: (inout Outgoing) -> Void) { if let index = items.firstIndex(where: { $0.id == id }) { action(&items[index]) } }

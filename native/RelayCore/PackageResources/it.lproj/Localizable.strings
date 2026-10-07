@@ -97,6 +97,7 @@
 "Codex needs a decision" = "Codex richiede una decisione";
 "Codex needs attention" = "Codex richiede attenzione";
 "Codex needs your input" = "Codex ha bisogno del tuo input";
+"Codex no longer lists this message in the queue. Its outcome is not yet confirmed. Check the conversation before sending again." = "Codex non elenca più questo messaggio nella coda. Il suo esito non è ancora confermato. Verifica la conversazione prima di inviarlo di nuovo.";
 "Codex not connected" = "Codex non connesso";
 "Codex owns conversations and queued work" = "Conversazioni e coda rimangono in Codex";
 "Codex requests permission" = "Codex richiede un permesso";
@@ -237,6 +238,7 @@
 "JSON response matching the schema" = "Risposta JSON conforme allo schema";
 "Keychain unavailable." = "Portachiavi non disponibile.";
 "Known sessions" = "Sessioni note";
+"LEFT QUEUE · VERIFYING" = "USCITO DALLA CODA · DA VERIFICARE";
 "Last checked" = "Ultima verifica";
 "Last disconnect" = "Ultima disconnessione";
 "Last event" = "Ultimo evento";
@@ -284,8 +286,10 @@
 "Needs You, completion, failure and machines offline after a grace period. No notifications for individual commands or tokens. Lock-screen previews omit project and conversation content by default." = "Richieste di risposta, completamenti, errori e macchine offline dopo un periodo di tolleranza. Nessuna notifica per singoli comandi o token. Le anteprime sulla schermata bloccata escludono progetto e conversazione.";
 "Needs You, live questions, completion, failure and machines offline after a grace period. Previews omit conversation content. Completion is quiet in the session you are reading." = "Richieste, domande live, completamento, errori e macchine offline dopo un periodo di attesa. Le anteprime non includono la conversazione. Nessun avviso di completamento nella sessione che stai leggendo.";
 "Needs verification" = "Da verificare";
+"Next up" = "In coda";
 "No" = "No";
 "No account data yet" = "Nessun dato account disponibile";
+"No longer queued · check conversation" = "Non più in coda · verifica la conversazione";
 "No output" = "Nessun output";
 "No patch provided" = "Nessuna patch disponibile";
 "No pending requests" = "Nessuna richiesta";
@@ -500,6 +504,7 @@
 "Used on" = "Utilizzato su";
 "VERIFY OUTCOME" = "ESITO DA VERIFICARE";
 "Version" = "Versione";
+"View queued messages" = "Visualizza messaggi in coda";
 "Waiting for output…" = "In attesa di output…";
 "Waiting for tool result…" = "In attesa del risultato del tool…";
 "Within limit" = "Entro il limite";

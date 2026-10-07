@@ -58,6 +58,27 @@ final class ControlTests: XCTestCase {
         box.queue(session: "m~t", entries: [original])
         XCTAssertTrue(box.visible(session: "m~t").isEmpty)
     }
+    func testCanonicalBeforeQueueCannotResurrectAndQueueIsSeparateFromSteer() throws {
+        var box = Outbox()
+        box.materialize(session: "m~t", activity: Activity(id: "real", kind: "userMessage", text: "old", clientId: "already-executed"))
+        let stale: FollowUp = try decode(#"{"id":"q-old","client_id":"already-executed","text":"old"}"#)
+        let next: FollowUp = try decode(#"{"id":"q-next","client_id":"next","text":"do this later","editable":true}"#)
+        box.queue(session: "m~t", entries: [stale, next])
+        let steer = try box.add(id: "steer", session: "m~t", kind: "steer", text: "do this now", expectedTurn: "active")
+        box.sending(steer)
+        XCTAssertEqual(box.pending(session: "m~t").map(\.id), ["next"])
+        XCTAssertEqual(box.conversation(session: "m~t").map(\.id), ["steer"])
+        box.materialize(session: "m~t", activity: Activity(id: "steer-real", kind: "userMessage", text: "do this now", clientId: steer))
+        XCTAssertEqual(box.pending(session: "m~t").map(\.id), ["next"])
+        XCTAssertTrue(box.conversation(session: "m~t").isEmpty)
+        box.queue(session: "m~t", entries: [])
+        XCTAssertEqual(box.pending(session: "m~t").first?.phase, .unconfirmed)
+        XCTAssertFalse(box.pending(session: "m~t").first!.queueEditable)
+        box.materialize(session: "m~t", activity: Activity(id: "next-real", kind: "userMessage", text: "do this later", clientId: "next"))
+        box.queue(session: "m~t", entries: [next])
+        XCTAssertTrue(box.pending(session: "m~t").isEmpty)
+    }
+
     func testBoundedMemoryAndTTL() throws {
         var box = Outbox(); for _ in 0..<32 { _ = try box.add(session: "m~t", kind: "follow_up", text: "pending", now: Date(timeIntervalSince1970: 1)) }
         XCTAssertThrowsError(try box.add(session: "m~t", kind: "follow_up", text: "overflow")); box.prune(active: "", now: Date(timeIntervalSince1970: 302)); XCTAssertTrue(box.items.isEmpty)

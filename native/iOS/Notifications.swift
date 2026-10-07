@@ -38,7 +38,9 @@ import SwiftUI
         let kind = info["kind"] as? String ?? ""
         let session = info["session_id"] as? String
         let show = await MainActor.run { self.onPresent?(key, kind, session) ?? true }
-        return show ? [.banner, .sound] : []
+        // A banner alone disappears without a Notification Center entry.
+        // Badge reconciliation remains owned by canonical attention state.
+        return show ? [.banner, .list, .sound] : []
     }
 }
 
@@ -178,7 +180,6 @@ extension RelayController {
     func presentNotification(key: String, kind: String, session: String?) -> Bool {
         guard notificationsEnabled, !presentedNotices.contains(key) else { return false }
         presentedNotices.append(key); if presentedNotices.count > 512 { presentedNotices.removeFirst(presentedNotices.count - 512) }
-        updateNotificationBadge()
         if kind == "live_question", !liveQuestions.records.contains(where: { $0.id == key }) { return false }
         if kind == "request", online, !requests.values.contains(where: { $0.sessionId == session }) { return false }
         return kind != "turn_completed" || session != selected
@@ -206,7 +207,12 @@ extension RelayController {
         guard permitsNotificationIO else { return }
         Task {
             let center = UNUserNotificationCenter.current()
-            try? await center.setBadgeCount(credential == nil || !notificationsEnabled ? 0 : attentionCount)
+            let count = !notificationsEnabled || (!previewOnly && credential == nil) ? 0 : attentionCount
+            if appliedNotificationBadge != count {
+                appliedNotificationBadge = count
+                do { try await center.setBadgeCount(count) }
+                catch { appliedNotificationBadge = nil }
+            }
             let delivered = await center.deliveredNotifications()
             let pending = await center.pendingNotificationRequests()
             @MainActor func obsolete(_ info: [AnyHashable: Any]) -> Bool {
@@ -230,6 +236,7 @@ extension RelayController {
 /// Isolated OS-notification acceptance. No Hub, pairing or Keychain access.
 struct NotificationAcceptanceView: View {
     @Environment(RelayController.self) private var relay
+    @State private var receipt = ""
     var body: some View {
         NavigationStack {
             List {
@@ -237,6 +244,16 @@ struct NotificationAcceptanceView: View {
                 ForEach([SemanticNotice.Kind.completed, .request, .liveQuestion, .failed], id: \.rawValue) { kind in
                     Button(kind.rawValue) { emit(kind) }.accessibilityIdentifier("notice." + kind.rawValue)
                 }
+                Button("Read delivered alerts") {
+                    Task {
+                        let center = UNUserNotificationCenter.current()
+                        let settings = await center.notificationSettings()
+                        let notices = await center.deliveredNotifications()
+                        receipt = notices.filter { $0.request.identifier.hasPrefix("acceptance/") }.map { $0.request.identifier }.sorted().joined(separator: ",")
+                        receipt += " center=" + String(settings.notificationCenterSetting.rawValue) + " lock=" + String(settings.lockScreenSetting.rawValue)
+                    }
+                }
+                Text(receipt).accessibilityIdentifier("notice.delivered")
                 Button("Disable alerts") { relay.notificationsEnabled = false }
                 Button("Clear attention") { relay.requests = [:]; relay.liveQuestions.reset(); relay.updateNotificationBadge() }
                 Text("Attention: \(relay.attentionCount)").accessibilityIdentifier("notice.count")

@@ -502,7 +502,7 @@ struct LastKnownSession: View {
         relay.liveActivities = ["workstation~build": decode(["item_id": "example-command", "kind": "terminal", "label": "cargo test --workspace", "state": "running", "timestamp": stamp])]
         let request: PendingRequest = decode(["request_id": "example-request", "session_id": "laptop~decision", "machine_id": "laptop", "kind": "user_input", "description": "Which validation scope should I use?", "expires_at": "2099-01-01T00:00:00Z", "created_at": stamp, "can_approve": true, "questions": [["id": "scope", "header": "Validation", "question": "Which validation scope should I use?", "options": [["label": "Full suite", "description": "Run unit tests and integration checks."], ["label": "Focused checks", "description": "Run tests for the changed module."]]]]])
         relay.requests = [request.id: request]
-        relay.selected = ["conversation", "terminal", "tools", "diff", "live-question", "history-question", "compaction"].contains(surface) ? "workstation~build" : surface == "question" ? "laptop~decision" : ""
+        relay.selected = ["conversation", "terminal", "tools", "diff", "live-question", "history-question", "compaction", "queue"].contains(surface) ? "workstation~build" : surface == "question" ? "laptop~decision" : ""
         relay.outbox = Outbox(); relay.chat = RecentChat()
         relay.chat.put(Activity(id: "example-user", kind: "userMessage", text: "Validate empty inputs, then run the workspace tests."))
         relay.chat.put(Activity(id: "example-response", kind: "agentMessage", text: "I added an **empty-input guard** and a regression test. The workspace suite is running."))
@@ -527,6 +527,14 @@ struct LastKnownSession: View {
             let event: RelayEvent = decode(["kind": "activity", "session_id": "workstation~build", "turn_id": "example-turn", "activity": ["id": "example-async", "kind": "agentMessage", "text": "Which validation scope should I use?", "questions": [["title": "Which validation scope should I use?", "options": ["Full suite", "Focused checks"]]]]])
             relay.chat.apply(event)
             if surface != "history-question" { relay.liveQuestions.observe(event, activeTurn: "example-turn", current: true) }
+        }
+        if surface == "queue" {
+            relay.requests = [:]
+            relay.chat.put(Activity(id: "steer-canonical", kind: "userMessage", text: "Keep the change limited to validation.", clientId: "steer-current"))
+            relay.chat.put(Activity(id: "steer-response", kind: "agentMessage", text: "I will keep this turn focused on validation. Documentation remains queued for the next turn."))
+            let queued: FollowUp = decode(["id": "queue-next", "client_id": "follow-next", "text": "Then update the installation guide.", "editable": true, "revision": "one"])
+            relay.outbox.queue(session: "workstation~build", entries: [queued])
+            relay.sessions["workstation~build"]?.capabilities.canEditQueue = true
         }
         if surface == "compaction" {
             var item = Activity(id: "example-compaction", kind: "context_compaction", text: "Context compacted")

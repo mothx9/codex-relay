@@ -5900,6 +5900,86 @@
           }
         }
       }
+    },
+    "Next up": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next up"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In coda"
+          }
+        }
+      }
+    },
+    "View queued messages": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View queued messages"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visualizza messaggi in coda"
+          }
+        }
+      }
+    },
+    "LEFT QUEUE · VERIFYING": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LEFT QUEUE · VERIFYING"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "USCITO DALLA CODA · DA VERIFICARE"
+          }
+        }
+      }
+    },
+    "No longer queued · check conversation": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No longer queued · check conversation"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non più in coda · verifica la conversazione"
+          }
+        }
+      }
+    },
+    "Codex no longer lists this message in the queue. Its outcome is not yet confirmed. Check the conversation before sending again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex no longer lists this message in the queue. Its outcome is not yet confirmed. Check the conversation before sending again."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex non elenca più questo messaggio nella coda. Il suo esito non è ancora confermato. Verifica la conversazione prima di inviarlo di nuovo."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
