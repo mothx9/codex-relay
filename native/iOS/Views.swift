@@ -268,7 +268,7 @@ struct PendingView: View {
             }
             if request.kind == "mcp_elicitation" { MCPRequestForm(request: request) }
             if request.canApprove && ["user_input", "command_approval", "file_approval"].contains(request.kind) {
-                Button(request.kind == "user_input" ? String(localized: "Respond", bundle: relayLocalizationBundle) : String(localized: "Approve Once", bundle: relayLocalizationBundle)) { Task { await relay.answer(request, decision: "approve", answers: answers.mapValues { [$0] }) } }.buttonStyle(.bordered).disabled(!relay.online || relay.current?.capabilities.canAnswer != true || (request.kind == "user_input" && (request.questions ?? []).contains { (answers[$0.id] ?? "").isEmpty }))
+                Button(request.kind == "user_input" ? String(localized: "Respond", bundle: relayLocalizationBundle) : String(localized: "Approve Once", bundle: relayLocalizationBundle)) { Task { await relay.answer(request, decision: "approve", answers: answers.mapValues { [$0] }) } }.buttonStyle(.bordered).disabled(!relay.online || relay.machines[request.machineId]?.status != "ONLINE" || relay.current?.capabilities.canAnswer != true || (request.kind == "user_input" && (request.questions ?? []).contains { (answers[$0.id] ?? "").isEmpty }))
             }
             if request.kind != "unsupported" { Button(String(localized: "Reject", bundle: relayLocalizationBundle), role: .destructive) { Task { await relay.answer(request, decision: "reject") } }.disabled(!relay.online || relay.machines[request.machineId]?.status != "ONLINE" || relay.current?.capabilities.canAnswer != true) }
             if let progress = relay.requestProgress[request.presentationID] {

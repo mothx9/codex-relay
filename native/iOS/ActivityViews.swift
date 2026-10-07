@@ -98,7 +98,7 @@ struct ToolSummaryView: View {
             .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
             .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(running > 0 ? tint.opacity(0.25) : Color.primary.opacity(0.04)))
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: state)
-            .task(id: group.kind == .changes ? group.items.last?.text : nil) {
+            .task(id: group.kind == .changes ? group.items : []) {
                 guard group.kind == .changes else { return }
                 let items = group.items
                 let summary = await Task.detached { ChangeOverview.describe(items) }.value

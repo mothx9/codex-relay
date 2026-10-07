@@ -274,6 +274,61 @@ import XCTest
         XCTAssertTrue(answer.waitForExistence(timeout: 150))
         XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", edited)).count, 1, "Canonical reconciliation must not duplicate the queued bubble")
     }
+    func testOwnedCurrentTurnSteer() throws {
+        guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires owned running turn.") }
+        let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
+        guard config.sendTurn && config.sessionTitle == "Relay live validation" else { throw XCTSkip("Owned validation only.") }
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launch()
+        let search = app.textFields["fleet.search"]
+        XCTAssertTrue(search.waitForExistence(timeout: 15)); search.tap(); search.typeText(config.sessionTitle)
+        let row = app.buttons["session." + config.sessionID]
+        XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+        let send = app.buttons["composer.send"]
+        wait(30) { send.label == "Send follow-up" }
+        app.buttons["Session actions"].tap()
+        let steer = app.buttons["Steer Current Turn"]
+        XCTAssertTrue(steer.waitForExistence(timeout: 5)); XCTAssertTrue(steer.isEnabled); steer.tap()
+        let marker = "RELAY_STEER_" + UUID().uuidString.prefix(8)
+        let text = "For this current turn, finish with exactly " + marker + ". Do not queue another turn."
+        let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
+        composer.tap(); composer.typeText(text)
+        XCTAssertEqual(send.label, "Send Steer"); send.tap()
+        let canonical = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.userMessage.' AND label == %@", text))
+        wait(60) { canonical.count == 1 }
+        let response = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.agentMessage.' AND label CONTAINS %@", marker))
+        wait(120) { response.count > 0 }
+        XCTAssertEqual(canonical.count, 1)
+        XCTAssertFalse(app.staticTexts["FOLLOW-UP · QUEUED"].exists)
+        let image = XCTAttachment(screenshot: app.screenshot()); image.name = "Owned current-turn Steer canonical response"; image.lifetime = .keepAlways; add(image)
+        app.terminate()
+    }
+    func testOwnedToolAndFilePresentation() throws {
+        guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires owned tool/file validation.") }
+        let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
+        guard config.sendTurn && config.sessionTitle == "Relay live validation" else { throw XCTSkip("Owned validation only.") }
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launch()
+        let search = app.textFields["fleet.search"]
+        XCTAssertTrue(search.waitForExistence(timeout: 15)); search.tap(); search.typeText(config.sessionTitle)
+        let row = app.buttons["session." + config.sessionID]
+        XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+        let transcript = app.scrollViews["session.transcript"]
+        XCTAssertTrue(transcript.waitForExistence(timeout: 15))
+        for kind in ["mcp", "changes"] {
+            let matches = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "tool." + kind + "."))
+            wait(20) { matches.count > 0 }
+            let card = matches.allElementsBoundByIndex.last!
+            for _ in 0..<12 { if card.isHittable { break }; transcript.swipeDown() }
+            XCTAssertTrue(card.isHittable); card.tap()
+            app.buttons["tool.details." + card.identifier.dropFirst(5)].tap()
+            let detail = XCTAttachment(screenshot: app.screenshot()); detail.name = "Live owned " + kind; detail.lifetime = .keepAlways; add(detail)
+            if kind == "mcp" { XCTAssertTrue(app.staticTexts["list_api_endpoints"].exists) }
+            else { XCTAssertTrue(app.staticTexts.matching(identifier: "validation-marker.txt").firstMatch.exists) }
+            app.buttons["Close"].tap()
+        }
+        app.terminate()
+    }
     func testOwnedPendingRequestAcrossSurfacesAndResolveElsewhere() throws {
         guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires the owned request validation thread.") }
         let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
@@ -327,7 +382,7 @@ import XCTest
         let stale = XCTAttachment(screenshot: app.screenshot()); stale.name = "M1 offline last-known Working"; stale.lifetime = .keepAlways; add(stale)
         print("M1_OFFLINE_LAST_KNOWN_CONFIRMED")
         wait(45) { connection.value as? String == "Live" }
-        XCTAssertFalse(app.staticTexts["Last known: Working"].exists)
+        wait { !app.staticTexts["Last known: Working"].exists }
         let current = XCTAttachment(screenshot: app.screenshot()); current.name = "M1 reconnect current state"; current.lifetime = .keepAlways; add(current)
     }
     func testLiveCompleteMessageClipboard() throws {
@@ -492,7 +547,7 @@ import XCTest
             throw XCTSkip("Requires an owner-supplied live acceptance configuration and isolated thread.")
         }
         let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
-        XCTAssertEqual(URL(string: config.origin)?.scheme, "https")
+        // The paired Keychain credential supplies the Hub origin; this test never enrolls.
         XCTAssertFalse(config.sessionID.isEmpty)
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -529,7 +584,7 @@ import XCTest
         let optimistic = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'outbox.' AND label == %@", text))
         XCTAssertEqual(optimistic.count, 0)
         let reply = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.agentMessage.' AND label CONTAINS %@", marker))
-        wait(120) { reply.count > 0 }
+        wait(120) { reply.count > 0 && reply.firstMatch.isHittable }
         XCTAssertEqual(canonical.count, 1)
         // Background and foreground reconstruct the current Codex state.
         XCUIDevice.shared.press(.home); app.activate()

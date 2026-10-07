@@ -193,6 +193,8 @@ private struct SessionTranscript: View {
     let onEdit: (Outgoing) -> Void
     @State private var tools: TranscriptGroup?
     @State private var nearBottom = true
+    // Following is user intent, not a side effect of content/keyboard geometry.
+    @State private var followingLatest = true
     @State private var userScrolling = false
     @State private var unread = false
     @State private var initialScroll = false
@@ -218,6 +220,7 @@ private struct SessionTranscript: View {
                         } else if relay.historyCursor != nil && !relay.chat.atCapacity {
                             Button(String(localized: "Load earlier messages", bundle: relayLocalizationBundle)) {
                                 nearBottom = false
+                                followingLatest = false
                                 Task { await relay.loadOlderHistory() }
                             }.frame(minHeight: 44).frame(maxWidth: .infinity).accessibilityIdentifier("history.older")
                                 .accessibilityValue(String(localized: "\(relay.chat.items.count) items loaded", bundle: relayLocalizationBundle))
@@ -261,20 +264,28 @@ private struct SessionTranscript: View {
                 .accessibilityValue("\(relay.chat.items.count) items")
                 .scrollDismissesKeyboard(.interactively)
                 .simultaneousGesture(DragGesture(minimumDistance: 3)
-                    .onChanged { _ in userScrolling = true; nearBottom = false }
-                    .onEnded { _ in userScrolling = false })
+                    .onChanged { _ in userScrolling = true; followingLatest = false }
+                    .onEnded { _ in userScrolling = false; followingLatest = nearBottom })
                 .onChange(of: viewport.size, initial: true) { _, size in
-                    guard !initialScroll, size.height > 0 else { return }
-                    // Navigation may lay out the destination after its first
-                    // appearance. Position only once, after that layout pass.
+                    guard size.height > 0, !initialScroll || followingLatest else { return }
+                    // Navigation and keyboard layout settle after this callback.
+                    // Preserve the latest position only while the reader follows.
                     DispatchQueue.main.async {
+                        guard !initialScroll || (followingLatest && !userScrolling) else { return }
                         proxy.scrollTo(bottomID, anchor: .bottom)
                         initialScroll = true
                     }
                 }
                 .onPreferenceChange(TranscriptBottom.self) { value in
-                    nearBottom = !userScrolling && value <= viewport.size.height + 80
-                    if nearBottom { unread = false }
+                    nearBottom = value <= viewport.size.height + 80
+                    if nearBottom && !userScrolling { unread = false; followingLatest = true }
+                    // Markdown parsing and keyboard transitions can increase the
+                    // layout after the event callback. They must not cancel follow.
+                    if followingLatest && !userScrolling && value > viewport.size.height + 8 {
+                        DispatchQueue.main.async {
+                            if followingLatest && !userScrolling { proxy.scrollTo(bottomID, anchor: .bottom) }
+                        }
+                    }
                 }
                 .onChange(of: relay.historyLoading) { _, loading in
                     guard !loading, !historyPositioned, relay.historyError == nil else { return }
@@ -284,10 +295,12 @@ private struct SessionTranscript: View {
                     DispatchQueue.main.async { proxy.scrollTo(bottomID, anchor: .bottom) }
                 }
                 .onChange(of: revision) { _, _ in
-                    if nearBottom && !userScrolling { DispatchQueue.main.async { if nearBottom && !userScrolling { proxy.scrollTo(bottomID, anchor: .bottom) } } }
+                    if followingLatest && !userScrolling { DispatchQueue.main.async { if followingLatest && !userScrolling { proxy.scrollTo(bottomID, anchor: .bottom) } } }
                     else { unread = true }
                 }
                 .onChange(of: scrollRequest) { _, _ in
+                    followingLatest = true
+                    unread = false
                     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { proxy.scrollTo(bottomID, anchor: .bottom) }
                 }
                 .overlay(alignment: .bottomTrailing) {
@@ -443,7 +456,8 @@ private struct SessionHeartbeat: View {
             HStack(spacing: RelaySpacing.compact) {
                 SessionStatusMark(status: state)
                 Text(state == "OFFLINE" ? relay.machineConnectionLabel(session.machineId) : statusLabel(state))
-                    .accessibilityIdentifier("session.connection").accessibilityValue(state == "OFFLINE" ? "Offline" : "Live")
+                    .accessibilityIdentifier("session.connection")
+                    .accessibilityValue(state == "OFFLINE" ? String(localized: "Offline", bundle: relayLocalizationBundle) : ["SYNCING", "RECONNECTING", "DEGRADED"].contains(state) ? statusLabel(state) : String(localized: "Live", bundle: relayLocalizationBundle))
                 if state == "WORKING" { ElapsedLabel(start: session.turnStarted) }
                 Spacer(minLength: 0)
             }.font(.caption.weight(.medium))
