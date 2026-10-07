@@ -140,5 +140,5 @@ embedded PWA remains a fallback/debug client.
 
 ## License
 
-[MIT](LICENSE). Codex Relay is an independent project and does not use OpenAI's
+[Apache-2.0](LICENSE). Codex Relay is an independent project and does not use OpenAI's
 logo or imply official affiliation.
