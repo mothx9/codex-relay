@@ -1,29 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="650" viewBox="0 0 1000 650">
 <title>Trust boundaries</title><desc>Self-hosted authority; runtime authentication stays on the worker.</desc>
 <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M 0 1 L 8 5 L 0 9" fill="none" stroke="#8394aa" stroke-width="1.5"/></marker></defs>
-<rect width="1000" height="650" rx="24" fill="#15181c"/>
+<style>
+.ink { fill: #20252c; } .muted { fill: #566273; } .panel { fill: #f3f5f7; }
+@media (prefers-color-scheme: dark) { .ink { fill: #f0f2f3; } .muted { fill: #afb5bf; } .panel { fill: #222830; } }
+</style>
 <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif">
-<text x="40" y="50" fill="#f0f2f3" font-size="26" font-weight="700">Trust boundaries</text>
-<text x="40" y="81" fill="#afb5bf" font-size="15">Self-hosted authority; runtime authentication stays on the worker.</text>
-<rect x="40" y="145" width="280" height="104" rx="14" fill="#222830" stroke="#8394aa" stroke-width="1.5"/>
-<text x="58" y="175" fill="#f0f2f3" font-size="18" font-weight="600">Controller boundary</text>
-<text x="58" y="203" fill="#afb5bf" font-size="14">iPhone Keychain credential</text>
-<text x="58" y="225" fill="#afb5bf" font-size="14">One-time pairing · revocable access</text>
-<rect x="360" y="145" width="280" height="104" rx="14" fill="#222830" stroke="#8394aa" stroke-width="1.5"/>
-<text x="378" y="175" fill="#f0f2f3" font-size="18" font-weight="600">Hub boundary</text>
-<text x="378" y="203" fill="#afb5bf" font-size="14">Controller / machine token hashes</text>
-<text x="378" y="225" fill="#afb5bf" font-size="14">Routing and metadata only</text>
-<rect x="680" y="145" width="280" height="104" rx="14" fill="#222830" stroke="#8394aa" stroke-width="1.5"/>
-<text x="698" y="175" fill="#f0f2f3" font-size="18" font-weight="600">Worker boundary</text>
-<text x="698" y="203" fill="#afb5bf" font-size="14">Distinct Agent credential</text>
-<text x="698" y="225" fill="#afb5bf" font-size="14">Local authenticated Codex runtime</text>
+<text x="40" y="50" class="ink" font-size="26" font-weight="700">Trust boundaries</text>
+<text x="40" y="81" class="muted" font-size="15">Self-hosted authority; runtime authentication stays on the worker.</text>
+<rect x="40" y="145" width="280" height="104" rx="14" class="panel" stroke="#8394aa" stroke-width="1.5"/>
+<text x="58" y="175" class="ink" font-size="18" font-weight="600">Controller boundary</text>
+<text x="58" y="203" class="muted" font-size="14">iPhone Keychain credential</text>
+<text x="58" y="225" class="muted" font-size="14">One-time pairing · revocable access</text>
+<rect x="360" y="145" width="280" height="104" rx="14" class="panel" stroke="#8394aa" stroke-width="1.5"/>
+<text x="378" y="175" class="ink" font-size="18" font-weight="600">Hub boundary</text>
+<text x="378" y="203" class="muted" font-size="14">Controller / machine token hashes</text>
+<text x="378" y="225" class="muted" font-size="14">Routing and metadata only</text>
+<rect x="680" y="145" width="280" height="104" rx="14" class="panel" stroke="#8394aa" stroke-width="1.5"/>
+<text x="698" y="175" class="ink" font-size="18" font-weight="600">Worker boundary</text>
+<text x="698" y="203" class="muted" font-size="14">Distinct Agent credential</text>
+<text x="698" y="225" class="muted" font-size="14">Local authenticated Codex runtime</text>
 <path d="M 320 202 H 352" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>
 <path d="M 680 202 H 648" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="360" y="375" width="280" height="104" rx="14" fill="#222830" stroke="#8394aa" stroke-width="1.5"/>
-<text x="378" y="405" fill="#f0f2f3" font-size="18" font-weight="600">Apple APNs / Web Push</text>
-<text x="378" y="433" fill="#afb5bf" font-size="14">Hub-owned provider configuration</text>
-<text x="378" y="455" fill="#afb5bf" font-size="14">Private notification by default</text>
+<rect x="360" y="375" width="280" height="104" rx="14" class="panel" stroke="#8394aa" stroke-width="1.5"/>
+<text x="378" y="405" class="ink" font-size="18" font-weight="600">Apple APNs / Web Push</text>
+<text x="378" y="433" class="muted" font-size="14">Hub-owned provider configuration</text>
+<text x="378" y="455" class="muted" font-size="14">Private notification by default</text>
 <path d="M 500 249 V 367" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>
-<text x="40" y="550" fill="#afb5bf" font-size="14">OpenAI login tokens never cross the worker boundary.</text>
-<text x="40" y="580" fill="#afb5bf" font-size="14">HTTPS/WSS and exact-origin browser checks. Notifications navigate; state authorizes.</text>
+<text x="40" y="550" class="muted" font-size="14">OpenAI login tokens never cross the worker boundary.</text>
+<text x="40" y="580" class="muted" font-size="14">HTTPS/WSS and exact-origin browser checks. Notifications navigate; state authorizes.</text>
 </g></svg>

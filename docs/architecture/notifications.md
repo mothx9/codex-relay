@@ -5,6 +5,8 @@ from a connected native controller. They do
 not carry approval forms, authorize commands, or replace the current snapshot.
 The iPhone remains usable without APNs.
 
+![Local and remote notification paths](../assets/architecture/notification-delivery.svg)
+
 ## Independent states
 
 1. iOS notification permission (not requested, denied, allowed, quiet delivery).
@@ -112,3 +114,8 @@ Only initial live observation may notify. Queued notifications check currentness
 before dispatch; APNs/Web Push expiry is zero for transient questions. Already
 delivered remote alerts can outlive upstream work; a tap always rehydrates state
 and never opens an approval form from the notification payload.
+
+![Live question lifecycle](../assets/architecture/live-question-flow.svg)
+
+[Notification settings](../assets/app/screenshots/notifications.png) ·
+[Transient Inbox](../assets/app/screenshots/live-inbox.png)

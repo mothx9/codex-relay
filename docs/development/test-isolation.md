@@ -19,8 +19,10 @@ another production controller.
 Supply `AcceptanceConfig.json` only inside the **built test bundle**, never the
 repository. The configured origin and session identifiers are private. Read-only
 navigation tests may inspect real sessions. Mutation tests require the
-explicitly owned `Relay live validation` thread and `sendTurn: true`. Reuse that
-thread and archive it after acceptance. Never answer or interrupt real project
+explicitly owned validation thread and `sendTurn: true`. Each mutating test
+checks its specific validation title (for example `Relay live validation` or
+`Relay grouped activity acceptance`) and configured identity. Reuse the owned
+thread where possible and archive it after acceptance. Never answer or interrupt real project
 work to exercise the UI.
 
 Pause the single simulator watcher while running XCUITest, and resume it in a
@@ -42,3 +44,17 @@ M2 reference-deployment hygiene removed three confirmed historical simulator
 acceptance enrollments after these checks. The physical iPhone and the current
 iPhone 16 development simulator remain authorized. No new enrollment was
 created by the M2 live navigation tests.
+
+## Native local-notification acceptance
+
+The DEBUG-only notification fixture uses an isolated in-memory controller and
+actual `UNUserNotificationCenter` delivery on the selected simulator. Unlike
+ordinary rendering fixtures, this deliberately exercises OS notification
+authorization, banners and badge updates. It never connects to a Hub or reads
+pairing credentials. Keep these results separate from real APNs acceptance.
+
+Live-question and mixed command/file acceptance use disposable, explicitly
+owned Codex turns. Capture upstream identity and event order, then compare Hub
+attention, native Inbox/transcript and notification behavior. Interrupt only
+that owned turn when required; archive it in cleanup. A history replay is never
+evidence of a currently live question.

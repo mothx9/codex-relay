@@ -42,8 +42,10 @@ context occupancy. Relay does not calculate bills or unsupported analytics.
 ## Presentation and units
 
 Accounts own usage presentation; “Used on” links to the canonical machine list.
-Relative update age is primary. Source-machine provenance and identity fallback
-belong in expandable data details. Missing data is never represented as zero.
+Duration-based windows show remaining capacity: `clamp(100 - usedPercent, 0, 100)`.
+The progress bar represents that same remaining fraction. Labels derive from
+reported duration, not primary/secondary bucket position. Relative update age is
+primary. Source-machine provenance and identity fallback belong in expandable data details. Missing data is never represented as zero.
 
 Codex 0.160.1's `CreditsSnapshot.balance` is an optional string alongside
 `hasCredits` and `unlimited`; its protocol definition provides no currency,

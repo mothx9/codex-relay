@@ -6,9 +6,13 @@ engineering evidence; they do not override this page or claim a public release.
 ## Release and distribution
 
 The source candidate is **0.1.0-rc.5**. The validated reference Hub and Agents use
-`0.1.0-rc.5+m2.3`. No final v0.1.0 is published by this productization pass.
+`0.1.0-rc.5+m2.5`. No final v0.1.0 is published by this productization pass.
 Build the candidate from source with `make build`; use `--binary` with the
 installer. The legacy default download is an older published RC, not current main.
+
+The latest wave adds explicit context-compaction status, compact mixed activity
+groups, direct file diffs, remaining-capacity quota windows and connected-client
+local banners. Eighteen sanitized screenshots document the current native views.
 
 The native app supports iOS 17+, English/Italian, Dynamic Type and Reduce Motion.
 Liquid Glass uses a material fallback on older iOS. Installation currently
@@ -46,8 +50,10 @@ is not claimed. See the [protocol](architecture/protocol.md) and
 The native app provides **local alerts while connected**, separately from
 **remote APNs push**. Local foreground banners for completion, supported pending
 RPCs, live questions and failure pass simulator OS-notification acceptance.
-Local alerts cannot reach a force-quit or arbitrarily suspended app. Permission
-alone does not mean remote delivery is operational. The notification screen
+The owner accepted the installed physical build: Home Screen icon, chat scroll,
+keyboard/composer menu, direct file diff and the local test banner. This is separate
+from the simulator event-routing tests. Local alerts cannot reach a force-quit or
+arbitrarily suspended app. Permission alone does not mean remote delivery is operational. The notification screen
 summarizes both paths and discloses registration details.
 
 Routing, semantic deduplication, privacy, expired-token cleanup and deep links

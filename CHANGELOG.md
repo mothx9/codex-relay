@@ -6,6 +6,15 @@ required physical notification delivery, is complete.
 
 ## Unreleased — M2 productization
 
+- Connected-client local iOS alerts, independent permission/delivery readiness,
+  semantic deduplication and safe notification routing; remote APNs remains separate.
+- Ephemeral cross-session Live Questions with current-turn/epoch invalidation,
+  separate from canonical RPC requests and never reconstructed from history.
+- Quiet grouped Fleet, remaining-capacity quotas, integrated composer, mixed
+  activity previews, direct file inspection and mobile diff/readability hardening.
+- Explicit context-compaction lifecycle and neutral animated session heartbeat.
+- Updated native Codex icon attribution, transparent diagrams and screenshot suite.
+
 - Work-focused navigation with single entity homes and exception-only Fleet health.
 - Compact Terminal summaries, machine-local diagnostics and account relationships.
 - Live async-question draft preparation stays separate from authoritative Needs You;

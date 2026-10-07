@@ -26,7 +26,8 @@ snapshot. Markdown parsing is coalesced without waiting for completion; output
 updates do not animate every token. Reduce Motion disables state movement.
 
 The system accent is separate from semantic status: **green identifies Working**
-and its motion, orange identifies Needs You, and failures use red plus text.
+in Fleet; the compact session heartbeat uses a neutral text sweep. Orange identifies
+Needs You, and failures use red plus text.
 Liquid Glass is navigation/composer chrome; prose remains on the content canvas.
 
 No background socket service or transcript persistence is added. Foreground
@@ -54,9 +55,13 @@ Normal launch afterward restores the paired app without clearing Keychain.
 Review every exported image before committing. Source fixtures live in
 `ProductFixtures`; do not publish screenshots from real project work. The pipeline
 covers Fleet, conversation, Needs You, inline question, Terminal, tools, diff,
-Machines, Account, Settings, global and machine Diagnostics, the Relay menu, pairing and a live transient assistant question.
+Machines, Account, Settings, global and machine Diagnostics, the Relay menu,
+pairing, live-question conversation/Inbox, notification readiness and context
+compaction.
 
-The shared vector mark is `docs/assets/app/mark.svg`. Run
+The native icon source is `docs/assets/app/codex-app-icon.svg`; see
+[asset attribution](../assets/app/README.md). Other Relay product assets use
+`docs/assets/app/mark.svg`. Run
 `python3 scripts/branding.py` with librsvg installed to regenerate AppIcon,
 PWA icons, the in-app mark and social preview. Check the icon on Home Screen,
 not only at full source resolution.
@@ -67,3 +72,7 @@ See [localization](localization.md), [test isolation](test-isolation.md) and
 The [navigation rationale](../architecture/native-navigation.md) describes entity
 homes. `LiveQuestions` is a bounded presentation hint fed only by accepted live
 activity events; history never creates hints or canonical pending requests.
+
+Architecture SVG canvases are transparent, with light/dark foreground styles.
+Regenerate them with `python3 scripts/diagrams.py`; retain the source script with
+the exports. Native AppIcon has the opaque canvas required by iOS.

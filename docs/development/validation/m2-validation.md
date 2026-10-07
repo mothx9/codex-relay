@@ -284,3 +284,96 @@ installer-supported path. No key was fabricated or Apple credential changed.
 Independent software work is RC-ready. Source stays `0.1.0-rc.5`, reference
 services stay `0.1.0-rc.5+m2.3`; no final release/tag is published. Physical owner
 and Apple/APNs acceptance remain explicit external gates.
+
+
+## Native control-surface wave — 2026-10-07
+
+This entry supersedes earlier **current-state** statements above; earlier entries
+remain historical evidence. The wave started at `4bc4cb9` and retains release
+candidate `0.1.0-rc.5`.
+
+### Product and protocol changes
+
+- Fleet uses neutral Working rows and grouped Recent sessions. Quota windows
+  display remaining capacity with matching bars and duration-derived labels.
+- Consecutive same-turn operations form stable, compact activity groups with
+  concrete command/tool/file previews. Individual filenames open their diff
+  directly. Full command/output inspection remains in detail.
+- One glass composer contains the plus menu, growing text and submit control.
+  Working uses a restrained gray-to-white sweep, with no duplicated operation
+  subtitle. Reduce Motion keeps the label static.
+- Markdown list paragraphs wrap fully; message actions use native context menus.
+  Full-message copy was verified from the last paragraph. File detail preserves
+  patch fidelity while hiding transport metadata from the primary view.
+- Empty-text upstream `contextCompaction` items were previously dropped by the
+  adapter. Explicit start/completion now reach Relay as `context_compaction`,
+  with canonical item/turn identity; the live heartbeat shows Compacting context
+  only while current. No reasoning content is exposed.
+- Live async questions are bounded ephemeral attention, separate from canonical
+  pending RPCs. Initial live observation reaches the connected controller even
+  without an open transcript. History/reconnect never reconstruct the hint.
+- Connected native clients can deliver local notifications with semantic dedupe,
+  private copy, safe deep links and attention-only badges. Permission, local
+  readiness and remote registration/configuration are modeled separately.
+- The native icon uses the owner-requested Codex mark, with provenance and
+  attribution in the asset documentation. Public screenshots use sanitized
+  fixtures; all seven architecture diagrams have transparent canvases and
+  maintained generator source.
+
+### Qualification evidence
+
+- `make check test`: formatting, vet, ordinary Go tests, race tests, nine web
+  checks, eight installer checks, localization and documentation links passed.
+  Linux amd64/arm64 and macOS arm64 cross-builds/checksums passed.
+- 61 Swift tests passed, including transient-question lifetime/history exclusion,
+  grouping, file previews, quota remaining, notice readiness/dedupe and explicit
+  compaction. Existing pending-RPC and scroll regressions remain covered.
+- Simulator builds and build-for-testing passed. Targeted XCUITests covered
+  composer/tool inspection, direct file selection, compaction, whole-message
+  copy, Home Screen icon, transient draft preparation and notification delivery.
+- Actual simulator OS banners passed for completion, pending RPC, live question
+  and failure, including dedupe, disabled notifications and badge updates. These
+  are local notifications, not simulated evidence of remote APNs receipt.
+- A real isolated Codex turn emitted an async question. Hub live attention reached
+  the Inbox, badge and local banner; tapping the banner opened the session and
+  an option prepared a draft. Ending the owned turn removed the hint; relaunch
+  did not resurrect it or modify canonical pending RPCs. The thread was archived.
+- A second owned turn emitted assistant text → command → file → command → file
+  → assistant text. Native acceptance verified one group with two commands/two
+  files and direct per-file navigation. The thread was archived afterward.
+- Manual compaction on an owned thread produced both `item/started` and
+  `item/completed`; the thread was archived afterward. No real project work was
+  answered, interrupted or compacted.
+- Real-Hub read-only acceptance covered accounts, history/Inbox exclusion,
+  notification links, Fleet/session navigation, reading position through keyboard
+  changes and Settings/diagnostics. Real screenshots and identifiers stay private.
+
+### Reference deployment and physical acceptance
+
+Hub and Exon/Spark/MacBook Agents were safely upgraded to
+`0.1.0-rc.5+m2.5`; all returned Online and the database remained reachable.
+Existing SQLite, identity, enrollment, credentials and service configuration were
+preserved. Shared Codex daemon process identities were unchanged. No networking
+configuration or production controller enrollment was added.
+
+One measured upgrade sample (wall-clock observations, not latency guarantees):
+
+| Component | Measurement |
+| --- | --- |
+| Hub service restart | 178 ms; RSS 14,844 kB |
+| Linux workstation Agent | snapshot 240 ms; synchronization 345 ms; RSS 12,004 kB |
+| GPU node Agent | snapshot 389 ms; synchronization 430 ms; RSS 10,112 kB |
+| macOS Agent | snapshot 571 ms; synchronization 629 ms |
+
+The newest signed physical build was installed and launched without losing
+pairing. The owner explicitly confirmed **“Tutto funziona, banner visibile”** for
+the requested batch: Codex Home Screen icon, history scroll, keyboard/plus menu,
+direct file diff and Test local alert. This physical confirmation is separate
+from the automated and real-service tests above.
+
+The signed application and Personal Team profile still have no
+`aps-environment`; the Hub has no APNs provider key. The sole remote-delivery gate
+is a Push-capable Apple team/profile and authorized provider key configured
+privately on the Hub, followed by physical remote banner/badge/tap/cold-start
+acceptance. Local alerts do not replace remote push. No final `v0.1.0` tag or
+release is published.

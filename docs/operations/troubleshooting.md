@@ -48,3 +48,19 @@ codex-relay version
 physical controller or notification provider completed an end-to-end action.
 Advanced machine authentication uses `--machine` and `--token-file`; credentials
 belong in private files, never copied into command arguments or public output.
+
+## Notification permission is allowed, but remote push is unavailable
+
+Permission only authorizes iOS presentation. Check the separate Local alerts and
+Remote push summary under Relay menu → Settings → Notifications. Local alerts
+require a connected client; remote delivery additionally requires an entitled
+Apple build, device token, configured Hub provider and verified registration.
+Follow [notification setup](../setup/notifications.md); do not replace credentials
+or restart Codex to fix Apple provisioning.
+
+## Working during context compaction
+
+Current adapters forward explicit compaction item start/completion. The heartbeat
+shows “Compacting context” while current and returns to Working afterward. Older
+Agent builds silently omitted this empty-text item. Upgrade Relay Agents without
+restarting shared Codex; no transcript heuristics or reasoning display is used.

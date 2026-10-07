@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="650" viewBox="0 0 1000 650">
+<title>Live questions are observations</title><desc>Distinct from canonical pending RPCs. Never reconstructed from history.</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M 0 1 L 8 5 L 0 9" fill="none" stroke="#8394aa" stroke-width="1.5"/></marker></defs>
+<style>
+.ink { fill: #20252c; } .muted { fill: #566273; } .panel { fill: #f3f5f7; }
+@media (prefers-color-scheme: dark) { .ink { fill: #f0f2f3; } .muted { fill: #afb5bf; } .panel { fill: #222830; } }
+</style>
+<g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif">
+<text x="40" y="50" class="ink" font-size="26" font-weight="700">Live questions are observations</text>
+<text x="40" y="81" class="muted" font-size="15">Distinct from canonical pending RPCs. Never reconstructed from history.</text>
+<rect x="40" y="145" width="260" height="104" rx="14" class="panel" stroke="#8394aa" stroke-width="1.5"/>
+<text x="58" y="175" class="ink" font-size="18" font-weight="600">Codex live item</text>
+<text x="58" y="203" class="muted" font-size="14">Real turn and item identity</text>
+<text x="58" y="225" class="muted" font-size="14">Visible questions and options</text>
+<rect x="370" y="145" width="260" height="104" rx="14" class="panel" stroke="#8394aa" stroke-width="1.5"/>
+<text x="388" y="175" class="ink" font-size="18" font-weight="600">Hub attention</text>
+<text x="388" y="203" class="muted" font-size="14">Current epoch and sequence</text>
+<text x="388" y="225" class="muted" font-size="14">Fanout without transcript watch</text>
+<rect x="700" y="145" width="260" height="104" rx="14" class="panel" stroke="#8394aa" stroke-width="1.5"/>
+<text x="718" y="175" class="ink" font-size="18" font-weight="600">Native controller</text>
+<text x="718" y="203" class="muted" font-size="14">Live Questions section</text>
+<text x="718" y="225" class="muted" font-size="14">One local or remote notice</text>
+<path d="M 300 186 H 362" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 630 186 H 692" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="250" y="370" width="500" height="104" rx="14" class="panel" stroke="#8394aa" stroke-width="1.5"/>
+<text x="268" y="400" class="ink" font-size="18" font-weight="600">Retire the hint</text>
+<text x="268" y="428" class="muted" font-size="14">Turn boundary / input / submission / disconnect</text>
+<text x="268" y="450" class="muted" font-size="14">No authoritative pending-store mutation</text>
+<path d="M 830 249 V 317 H 500 V 362" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="40" y="550" class="muted" font-size="14">History remains readable. Reconnect cannot prove currentness and does not replay hints.</text>
+<text x="40" y="580" class="muted" font-size="14">Preparing an option makes a draft; sending remains Follow-up or explicit Steer.</text>
+</g></svg>

@@ -1,5 +1,22 @@
 # Configure native notifications
 
+## Connected-client local alerts
+
+Open **Relay menu → Settings → Notifications → Allow notifications**. After the
+OS permission result, the UI becomes responsive immediately while remote
+registration proceeds independently. With a connected controller and permission,
+**Local alerts: Ready** means observed events can produce native banners. Use
+**Test local alert** to verify presentation. Disable Relay notifications here or
+change system permission in iOS Settings.
+
+These alerts are best effort while connected. They do not cover force quit or
+arbitrary suspension. Completion in the session you are reading is quiet. Needs
+You and live-question badges reflect current attention, not completed work.
+
+<img src="../assets/app/screenshots/notifications.png" width="280" alt="Local alerts ready with remote push setup required">
+
+## Remote push
+
 APNs connects your Hub to Apple's push service. Pairing alone does not configure
 it. First finish normal Hub/iPhone setup; notification setup preserves the same
 Hub database, identity and controller enrollment.

@@ -11,20 +11,23 @@ class Diagram:
         self.parts = [f'''<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="{height}" viewBox="0 0 1000 {height}">
 <title>{escape(title)}</title><desc>{escape(subtitle)}</desc>
 <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M 0 1 L 8 5 L 0 9" fill="none" stroke="#8394aa" stroke-width="1.5"/></marker></defs>
-<rect width="1000" height="{height}" rx="24" fill="#15181c"/>
+<style>
+.ink {{ fill: #20252c; }} .muted {{ fill: #566273; }} .panel {{ fill: #f3f5f7; }}
+@media (prefers-color-scheme: dark) {{ .ink {{ fill: #f0f2f3; }} .muted {{ fill: #afb5bf; }} .panel {{ fill: #222830; }} }}
+</style>
 <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif">
-<text x="40" y="50" fill="#f0f2f3" font-size="26" font-weight="700">{escape(title)}</text>
-<text x="40" y="81" fill="#afb5bf" font-size="15">{escape(subtitle)}</text>''']
+<text x="40" y="50" class="ink" font-size="26" font-weight="700">{escape(title)}</text>
+<text x="40" y="81" class="muted" font-size="15">{escape(subtitle)}</text>''']
     def box(self,x,y,w,title,lines,accent='#8394aa'):
         h=60+len(lines)*22
-        self.parts.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="14" fill="#222830" stroke="{accent}" stroke-width="1.5"/>')
-        self.parts.append(f'<text x="{x+18}" y="{y+30}" fill="#f0f2f3" font-size="18" font-weight="600">{escape(title)}</text>')
+        self.parts.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="14" class="panel" stroke="{accent}" stroke-width="1.5"/>')
+        self.parts.append(f'<text x="{x+18}" y="{y+30}" class="ink" font-size="18" font-weight="600">{escape(title)}</text>')
         for i,line in enumerate(lines):
-            self.parts.append(f'<text x="{x+18}" y="{y+58+i*22}" fill="#afb5bf" font-size="14">{escape(line)}</text>')
+            self.parts.append(f'<text x="{x+18}" y="{y+58+i*22}" class="muted" font-size="14">{escape(line)}</text>')
     def arrow(self,coords,label='',lx=None,ly=None):
         self.parts.append(f'<path d="{coords}" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>')
-        if label:self.parts.append(f'<text x="{lx}" y="{ly}" fill="#b9c7d9" font-size="14" text-anchor="middle">{escape(label)}</text>')
-    def note(self,x,y,text):self.parts.append(f'<text x="{x}" y="{y}" fill="#afb5bf" font-size="14">{escape(text)}</text>')
+        if label:self.parts.append(f'<text x="{lx}" y="{ly}" class="muted" font-size="14" text-anchor="middle">{escape(label)}</text>')
+    def note(self,x,y,text):self.parts.append(f'<text x="{x}" y="{y}" class="muted" font-size="14">{escape(text)}</text>')
     def save(self,name):(ROOT/f'{name}.svg').write_text('\n'.join(self.parts)+ '\n</g></svg>\n')
 
 d=Diagram('One Hub. Your Codex fleet.','The iPhone controls Relay. Codex remains the source of truth.',760)
@@ -76,3 +79,22 @@ d.arrow('M 500 249 V 367')
 d.note(40,550,'OpenAI login tokens never cross the worker boundary.')
 d.note(40,580,'HTTPS/WSS and exact-origin browser checks. Notifications navigate; state authorizes.')
 d.save('trust-boundaries')
+
+d=Diagram('Two notification paths','Permission is separate from delivery readiness.',650)
+d.box(40,145,420,'Connected local alerts',['Native controller observes a live event','Semantic dedupe + currentness guard','UNUserNotificationCenter banner'])
+d.box(540,145,420,'Remote APNs push',['Hub observes a live event','Apple entitlement + provider key + registration','APNs delivers while app is not connected'])
+d.arrow('M 250 271 V 340 H 500 V 370');d.arrow('M 750 271 V 340 H 500 V 370')
+d.box(300,380,400,'Safe navigation',['Tap waits for authentication and current state','Never approves from a payload'])
+d.note(40,550,'Private content omitted. Active-session completion is quiet. No per-token notices.')
+d.note(40,580,'Local alerts are best effort while connected; they do not replace APNs.')
+d.save('notification-delivery')
+d=Diagram('Live questions are observations','Distinct from canonical pending RPCs. Never reconstructed from history.',650)
+d.box(40,145,260,'Codex live item',['Real turn and item identity','Visible questions and options'])
+d.box(370,145,260,'Hub attention',['Current epoch and sequence','Fanout without transcript watch'])
+d.box(700,145,260,'Native controller',['Live Questions section','One local or remote notice'])
+d.arrow('M 300 186 H 362');d.arrow('M 630 186 H 692')
+d.box(250,370,500,'Retire the hint',['Turn boundary / input / submission / disconnect','No authoritative pending-store mutation'])
+d.arrow('M 830 249 V 317 H 500 V 362')
+d.note(40,550,'History remains readable. Reconnect cannot prove currentness and does not replay hints.')
+d.note(40,580,'Preparing an option makes a draft; sending remains Follow-up or explicit Steer.')
+d.save('live-question-flow')
