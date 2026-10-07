@@ -30,7 +30,7 @@ struct RootView: View {
                                 .accessibilityLabel(String(localized: "Relay menu", bundle: relayLocalizationBundle)).accessibilityIdentifier("navigation.relay")
                         }
                         ToolbarItem(placement: .principal) {
-                            if destination == 0 { Image("RelayMark").resizable().scaledToFit().frame(width: 28, height: 28).accessibilityLabel("Codex Relay") }
+                            if destination == 0 { Image("RelayMark").renderingMode(.template).resizable().scaledToFit().foregroundStyle(.primary).frame(width: 28, height: 28).accessibilityLabel("Codex Relay") }
                             else { Text(String(localized: "Needs You", bundle: relayLocalizationBundle)).font(.headline) }
                         }
                         if destination == 0 {
@@ -94,7 +94,7 @@ struct PairingView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: RelaySpacing.row) {
-                    Image("RelayMark").resizable().scaledToFit().frame(width: 48, height: 48).clipShape(RoundedRectangle(cornerRadius: 12)).accessibilityHidden(true)
+                    Image("RelayMark").renderingMode(.template).resizable().scaledToFit().foregroundStyle(.primary).frame(width: 48, height: 48).clipShape(RoundedRectangle(cornerRadius: 12)).accessibilityHidden(true)
                     Text(String(localized: "Your Codex fleet.\nOn iPhone.", bundle: relayLocalizationBundle)).font(.title.weight(.semibold))
                     Text(String(localized: "Follow live work, answer questions and continue sessions across your machines.", bundle: relayLocalizationBundle)).foregroundStyle(.secondary)
                 }
@@ -505,7 +505,7 @@ struct LastKnownSession: View {
         relay.liveActivities = ["workstation~build": decode(["item_id": "example-command", "kind": "terminal", "label": "cargo test --workspace", "state": "running", "timestamp": stamp])]
         let request: PendingRequest = decode(["request_id": "example-request", "session_id": "laptop~decision", "machine_id": "laptop", "kind": "user_input", "description": "Which validation scope should I use?", "expires_at": "2099-01-01T00:00:00Z", "created_at": stamp, "can_approve": true, "questions": [["id": "scope", "header": "Validation", "question": "Which validation scope should I use?", "options": [["label": "Full suite", "description": "Run unit tests and integration checks."], ["label": "Focused checks", "description": "Run tests for the changed module."]]]]])
         relay.requests = [request.id: request]
-        relay.selected = ["conversation", "terminal", "tools", "diff", "live-question", "history-question", "compaction", "queue"].contains(surface) ? "workstation~build" : surface == "question" ? "laptop~decision" : ""
+        relay.selected = ["conversation", "terminal", "tools", "diff", "live-question", "history-question", "compaction", "queue", "question-reply"].contains(surface) ? "workstation~build" : surface == "question" ? "laptop~decision" : ""
         relay.outbox = Outbox(); relay.chat = RecentChat()
         relay.chat.put(Activity(id: "example-user", kind: "userMessage", text: "Validate empty inputs, then run the workspace tests."))
         relay.chat.put(Activity(id: "example-response", kind: "agentMessage", text: "I added an **empty-input guard** and a regression test. The workspace suite is running."))
@@ -530,6 +530,12 @@ struct LastKnownSession: View {
             let event: RelayEvent = decode(["kind": "activity", "session_id": "workstation~build", "turn_id": "example-turn", "activity": ["id": "example-async", "kind": "agentMessage", "text": "Which validation scope should I use?", "questions": [["title": "Which validation scope should I use?", "options": ["Full suite", "Focused checks"]]]]])
             relay.chat.apply(event)
             if surface != "history-question" { relay.liveQuestions.observe(event, activeTurn: "example-turn", current: true) }
+        }
+        if surface == "question-reply" {
+            relay.requests = [:]; relay.chat = RecentChat()
+            let reply: Activity = decode(["id": "example-reply", "kind": "userMessage", "text": "Keep it for the next check.", "replies": [["question": "Keep the isolated `validation-42` session for another check?", "answer": "Keep it for the next check."]]])
+            relay.chat.put(reply)
+            relay.chat.put(Activity(id: "example-reply-response", kind: "agentMessage", text: "I’ll keep `validation-42` available.\n\n### Next check\n\n- Verify **canonical identity** after reconnect.\n- Compare `turn_id` and the queued message.\n\n> Existing work stays untouched.\n\nThe session remains isolated until you finish validation."))
         }
         if surface == "queue" {
             relay.requests = [:]
@@ -562,7 +568,7 @@ struct LastKnownSession: View {
         Group {
             switch surface {
             case "fleet": RootView()
-            case "conversation", "question", "live-question", "history-question", "compaction": NavigationStack { SessionView() }
+            case "conversation", "question", "live-question", "history-question", "compaction", "queue", "question-reply": NavigationStack { SessionView() }
             case "needs-you", "live-inbox": NavigationStack { NeedsYouView().navigationTitle("Needs You") }
             case "navigation": NavigationStack { RelayLibraryView(openHistory: {}) }
             case "machine-diagnostics": NavigationStack { MachineDiagnosticsView(id: "workstation") }

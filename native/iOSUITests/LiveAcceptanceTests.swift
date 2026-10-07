@@ -432,7 +432,7 @@ import XCTest
     func testPublicProductScreenshots() {
         continueAfterFailure = false
         let app = XCUIApplication()
-        for surface in ["fleet", "conversation", "needs-you", "question", "terminal", "tools", "diff", "machines", "account", "settings", "diagnostics", "pairing", "navigation", "machine-diagnostics", "live-question", "live-inbox", "notifications", "compaction"] {
+        for surface in ["fleet", "conversation", "needs-you", "question", "terminal", "tools", "diff", "machines", "account", "settings", "diagnostics", "pairing", "navigation", "machine-diagnostics", "live-question", "live-inbox", "notifications", "compaction", "queue", "question-reply"] {
             app.launchArguments = ["--product-screenshot", surface, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
             app.launch()
             XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))

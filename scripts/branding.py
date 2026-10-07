@@ -33,13 +33,21 @@ def readme_lockups():
 
 def main():
     readme_lockups()
+    # Use the same official Codex geometry everywhere; chrome is a template
+    # image without the opaque Home Screen tile.
+    ns = "http://www.w3.org/2000/svg"
+    source = ET.parse(ROOT / "docs/assets/app/codex-app-icon.svg").getroot()
+    mark = ET.Element("{" + ns + "}svg", {"width": "24", "height": "24", "viewBox": "0 0 24 24"})
+    for path in source.findall("{" + ns + "}path"):
+        path = copy.deepcopy(path); path.set("fill", "#17191c"); mark.append(path)
+    ET.ElementTree(mark).write(SOURCE, encoding="unicode")
     if not shutil.which("rsvg-convert"):
         raise SystemExit("Install librsvg (macOS: brew install librsvg), then rerun.")
     ICON.mkdir(parents=True, exist_ok=True)
     render(ROOT / "docs/assets/app/codex-app-icon.svg", ICON / "AppIcon.png", 1024, 1024)
     for size in (192, 512):
-        render(SOURCE, ROOT / f"web/icon-{size}.png", size, size)
-    shutil.copyfile(SOURCE, ROOT / "web/icon.svg")
+        render(ROOT / "docs/assets/app/codex-app-icon.svg", ROOT / f"web/icon-{size}.png", size, size)
+    shutil.copyfile(ROOT / "docs/assets/app/codex-app-icon.svg", ROOT / "web/icon.svg")
     (ICON / "Contents.json").write_text(json.dumps({
         "images": [{"filename": "AppIcon.png", "idiom": "universal", "platform": "ios", "size": "1024x1024"}],
         "info": {"author": "Codex Relay", "version": 1}}, indent=2) + "\n")
@@ -50,14 +58,16 @@ def main():
     (mark_set / "Contents.json").write_text(json.dumps({
         "images": [{"filename": "RelayMark.svg", "idiom": "universal"}],
         "info": {"author": "Codex Relay", "version": 1},
-        "properties": {"preserves-vector-representation": True}}, indent=2) + "\n")
+        "properties": {"preserves-vector-representation": True, "template-rendering-intent": "template"}}, indent=2) + "\n")
     # Same source mark in the public social card; no real deployment data.
-    mark = SOURCE.read_text().split('<rect width="1024"')[1].split('</svg>')[0]
-    mark = '<rect width="1024"' + mark
+    paths = []
+    for path in source.findall("{" + ns + "}path"):
+        path = copy.deepcopy(path); path.set("fill", "#f0f2f3"); paths.append(ET.tostring(path, encoding="unicode"))
+    mark = "".join(paths)
     social = '''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
 <title>Codex Relay — your Codex fleet, on iPhone</title>
 <rect width="1200" height="630" fill="#15181c"/>
-<g transform="translate(60 140) scale(.32)">''' + mark + '''</g>
+<g transform="translate(60 140) scale(13.65)">''' + mark + '''</g>
 <g fill="#f0f2f3" font-family="-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif">
 <text x="440" y="236" font-size="64" font-weight="700">Codex Relay</text>
 <text x="444" y="313" font-size="32">Your Codex fleet. On iPhone.</text>
