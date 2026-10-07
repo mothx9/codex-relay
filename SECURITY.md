@@ -27,7 +27,7 @@ Secret files must be regular files with permissions 0600. The state directory is
 
 Logging excludes prompts, command payloads, account tokens and push endpoints. Errors delivered from Codex to the browser are deliberately generic because RPC errors can quote input. Login attempts, message sizes, fleet capacity, queues, pending requests, subscribers and ephemeral buffers are bounded. Slow subscribers are disconnected. The push service allowlist prevents arbitrary authenticated subscription URLs becoming an outbound SSRF proxy; redirects are disabled.
 
-The Service Worker caches only the static application shell, never API responses or transcripts. The browser does not create a transcript in localStorage/IndexedDB. Privacy mode hides machine/project names on notifications by default. A notification only deep-links into the authenticated UI and cannot approve a request.
+The Service Worker caches only the static application shell, never API responses or transcripts. The browser does not create a transcript in localStorage/IndexedDB. Web Push defaults to privacy mode. Native banners identify machine/project, session title and source turn; users can enable Hide session details, and existing explicit privacy choices are preserved. Neither path includes message or command content. A notification only deep-links into the authenticated UI and cannot approve a request.
 
 ## Reporting
 

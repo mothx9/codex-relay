@@ -49,7 +49,10 @@ streaming, keyboard changes and drag inertia never imply permission to force-scr
 [Machine diagnostics](../assets/app/screenshots/machine-diagnostics.png)
 
 The composer is one material surface with integrated 44-point controls. Session
-Info belongs to the header; Steer/Interrupt remain in the composer menu. A compact
+Info belongs to the header; Steer/Interrupt remain in an anchored composer action
+panel. The composer and keyboard remain visible when it opens. Copy Session Link
+and duplicate send actions are absent; queued-message editing appears only when
+supported. The panel clears when the current turn or connection changes. A compact
 neutral Working text sweep respects Reduce Motion and does not animate transcript
 updates. Context compaction replaces the Working label only while a real current
 compaction item is running; the last command is not repeated below the heartbeat.

@@ -35,8 +35,12 @@ Apple credentials. APNs Unregistered/BadDeviceToken responses remove the invalid
 subscription. A test requested by a paired native controller targets that
 controller, not the entire fleet of phones.
 
-Default lock-screen text omits machine, project, question and transcript content.
-The APNs payload contains opaque session/machine/request routing identities, a
+Native notifications identify the machine/project, session title and a short reference
+to the source turn. The turn identity comes from the event, never a newer running
+turn. **Hide session details** restores generic lock-screen copy; an existing
+explicit privacy preference is preserved. Message, question, command and output
+contents are never included. Web subscriptions retain their privacy preference.
+The APNs payload contains opaque session/machine/request/turn routing identities, a
 notice kind and the pending-request count observed at dispatch. Requests already
 resolved while queued are suppressed. Foreground rehydration corrects the badge
 and removes delivered request notices whose sessions no longer need input.

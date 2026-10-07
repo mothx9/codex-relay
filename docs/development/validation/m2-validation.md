@@ -377,3 +377,77 @@ is a Push-capable Apple team/profile and authorized provider key configured
 privately on the Hub, followed by physical remote banner/badge/tap/cold-start
 acceptance. Local alerts do not replace remote push. No final `v0.1.0` tag or
 release is published.
+
+## Composer and notification-context follow-up — 2026-10-07
+
+Starting reference: `fe9d1ec`. This follow-up preserves canonical state and changes
+presentation, notification context and public evidence.
+
+- Native and Hub notices identify machine/project, session title and the source
+  event's turn reference. They never borrow a newer session turn or include prompt,
+  response, command or output text. Hide session details restores generic copy;
+  existing explicit privacy preferences remain respected. This replaces the older
+  native-default description above; web privacy defaults are unchanged.
+- The one-line composer is 44 points high, with 44-point controls and a quieter
+  32-point send glyph. Its action panel leaves the composer, keyboard and heartbeat
+  visible. Steer and Interrupt remain capability/current-turn gated; Copy Session
+  Link and the duplicate send-button Steer action were removed. Draft preservation
+  and keyboard behavior pass targeted XCUITest.
+- Activity indentation and code type size are tighter. Public fixtures use one
+  coherent validation example, not private live work. A reproducible 18-second
+  simulator walkthrough records actual Fleet → conversation → actions → file diff
+  → Needs You navigation, with launcher frames excluded. All 18 screenshots were
+  regenerated and visually reviewed. Onboarding links to the canonical Machines
+  destination and its screenshot starts at the introduction.
+
+### Verification
+
+- Go formatting/vet, ordinary and race tests, 9 web checks and 8 installer checks
+  passed (`make check test`). The notification-context Go test covers redacted and
+  contextual payloads. 62 Swift tests passed, including source-turn identity,
+  missing metadata and privacy behavior.
+- Simulator build/build-for-testing passed. Native OS-banner acceptance passed for
+  completion, RPC input, live question and failure, including contextual subtitle,
+  dedupe, badge and disabled state. These are local notifications, not APNs.
+- Composer visibility/geometry, retained draft through Steer, whole-message copy,
+  the recorded walkthrough and screenshot assertions passed. Real-Hub read-only
+  XCUITest passed reading-position preservation with keyboard and foreground/cold
+  session/machine notification deep links. No real session received a command.
+- Signed physical build installed and launched in place. The earlier owner batch
+  acceptance remains valid evidence for that earlier build; this follow-up's
+  slimmer composer and contextual banners still need the owner's visual check.
+
+### Reference deployment and external limits
+
+Only the Hub required a backend update: `0.1.0-rc.5+m2.6`. Agents remain on
+`0.1.0-rc.5+m2.5`. The existing Hub upgrade retained its service/credential hashes,
+backed up SQLite and preserved shared Codex process identities. Direct configured
+Hub SSH worked after the workstation route timed out. The post-upgrade snapshot
+reported the GPU node and macOS Agent Online; the Linux workstation was Offline
+and independently unreachable by SSH. No network setting or workstation service
+was changed to conceal that state.
+
+The current signed app and embedded profile both lack `aps-environment`. The Hub
+still has no APNs key. The owner's Apple portal shows pending enrollment and a
+membership purchase prompt. Native remote push requires the paid Apple capability;
+local connected alerts do not. Home Screen Web Push is a separate no-membership
+option, not a claim of newly accepted native remote delivery. The project remains
+an RC with no final release/tag.
+
+### Owner check for this follow-up
+
+Open the installed app without re-pairing. In a currently Working session, open
+`+`: the slimmer input stays visible, Working remains readable, and the menu offers
+current-turn controls without Copy Session Link. Type a draft and switch to Steer
+without sending; confirm the text remains. Return to Follow-up or cancel the draft.
+Open a visible filename to inspect its diff. In Notifications, confirm Hide session
+details matches your preference. With the app connected on Fleet, a completion in
+an isolated validation session should identify machine/project, session and turn;
+do not create commands in production work just to trigger a banner.
+
+Compare machine connectivity in Relay → Machines with the canonical Hub view;
+an Offline machine must stay Offline rather than be displayed as Ready/finished.
+The public `codex-relay doctor` path documented in the operations guide is a
+transport/service diagnostic, not proof of a visible iPhone banner. Report any
+composer overlap or notification missing its source; owner gesture/banner
+acceptance is separate from the automated receipts above.

@@ -52,6 +52,17 @@ If a development watcher already exists, pass its PID using `--watcher-pid`;
 the script suspends and resumes that process. Do not create a duplicate watcher.
 Normal launch afterward restores the paired app without clearing Keychain.
 
+For a reproducible recording (requires `ffmpeg` and `ffprobe`):
+
+```sh
+python3 scripts/native-walkthrough.py --simulator "$SIMULATOR_UDID"
+```
+
+Use the same `--watcher-pid` option when necessary. The walkthrough navigates Fleet,
+a conversation, composer actions, a file diff and Needs You. Named test markers
+trim launcher frames before MP4/GIF export to `docs/assets/app/recordings`.
+Review the full recording before committing; never publish the raw capture.
+
 Review every exported image before committing. Source fixtures live in
 `ProductFixtures`; do not publish screenshots from real project work. The pipeline
 covers Fleet, conversation, Needs You, inline question, Terminal, tools, diff,

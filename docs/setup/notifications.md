@@ -9,6 +9,10 @@ registration proceeds independently. With a connected controller and permission,
 **Test local alert** to verify presentation. Disable Relay notifications here or
 change system permission in iOS Settings.
 
+By default, event banners identify machine/project, session and source turn.
+Enable **Hide session details** if that metadata should not appear on the lock
+screen. Message and command contents are never included.
+
 These alerts are best effort while connected. They do not cover force quit or
 arbitrary suspension. Completion in the session you are reading is quiet. Needs
 You and live-question badges reflect current attention, not completed work.
@@ -20,6 +24,22 @@ You and live-question badges reflect current attention, not completed work.
 APNs connects your Hub to Apple's push service. Pairing alone does not configure
 it. First finish normal Hub/iPhone setup; notification setup preserves the same
 Hub database, identity and controller enrollment.
+
+The Apple setup is performed once by the operator/developer, not by each iPhone
+user. After the app is correctly signed and the Hub is configured, permission,
+device-token refresh and Relay registration are handled by the app.
+
+Apple's [Developer Program](https://developer.apple.com/support/compare-memberships/)
+costs 99 USD per membership year, with local pricing where available. This is a
+developer membership fee, not a per-notification or per-controller charge.
+A pending enrollment cannot yet provide the required push signing capability.
+Do not purchase again if an existing payment is still processing.
+
+For a no-membership alternative, Relay also has Web Push in its PWA. On iOS 16.4+
+it requires adding the web app to the Home Screen and granting permission from
+there. [WebKit documents that no Apple Developer membership is required](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/).
+This routes to the web client and does not enable remote push for the native app.
+It is a separate delivery path, not evidence of physical acceptance on your device.
 
 ## 1. Prepare the Apple capability
 

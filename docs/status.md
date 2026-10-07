@@ -5,14 +5,15 @@ engineering evidence; they do not override this page or claim a public release.
 
 ## Release and distribution
 
-The source candidate is **0.1.0-rc.5**. The validated reference Hub and Agents use
-`0.1.0-rc.5+m2.5`. No final v0.1.0 is published by this productization pass.
+The source candidate is **0.1.0-rc.5**. The reference Hub uses
+`0.1.0-rc.5+m2.6`; Agents retain `0.1.0-rc.5+m2.5`. No final v0.1.0 is published by this productization pass.
 Build the candidate from source with `make build`; use `--binary` with the
 installer. The legacy default download is an older published RC, not current main.
 
 The latest wave adds explicit context-compaction status, compact mixed activity
 groups, direct file diffs, remaining-capacity quota windows and connected-client
-local banners. Eighteen sanitized screenshots document the current native views.
+local banners with machine/session/turn context and a slimmer persistent composer.
+Eighteen sanitized screenshots and a recorded walkthrough document the current native views.
 
 The native app supports iOS 17+, English/Italian, Dynamic Type and Reduce Motion.
 Liquid Glass uses a material fallback on older iOS. Installation currently
@@ -63,6 +64,10 @@ Current external gates: an Apple team/profile with Push Notifications and
 `aps-environment`, an authorized APNs provider key on the Hub, then physical
 banner/Notification Center/badge/tap/cold-start checks. The inspected Personal
 Team build lacks the entitlement and the reference Hub has no APNs provider key.
+The owner-provided Apple portal shows enrollment pending with a membership
+purchase prompt; the paid capability has not been activated. Local alerts remain
+available without that membership. See the setup guide for the separate free
+Home Screen Web Push option.
 Use the [notification setup guide](setup/notifications.md); ordinary control does
 not require APNs. Keep the RC until required physical acceptance passes.
 

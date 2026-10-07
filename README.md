@@ -18,6 +18,11 @@ controlling and continuing Codex sessions across multiple machines.
 - **Stay informed:** native local alerts while connected; remote APNs with your Apple setup.
 - **Keep control:** your Hub, your machines, local Codex login, no Relay cloud account.
 
+<p align="center"><a href="docs/assets/app/recordings/native-walkthrough.mp4"><img src="docs/assets/app/recordings/native-walkthrough.gif" width="280" alt="Recorded iPhone walkthrough: Fleet, conversation, current-turn actions, file diff and Needs You"></a></p>
+
+[Watch the short native walkthrough](docs/assets/app/recordings/native-walkthrough.mp4)
+— actual simulator recording with sanitized example content.
+
 ## How it works
 
 <img src="docs/assets/architecture/architecture.svg" alt="An iPhone connects to one Hub; Linux and macOS Agents connect outbound and use local Codex" width="850">
@@ -123,8 +128,9 @@ is never automatically resent.
 
 Relay can control Codex with the local user's privileges. Use trusted HTTPS,
 protect controller/machine credentials, and read [SECURITY.md](SECURITY.md).
-OpenAI authentication stays on the worker. Push text is private by default;
-notification taps navigate and never approve work.
+OpenAI authentication stays on the worker. Native notifications identify their
+source machine/session/turn; a privacy setting hides that metadata. Message and
+command contents are never included. Notification taps navigate and never approve work.
 
 ## Current status and distribution
 

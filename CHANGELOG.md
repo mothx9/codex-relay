@@ -6,6 +6,11 @@ required physical notification delivery, is complete.
 
 ## Unreleased — M2 productization
 
+- Contextual notification banners identify machine, project, session and source turn,
+  with an explicit hide-details preference and automatic device registration retry.
+- Slimmer composer with persistent contextual actions, tighter activity indentation,
+  quieter code typography, refreshed screenshots and a recorded native walkthrough.
+
 - Connected-client local iOS alerts, independent permission/delivery readiness,
   semantic deduplication and safe notification routing; remote APNs remains separate.
 - Ephemeral cross-session Live Questions with current-turn/epoch invalidation,
