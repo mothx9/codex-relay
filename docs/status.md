@@ -38,7 +38,9 @@ Relay never infers pending state from history or from a missing visible reply.
 
 A live question observed on the current connection appears in a separate
 **Live Questions** section of Needs You and contributes to the connected app's
-attention badge. It is an ephemeral hint, not a pending RPC. It stays reachable above the session composer. Reply prepares an explicit
+attention badge. It is an ephemeral hint, not a pending RPC. While current, its only presentation is above the session composer and in its
+reply sheet. After retirement, the original question remains readable in history.
+Reply prepares only the answer as an explicit
 current-turn Steer draft for review; it never sends automatically. It cannot dismiss
 another client's question. Turn boundaries, user input, local submission,
 disconnect or epoch changes retire the hint. Navigation alone does not.

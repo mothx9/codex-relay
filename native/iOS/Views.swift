@@ -529,7 +529,10 @@ struct LastKnownSession: View {
             relay.requests = [:]; relay.chat = RecentChat()
             let event: RelayEvent = decode(["kind": "activity", "session_id": "workstation~build", "turn_id": "example-turn", "activity": ["id": "example-async", "kind": "agentMessage", "text": "Which validation scope should I use?", "questions": [["title": "Which validation scope should I use?", "options": ["Full suite", "Focused checks"]]]]])
             relay.chat.apply(event)
-            if surface != "history-question" { relay.liveQuestions.observe(event, activeTurn: "example-turn", current: true) }
+            if surface != "history-question" {
+                relay.liveQuestions.observe(event, activeTurn: "example-turn", current: true)
+                relay.chat.put(Activity(id: "example-question-progress", kind: "agentMessage", text: "The empty-input regression passes. I’m checking the remaining validation paths while you choose the next scope."))
+            }
         }
         if surface == "question-reply" {
             relay.requests = [:]; relay.chat = RecentChat()

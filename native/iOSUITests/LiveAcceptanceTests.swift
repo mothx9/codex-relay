@@ -141,12 +141,16 @@ import XCTest
         let app = XCUIApplication()
         app.launchArguments = ["--product-screenshot", "live-question", "-AppleLanguages", "(en)"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["Asked during this live turn"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["session.liveQuestion"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["Asked during this live turn"].exists)
+        XCTAssertFalse(app.staticTexts["Reply using the live question above the composer."].exists)
         XCTAssertTrue(app.buttons["session.liveQuestion"].exists)
+        XCTAssertFalse(app.staticTexts["question.example-async.0"].exists)
+        XCTAssertFalse(app.staticTexts["activity.agentMessage.example-async"].exists)
         app.buttons["session.liveQuestion"].tap()
         app.buttons.containing(.staticText, identifier: "Full suite").firstMatch.tap()
         let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
-        XCTAssertEqual(composer.value as? String, "Which validation scope should I use?\nFull suite")
+        XCTAssertEqual(composer.value as? String, "Full suite")
         XCTAssertEqual(app.buttons["composer.send"].label, "Send Steer")
         XCTAssertFalse(app.buttons["Respond"].exists)
         // Preparing text never sends or resolves a request. History has no live action.
@@ -193,7 +197,8 @@ import XCTest
         XCTAssertTrue(banner.waitForExistence(timeout: 5))
         let capture = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); capture.name = "Real Codex live question and local banner"; capture.lifetime = .keepAlways; add(capture)
         banner.tap() // Exercise the same safe deep link as a real notification tap.
-        XCTAssertTrue(app.staticTexts["Asked during this live turn"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["session.liveQuestion"].waitForExistence(timeout: 15))
+        app.buttons["session.liveQuestion"].tap()
         let option = app.buttons.containing(.staticText, identifier: "Focused").firstMatch
         XCTAssertTrue(option.waitForExistence(timeout: 10)); option.tap()
         let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch

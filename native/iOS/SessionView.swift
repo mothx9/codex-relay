@@ -37,7 +37,7 @@ struct SessionView: View {
             VStack(spacing: 0) {
                 SessionTranscript(session: session, scrollRequest: $scrollRequest, onEdit: beginQueueEdit) { answer in
                     guard editingQueue == nil else { return }
-                    draft = draft.isEmpty ? answer : draft + "\n\n" + answer
+                    if !answer.isEmpty && draft != answer { draft = draft.isEmpty ? answer : draft + "\n\n" + answer }
                     composing = true
                 }
                 .simultaneousGesture(TapGesture().onEnded { actionsOpen = false })
@@ -249,7 +249,7 @@ struct SessionView: View {
     private func prepareReply(_ answer: String, record: LiveQuestion, session: RelaySession) {
         guard editingQueue == nil, !submitting, machineOnline(session), session.turnId == record.turnID,
               relay.liveQuestions.records.contains(where: { $0.id == record.id }), session.allows("steer") else { return }
-        draft = draft.isEmpty ? answer : draft + "\n\n" + answer
+        if !answer.isEmpty && draft != answer { draft = draft.isEmpty ? answer : draft + "\n\n" + answer }
         steer = true; expectedTurn = record.turnID; questionDetails = false; composing = true
     }
 
@@ -395,7 +395,7 @@ private struct LiveQuestionChoices: View {
         VStack(alignment: .leading, spacing: 10) {
             ChatMarkdown(text: question.title, identifier: "liveQuestion.title.\(index)")
             ForEach(question.options ?? [], id: \.self) { option in
-                Button { prepare(question.title + "\n" + option) } label: {
+                Button { prepare(option) } label: {
                     HStack {
                         Text(option).multilineTextAlignment(.leading)
                         Spacer()
@@ -404,7 +404,7 @@ private struct LiveQuestionChoices: View {
                 }.buttonStyle(.bordered).disabled(disabled)
             }
             Button(String(localized: "Write a reply", bundle: relayLocalizationBundle), systemImage: "square.and.pencil") {
-                prepare(question.title + "\n")
+                prepare("")
             }.frame(minHeight: 44).disabled(disabled)
         }
     }
@@ -470,7 +470,11 @@ private struct SessionTranscript: View {
                                 Label(activity.state == "running" && activity.turnId == session.turnId && session.displayStatus(machine: relay.machines[session.machineId], connected: relay.online) == "WORKING" ? String(localized: "Compacting context", bundle: relayLocalizationBundle) : activity.state == "completed" ? String(localized: "Context compacted", bundle: relayLocalizationBundle) : String(localized: "Context compaction", bundle: relayLocalizationBundle), systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
                                     .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("context.compaction")
                             } else if group.kind == .message, let activity = group.items.first {
-                                ChatMessageView(activity: activity, images: relay.outbox.images(session: session.id, clientID: activity.clientId), liveQuestion: relay.liveQuestions.records.contains { $0.sessionID == relay.selected && $0.activity.id == activity.id }, onQuestionReply: onQuestionReply).equatable()
+                                // A currently observed question has one interactive home.
+                                // When retired, its original upstream item remains readable here.
+                                if !relay.liveQuestions.records.contains(where: { $0.sessionID == session.id && $0.turnID == session.turnId && $0.activity.id == activity.id }) {
+                                    ChatMessageView(activity: activity, images: relay.outbox.images(session: session.id, clientID: activity.clientId), liveQuestion: false, onQuestionReply: onQuestionReply).equatable()
+                                }
                             } else {
                                 ToolSummaryView(group: group) { path, itemID in tools = ActivitySelection(group: group, path: path, itemID: itemID) }
                             }
@@ -623,20 +627,18 @@ private struct ChatMessageView: View, Equatable {
                         ChatMarkdown(text: activity.text, identifier: "activity." + activity.kind + "." + activity.id)
                     }
                     ForEach(Array(questions.enumerated()), id: \.offset) { index, question in
-                        VStack(alignment: .leading, spacing: 12) {
-                            Label(liveQuestion ? String(localized: "Asked during this live turn", bundle: relayLocalizationBundle) : String(localized: "Question", bundle: relayLocalizationBundle), systemImage: "questionmark.bubble").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                            if activity.text == questions.map(\.title).joined(separator: "\n\n") || !activity.text.contains(question.title) {
-                                ChatMarkdown(text: question.title, identifier: "question." + activity.id + ".\(index)")
-                            }
-                            if !liveQuestion {
-                                ForEach(Array((question.options ?? []).enumerated()), id: \.offset) { _, option in
+                        // Conversation content is readable once. Current actions have
+                        // one home in the live-question dock above the composer.
+                        if activity.text == questions.map(\.title).joined(separator: "\n\n") || !activity.text.contains(question.title) {
+                            ChatMarkdown(text: question.title, identifier: "question." + activity.id + ".\(index)")
+                        }
+                        if !liveQuestion {
+                            ForEach(Array((question.options ?? []).enumerated()), id: \.offset) { _, option in
+                                if !activity.text.contains(option) {
                                     Text("• " + option).font(.subheadline).foregroundStyle(.secondary).textSelection(.enabled)
                                 }
-                            } else {
-                                Text(String(localized: "Reply using the live question above the composer.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
                             }
-                        }.padding(RelaySpacing.row).frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                        }
                     }
                     if activity.truncated == true { Text(String(localized: "Partial context · see Codex for the full content.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary) }
                 }

@@ -471,8 +471,10 @@ and the Xcode 26.6 compatibility correction `2c1e830`.
   The disposable thread was archived afterward. No production thread was used.
 - Expanded activity rows replace the collapsed preview, identify server/tool, and
   open only the selected operation. File previews share a compact row. A live
-  question remains reachable above the composer and prepares an explicit Steer
-  draft. Historical questions never regain actionability.
+  question has one current presentation above the composer, with full options in
+  its reply sheet. It is not repeated in the transcript while current; afterward
+  its original history item remains readable. Selecting an option prepares only
+  the answer as an explicit Steer draft. Historical questions never regain actionability.
 - The Codex adapter projects valid structured question replies into question and
   answer content, preserving upstream item/client IDs. It does not expose the
   transport XML/JSON wrapper or infer pending state. Markdown uses a restrained
