@@ -178,6 +178,7 @@ public struct RelayEvent: Decodable, Sendable {
     public let timestamp: String?; public let followUps: [FollowUp]?
 }
 public struct CommandResult: Decodable, Sendable {
+    public let queueId: String?
     public let machineId: String?; public let catalogueCursor: String?; public let sessions: [RelaySession]?
     public let id: String; public let ok: Bool; public let error: String?; public let errorCode: String?; public let sessionId: String?
     public let history: [Activity]?; public let historyCursor: String?; public let followUps: [FollowUp]?

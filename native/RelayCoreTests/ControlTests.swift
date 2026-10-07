@@ -26,8 +26,8 @@ final class ControlTests: XCTestCase {
     func testQueueAckDoesNotCompleteAndCanonicalIdentityReconciles() throws {
         var box = Outbox(); let id = try box.add(id: "client", session: "m~t", kind: "follow_up", text: "later")
         XCTAssertEqual(box.items[0].phase, .local); box.sending(id); XCTAssertEqual(box.items[0].phase, .sending)
-        let ack: CommandResult = try decode(#"{"id":"client","ok":true}"#); box.result(ack)
-        XCTAssertEqual(box.items[0].phase, .queued); XCTAssertEqual(box.visible(session: "m~t").first?.text, "later")
+        let ack: CommandResult = try decode(#"{"id":"client","ok":true,"queue_id":"native-queue"}"#); box.result(ack)
+        XCTAssertEqual(box.items[0].queueId, "native-queue"); XCTAssertEqual(box.items[0].phase, .queued); XCTAssertEqual(box.visible(session: "m~t").first?.text, "later")
         box.disconnected(); XCTAssertEqual(box.items[0].phase, .queued)
         box.dispatched(session: "m~t", clientId: id); XCTAssertEqual(box.items[0].phase, .dispatched)
         let item = Activity(id: "canonical", kind: "userMessage", text: "later", clientId: id)
