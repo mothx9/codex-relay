@@ -22,6 +22,7 @@ Relay does not expose model reasoning.
 | `thread/tokenUsage/updated` | Typed token counters, source and observation time | Session accounting metadata | M2: counters in Session Info |
 | command/file/permissions approval, `item/tool/requestUserInput`, `mcpServer/elicitation/request` | Supported pending RPC mapping; replay pins session | One canonical pending map, metadata persistence, private watched form context | Fleet, Inbox and inline form derive from the same request identity |
 | `serverRequest/resolved` | Removes canonical local pending request once | Removes Hub request and reservation | Removes request across routes |
+| `agentMessage.delivery = async` with `questions` | Preserves visible question content; **not a pending RPC** | Transcript activity only | Readable conversation content; no inferred Inbox entry |
 | `account/updated`, `account/rateLimits/updated` | Allowlisted typed account event and sparse quota merge | Canonical account metadata / fleet snapshot | M2: derived Account Registry and dynamic usage windows |
 | `account/read`, `account/rateLimits/read` | Read without token refresh; source/freshness metadata | Snapshot account foundation | No Relay-side authentication |
 | reasoning deltas, auth token refresh RPCs | Not forwarded | No reasoning/auth payload | No reasoning/auth payload |
@@ -54,6 +55,55 @@ Relay does not expose model reasoning.
   messages, bounded question content and canonical history. This is distinct
   from the supported pending-RPC recovery tests and should not be relabelled a
   still-pending request.
+
+## Async-question currentness limitation (2026-10-07)
+
+A live owner report exposed a gap distinct from the blocking request acceptance:
+`request_user_input_async` produces an assistant item with `delivery: "async"`
+and `questions`. It does not create an `item/tool/requestUserInput` server RPC.
+The original question was readable in the conversation but absent from Needs You.
+
+An uncommitted recovery experiment incorrectly promoted historical async items
+without matching reply envelopes into canonical pending requests. It produced
+four stale entries from earlier owner turns and one from an archived validation
+thread. A successful isolated answer proved delivery of a reply, **not** that the
+recovered questions were still current. The experiment was removed and the Hub
+and affected Agents restored to `0.1.0-rc.5+m2.3`; no real questions were answered
+or rejected during cleanup. The owned validation thread was archived.
+
+The exact installed upstream version, Codex `rust-v0.160.1` (commit
+`d27764b82f7118f674371e6d6e76271d9d606edb`), establishes these boundaries:
+
+- [Live item handling](https://github.com/openai/codex/blob/d27764b82f7118f674371e6d6e76271d9d606edb/codex-rs/tui/src/chatwidget/streaming.rs)
+  adds questions only when the item is not replayed.
+- [Question state](https://github.com/openai/codex/blob/d27764b82f7118f674371e6d6e76271d9d606edb/codex-rs/tui/src/bottom_pane/async_questions/state.rs)
+  is client-local, retains handled identities, and has local dismissal/countdown
+  behavior. An unanswered historical item is not proof of a current request.
+- [Turn-end tests](https://github.com/openai/codex/blob/d27764b82f7118f674371e6d6e76271d9d606edb/codex-rs/tui/src/chatwidget/tests/question_turn_end_tests.rs)
+  cover removal on completion, failure and interruption, preserving typed drafts.
+- [Input tests](https://github.com/openai/codex/blob/d27764b82f7118f674371e6d6e76271d9d606edb/codex-rs/tui/src/chatwidget/tests/questions_tests.rs)
+  show that ordinary accepted input can also clear questions locally.
+
+The installed app-server schema has no corresponding shared async-question
+pending list or dismissal/resolution notification. `serverRequest/resolved`
+belongs to actual server requests; Relay must not invent that lifecycle for
+assistant items. Cross-client async Inbox parity remains **unsupported** until
+an authoritative currentness/dismissal contract is available. This does not
+weaken recovery of supported pending RPCs, which remain canonical and one-shot.
+No zero-loss claim for asynchronous questions is made.
+
+`TestReconnectAndHistoryDoNotResurrectAsyncQuestions` covers reconnect, repeated
+snapshot/history reads, multiple old questions without structured replies, and
+coexistence with a real pending RPC. The native opt-in read-only test
+`testLiveHistoryCannotCreateNeedsYou` checks the real Inbox after opening history
+and relaunching, only when an independent Hub read confirms zero requests.
+
+Rollback validation passed: `make check test` (including race tests), 50 Swift
+tests, simulator build-for-testing, and the real read-only Inbox UI test. The
+Inbox screenshot was inspected and matched the Hub's zero-request snapshot;
+all three Agents were Online. The signed physical build was installed and
+launched successfully. Physical gestures were not requalified in this check.
+The previously committed chat scroll correction remains included.
 
 ## Latency interpretation
 

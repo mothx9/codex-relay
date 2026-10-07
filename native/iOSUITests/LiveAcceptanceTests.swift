@@ -12,6 +12,7 @@ import XCTest
         let sendTurn: Bool
         let copyItemID: String?
         let copyText: String?
+        let expectEmptyInbox: Bool?
     }
     private func wait(_ seconds: TimeInterval = 30, _ condition: @escaping () -> Bool) {
         let predicate = NSPredicate { _, _ in condition() }
@@ -23,6 +24,27 @@ import XCTest
             app.swipeUp()
         }
         XCTAssertTrue(element.isHittable)
+    }
+    func testLiveHistoryCannotCreateNeedsYou() throws {
+        guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires a paired live Hub.") }
+        let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
+        guard config.expectEmptyInbox == true else { throw XCTSkip("Requires independently confirmed empty canonical pending state.") }
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launch()
+        let search = app.textFields["fleet.search"]
+        XCTAssertTrue(search.waitForExistence(timeout: 20)); search.tap(); search.typeText(config.sessionTitle)
+        let session = app.buttons["session." + config.sessionID]
+        XCTAssertTrue(session.waitForExistence(timeout: 15)); session.tap()
+        XCTAssertTrue(app.scrollViews["session.transcript"].waitForExistence(timeout: 20))
+        // Read real transcript pages; never answer, steer or interrupt this work.
+        app.scrollViews["session.transcript"].swipeDown()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.tabBars.buttons["Needs You"].tap()
+        XCTAssertTrue(app.staticTexts["No pending requests"].waitForExistence(timeout: 15))
+        let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Live Inbox after historical question rollback"; capture.lifetime = .keepAlways; add(capture)
+        app.terminate(); app.launch()
+        XCTAssertTrue(app.tabBars.buttons["Needs You"].waitForExistence(timeout: 15)); app.tabBars.buttons["Needs You"].tap()
+        XCTAssertTrue(app.staticTexts["No pending requests"].waitForExistence(timeout: 15))
     }
     func testIsolatedChatComposerAndToolDetails() {
         continueAfterFailure = false

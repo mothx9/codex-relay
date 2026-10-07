@@ -28,7 +28,7 @@ func TestNormalize(t *testing.T) {
 
 func TestAsyncQuestionAgentMessagePreservesCanonicalDisplayContext(t *testing.T) {
 	for _, text := range []string{"", "Review the options below."} {
-		raw, _ := json.Marshal(map[string]any{"type": "agentMessage", "id": "canonical-question", "text": text, "questions": []map[string]any{{"title": "Which scope?", "options": []string{"Minimal", "Complete"}}}})
+		raw, _ := json.Marshal(map[string]any{"type": "agentMessage", "id": "canonical-question", "delivery": "async", "text": text, "questions": []map[string]any{{"title": "Which scope?", "options": []string{"Minimal", "Complete"}}}})
 		v := activity(raw)
 		if v.ID != "canonical-question" || v.Kind != "agentMessage" || len(v.Questions) != 1 || v.Questions[0].Title != "Which scope?" || len(v.Questions[0].Options) != 2 || v.Truncated {
 			t.Fatal("canonical async question context lost", v)
@@ -46,7 +46,7 @@ func TestAsyncQuestionAgentMessagePreservesCanonicalDisplayContext(t *testing.T)
 		}
 	}
 	a := &Adapter{cfg: Config{MachineID: "m"}, sessions: map[string]protocol.Session{"t": {ID: "m~t", ThreadID: "t", Status: protocol.Working, TurnID: "active"}}, requests: map[string]pending{}, events: make(chan protocol.Event, 8), done: make(chan struct{}), queue: true}
-	a.handle(rpcMessage{Method: "item/completed", Params: json.RawMessage(`{"threadId":"t","turnId":"active","item":{"type":"agentMessage","id":"question","text":"","questions":[{"title":"Which scope?","options":["Minimal","Complete"]}]}}`)})
+	a.handle(rpcMessage{Method: "item/completed", Params: json.RawMessage(`{"threadId":"t","turnId":"active","item":{"type":"agentMessage","id":"question","delivery":"async","text":"","questions":[{"title":"Which scope?","options":["Minimal","Complete"]}]}}`)})
 	ev := <-a.Events()
 	if ev.Kind != "activity" || ev.Activity == nil || len(ev.Activity.Questions) != 1 {
 		t.Fatal("question-only live event dropped")
