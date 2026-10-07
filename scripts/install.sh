@@ -113,6 +113,10 @@ if [ "$dry_run" = 0 ]; then
  mkdir -p "$(dirname "$install_bin")" "$state_dir" "$config_dir"
  if [ -z "$relay_binary" ]; then
   relay_version=${RELAY_VERSION:-v0.1.0-rc.3}
+  if [ "$pair_agent" = 1 ] && [ -z "${RELAY_VERSION:-}" ]; then
+   printf '%s\n' 'Guided pairing requires a current candidate. Supply --binary or RELAY_VERSION for a published compatible release; the legacy default does not include this workflow.' >&2
+   exit 2
+  fi
   download_dir=$(mktemp -d)
   trap 'rm -rf "$download_dir"' EXIT HUP INT TERM
   base="https://github.com/mothx9/codex-relay/releases/download/$relay_version"

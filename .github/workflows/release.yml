@@ -1,0 +1,46 @@
+name: release candidate artifacts
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/localization.py --check
+      - run: swift test --package-path native
+      - run: xcodebuild -project native/CodexRelay.xcodeproj -scheme CodexRelay -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build-for-testing
+  artifacts:
+    needs: native
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.x'
+      - run: make check test
+      - name: Build tagged binaries and checksums
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          case "$RELEASE_TAG" in v[0-9]*.[0-9]*.[0-9]*) ;; *) exit 2 ;; esac
+          make checksums VERSION="${RELEASE_TAG#v}"
+          (cd dist && sha256sum -c SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-binaries
+          path: dist/
+      - name: Prepare a draft for owner review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if printf '%s' "$RELEASE_TAG" | grep -q -- '-'; then prerelease=--prerelease; else prerelease=; fi
+          gh release create "$RELEASE_TAG" --verify-tag --draft $prerelease \
+            --title "Codex Relay $RELEASE_TAG" --notes-file CHANGELOG.md \
+            dist/codex-relay-linux-amd64 dist/codex-relay-linux-arm64 \
+            dist/codex-relay-darwin-arm64 dist/SHA256SUMS scripts/install.sh

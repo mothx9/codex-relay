@@ -38,6 +38,15 @@ class InstallerTests(unittest.TestCase):
         p.write_text("#!/bin/sh\n" + body + "\n")
         p.chmod(0o755)
 
+    def test_guided_pairing_rejects_implicit_legacy_download(self):
+        self.env.pop("RELAY_VERSION", None)
+        self.script("curl", 'echo unexpected-download >&2; exit 99')
+        result = subprocess.run(["sh", str(self.installer), "agent", "--hub-url", "https://relay.test", "--machine", "test", "--pair", "--codex", "/bin/true", "--no-start"], env=self.env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Guided pairing requires a current candidate", result.stderr)
+        self.assertNotIn("unexpected-download", result.stderr)
+        self.assertFalse((self.install_root / ".config/systemd/user/codex-relay-agent.service").exists())
+
     def run_install(self, *args, success=True, role="hub"):
         command = ["sh", str(self.installer), role, "--binary", str(self.binary)]
         if role == "hub":
