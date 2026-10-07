@@ -3,6 +3,7 @@
 "%@: choose an allowed value." = "%@: scegli un valore previsto.";
 "%@: enter a valid value of the required type." = "%@: inserisci un valore valido per il tipo richiesto.";
 "%lld commands" = "%lld comandi";
+"%lld completed" = "%lld completati";
 "%lld events" = "%lld eventi";
 "%lld failed" = "%lld non riusciti";
 "%lld files changed" = "%lld file modificati";
@@ -24,6 +25,7 @@
 "1 event" = "1 evento";
 "1 file changed" = "1 file modificato";
 "1 item" = "1 elemento";
+"1 machine needs attention" = "1 macchina richiede attenzione";
 "1 operation" = "1 operazione";
 "1 session working" = "1 sessione in corso";
 "8-digit pairing code" = "Codice di abbinamento a 8 cifre";
@@ -41,6 +43,7 @@
 "Add a follow-up…" = "Aggiungi un follow-up…";
 "Add a machine" = "Aggiungi una macchina";
 "Add machine" = "Aggiungi macchina";
+"Adds this option to your draft. Review before sending." = "Aggiunge questa opzione alla bozza. Controllala prima di inviare.";
 "Agent epoch" = "Epoca agent";
 "Agent → Hub" = "Agent → Hub";
 "Agents on your machines" = "Agent sulle tue macchine";
@@ -56,6 +59,7 @@
 "Apple registration unavailable. Check the signed app’s Push Notifications entitlement and provisioning profile." = "Registrazione Apple non disponibile. Verifica la funzionalità Push Notifications e il profilo di provisioning dell’app firmata.";
 "Approval requested" = "Approvazione richiesta";
 "Approve Once" = "Approva una volta";
+"Asked during this live turn" = "Domanda ricevuta in questo turno live";
 "Authorization" = "Autorizzazione";
 "Authorized" = "Autorizzato";
 "Authorized controller" = "Controller autorizzato";
@@ -72,6 +76,7 @@
 "Changes" = "Modifiche";
 "Check outcome in Codex" = "Esito da verificare in Codex";
 "Checked" = "Verificato";
+"Choose an option to prepare a message. This is not a pending approval." = "Scegli un’opzione per preparare un messaggio. Non è un’approvazione in attesa.";
 "Choose…" = "Seleziona…";
 "Clear search" = "Cancella ricerca";
 "Clocks not comparable" = "Orologi non confrontabili";
@@ -404,6 +409,7 @@
 "Session unavailable" = "Sessione non disponibile";
 "Session, machine or project" = "Sessione, macchina o progetto";
 "Sessions" = "Sessioni";
+"Set up Hub notifications" = "Configura le notifiche del Hub";
 "Settings" = "Impostazioni";
 "Share" = "Condividi";
 "Show" = "Mostra";

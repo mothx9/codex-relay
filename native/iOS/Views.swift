@@ -233,8 +233,7 @@ struct PendingView: View {
     @State private var answers: [String: String] = [:]
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(request.kind == "user_input" ? String(localized: "Codex needs your input", bundle: relayLocalizationBundle) : request.kind == "command_approval" ? String(localized: "Codex wants to run", bundle: relayLocalizationBundle) : request.kind == "file_approval" ? String(localized: "Codex wants to change files", bundle: relayLocalizationBundle) : request.kind == "permissions_approval" ? String(localized: "Codex requests permission", bundle: relayLocalizationBundle) : String(localized: "Codex needs a decision", bundle: relayLocalizationBundle)).font(.headline)
-            Text("\(relay.machines[request.machineId]?.name ?? request.machineId) · \(relay.current?.project ?? "")").font(.caption).foregroundStyle(.secondary)
+            Text(request.kind == "user_input" ? String(localized: "Question", bundle: relayLocalizationBundle) : request.kind == "command_approval" ? String(localized: "Codex wants to run", bundle: relayLocalizationBundle) : request.kind == "file_approval" ? String(localized: "Codex wants to change files", bundle: relayLocalizationBundle) : request.kind == "permissions_approval" ? String(localized: "Codex requests permission", bundle: relayLocalizationBundle) : String(localized: "Codex needs a decision", bundle: relayLocalizationBundle)).font(.headline)
             if !(request.questions ?? []).contains(where: { $0.question.trimmingCharacters(in: .whitespacesAndNewlines) == request.description.trimmingCharacters(in: .whitespacesAndNewlines) }) {
                 Text(request.description).textSelection(.enabled)
             }
@@ -288,7 +287,8 @@ struct PendingView: View {
             if let error = relay.requestErrors[request.presentationID] {
                 Text(error).font(.caption).foregroundStyle(.orange)
             }
-        }.padding(RelaySpacing.page).background(RelayPalette.attention.opacity(0.07)).clipShape(RoundedRectangle(cornerRadius: 12))
+        }.padding(RelaySpacing.row).background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(RelayPalette.attention.opacity(0.3)))
             .disabled(relay.requestProgress[request.presentationID] != nil)
     }
 }
@@ -481,7 +481,7 @@ struct LastKnownSession: View {
         relay.liveActivities = ["workstation~build": decode(["item_id": "example-command", "kind": "terminal", "label": "cargo test --workspace", "state": "running", "timestamp": stamp])]
         let request: PendingRequest = decode(["request_id": "example-request", "session_id": "laptop~decision", "machine_id": "laptop", "kind": "user_input", "description": "Which validation scope should I use?", "expires_at": "2099-01-01T00:00:00Z", "created_at": stamp, "can_approve": true, "questions": [["id": "scope", "header": "Validation", "question": "Which validation scope should I use?", "options": [["label": "Full suite", "description": "Run unit tests and integration checks."], ["label": "Focused checks", "description": "Run tests for the changed module."]]]]])
         relay.requests = [request.id: request]
-        relay.selected = ["conversation", "terminal", "tools", "diff"].contains(surface) ? "workstation~build" : surface == "question" ? "laptop~decision" : ""
+        relay.selected = ["conversation", "terminal", "tools", "diff", "live-question", "history-question"].contains(surface) ? "workstation~build" : surface == "question" ? "laptop~decision" : ""
         relay.outbox = Outbox(); relay.chat = RecentChat()
         relay.chat.put(Activity(id: "example-user", kind: "userMessage", text: "Validate empty inputs, then run the workspace tests."))
         relay.chat.put(Activity(id: "example-response", kind: "agentMessage", text: "The validator now rejects empty input before running checks. I’m testing the change across the workspace.\n\n### What changed\n- Added an explicit **empty-input guard**.\n- Kept existing error propagation.\n- Added a regression test for `Error::EmptyInput`."))
@@ -498,6 +498,12 @@ struct LastKnownSession: View {
             relay.chat.put(Activity(id: "example-code", kind: "agentMessage", text: "The guard keeps the failure explicit:\n\n```rust\nif input.is_empty() {\n    return Err(Error::EmptyInput);\n}\nrun_checks(input)?;\n```\n\nThe regression test has passed. Integration checks are still running."))
         }
         if surface == "question" { relay.chat = RecentChat(); relay.chat.put(Activity(id: "example-question-intro", kind: "agentMessage", text: "The release candidate is ready for validation. I need your choice before starting the checks.")) }
+        if surface == "live-question" || surface == "history-question" {
+            relay.requests = [:]; relay.chat = RecentChat()
+            let event: RelayEvent = decode(["kind": "activity", "session_id": "workstation~build", "turn_id": "example-turn", "activity": ["id": "example-async", "kind": "agentMessage", "text": "Which validation scope should I use?", "questions": [["title": "Which validation scope should I use?", "options": ["Full suite", "Focused checks"]]]]])
+            relay.chat.apply(event)
+            if surface == "live-question" { relay.liveQuestions.observe(event, activeTurn: "example-turn", current: true) }
+        }
         let account: AccountEntry = decode(["id": "example-account", "identity_basis": "account_id", "account": ["kind": "chatgpt", "email": "developer@example.invalid", "plan": "Pro", "source": "codex", "observed_at": stamp, "limits": ["primary": ["used_percent": 61, "window_duration_mins": 300, "resets_at": Int(now.timeIntervalSince1970) + 8040], "secondary": ["used_percent": 31, "window_duration_mins": 10080, "resets_at": Int(now.timeIntervalSince1970) + 172800]]], "machines": ["workstation", "laptop"], "source_machine": "laptop", "fresh": true, "updated_at": stamp])
         relay.accounts = [account]
         relay.registry = DeviceRegistry(operators: relay.registry!.operators, machines: machines.map { MachineDevice(machine: $0, access: "ALLOWED") }, currentDeviceId: "preview-device", hubUrl: "https://relay.example.invalid", chatgptDeviceManagement: false)
@@ -515,7 +521,7 @@ struct LastKnownSession: View {
         Group {
             switch surface {
             case "fleet": RootView()
-            case "conversation", "question": NavigationStack { SessionView() }
+            case "conversation", "question", "live-question", "history-question": NavigationStack { SessionView() }
             case "needs-you": NavigationStack { NeedsYouView().navigationTitle("Needs You") }
             case "navigation": NavigationStack { RelayLibraryView(openHistory: {}) }
             case "machine-diagnostics": NavigationStack { MachineDiagnosticsView(id: "workstation") }

@@ -5501,6 +5501,66 @@
           }
         }
       }
+    },
+    "Asked during this live turn": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Domanda ricevuta in questo turno live"
+          }
+        }
+      }
+    },
+    "Adds this option to your draft. Review before sending.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiunge questa opzione alla bozza. Controllala prima di inviare."
+          }
+        }
+      }
+    },
+    "Choose an option to prepare a message. This is not a pending approval.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli un’opzione per preparare un messaggio. Non è un’approvazione in attesa."
+          }
+        }
+      }
+    },
+    "%lld completed": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld completati"
+          }
+        }
+      }
+    },
+    "Set up Hub notifications": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configura le notifiche del Hub"
+          }
+        }
+      }
+    },
+    "1 machine needs attention": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 macchina richiede attenzione"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

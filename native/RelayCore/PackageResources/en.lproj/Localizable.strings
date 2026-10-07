@@ -3,6 +3,7 @@
 "%@: choose an allowed value." = "%@: choose an allowed value.";
 "%@: enter a valid value of the required type." = "%@: enter a valid value of the required type.";
 "%lld commands" = "%lld commands";
+"%lld completed" = "%lld completed";
 "%lld events" = "%lld events";
 "%lld failed" = "%lld failed";
 "%lld files changed" = "%lld files changed";
@@ -24,6 +25,7 @@
 "1 event" = "1 event";
 "1 file changed" = "1 file changed";
 "1 item" = "1 item";
+"1 machine needs attention" = "1 machine needs attention";
 "1 operation" = "1 operation";
 "1 session working" = "1 session working";
 "8-digit pairing code" = "8-digit pairing code";
@@ -41,6 +43,7 @@
 "Add a follow-up…" = "Add a follow-up…";
 "Add a machine" = "Add a machine";
 "Add machine" = "Add machine";
+"Adds this option to your draft. Review before sending." = "Adds this option to your draft. Review before sending.";
 "Agent epoch" = "Agent epoch";
 "Agent → Hub" = "Agent → Hub";
 "Agents on your machines" = "Agents on your machines";
@@ -56,6 +59,7 @@
 "Apple registration unavailable. Check the signed app’s Push Notifications entitlement and provisioning profile." = "Apple registration unavailable. Check the signed app’s Push Notifications entitlement and provisioning profile.";
 "Approval requested" = "Approval requested";
 "Approve Once" = "Approve Once";
+"Asked during this live turn" = "Asked during this live turn";
 "Authorization" = "Authorization";
 "Authorized" = "Authorized";
 "Authorized controller" = "Authorized controller";
@@ -72,6 +76,7 @@
 "Changes" = "Changes";
 "Check outcome in Codex" = "Check outcome in Codex";
 "Checked" = "Checked";
+"Choose an option to prepare a message. This is not a pending approval." = "Choose an option to prepare a message. This is not a pending approval.";
 "Choose…" = "Choose…";
 "Clear search" = "Clear search";
 "Clocks not comparable" = "Clocks not comparable";
@@ -404,6 +409,7 @@
 "Session unavailable" = "Session unavailable";
 "Session, machine or project" = "Session, machine or project";
 "Sessions" = "Sessions";
+"Set up Hub notifications" = "Set up Hub notifications";
 "Settings" = "Settings";
 "Share" = "Share";
 "Show" = "Show";

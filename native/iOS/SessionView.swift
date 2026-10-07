@@ -22,7 +22,11 @@ struct SessionView: View {
     var body: some View {
         if let session = relay.current {
             VStack(spacing: 0) {
-                SessionTranscript(session: session, scrollRequest: $scrollRequest, onEdit: beginQueueEdit)
+                SessionTranscript(session: session, scrollRequest: $scrollRequest, onEdit: beginQueueEdit) { answer in
+                    guard editingQueue == nil else { return }
+                    draft = draft.isEmpty ? answer : draft + "\n\n" + answer
+                    composing = true
+                }
                 SessionHeartbeat(session: session).padding(.horizontal, RelaySpacing.page)
                 composer(session).padding(.horizontal, 16).padding(.vertical, 8)
             }
@@ -191,6 +195,7 @@ private struct SessionTranscript: View {
     let session: RelaySession
     @Binding var scrollRequest: Int
     let onEdit: (Outgoing) -> Void
+    let onQuestionReply: (String) -> Void
     @State private var tools: TranscriptGroup?
     @State private var scrolling = TranscriptScrollPolicy()
     @State private var initialScroll = false
@@ -234,7 +239,7 @@ private struct SessionTranscript: View {
                         }
                         ForEach(TranscriptGroup.make(relay.chat.items)) { group in
                             if group.kind == .message, let activity = group.items.first {
-                                ChatMessageView(activity: activity).equatable()
+                                ChatMessageView(activity: activity, liveQuestion: relay.liveQuestions.itemIDs.contains(activity.id), onQuestionReply: onQuestionReply).equatable()
                             } else {
                                 ToolSummaryView(group: group) { tools = group }
                             }
@@ -298,7 +303,8 @@ private struct SessionTranscript: View {
                 .overlay(alignment: .bottomTrailing) {
                     if !scrolling.followsLatest && !scrolling.isInteracting {
                         Button { scrollRequest += 1 } label: { Label(String(localized: "Latest messages", bundle: relayLocalizationBundle), systemImage: "arrow.down") }
-                            .font(.caption.weight(.medium)).buttonStyle(.bordered).padding(12)
+                            .labelStyle(.iconOnly).font(.subheadline.weight(.semibold)).frame(width: 44, height: 44)
+                            .background(.regularMaterial, in: Circle()).buttonStyle(.plain).padding(8)
                             .accessibilityIdentifier("transcript.latest")
                     }
                 }
@@ -356,6 +362,9 @@ private struct ComposerSurface: ViewModifier {
 
 private struct ChatMessageView: View, Equatable {
     let activity: Activity
+    let liveQuestion: Bool
+    let onQuestionReply: (String) -> Void
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool { lhs.activity == rhs.activity && lhs.liveQuestion == rhs.liveQuestion }
     private var user: Bool { activity.kind == "userMessage" }
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
@@ -371,20 +380,25 @@ private struct ChatMessageView: View, Equatable {
                     if questions.isEmpty || activity.text != questions.map(\.title).joined(separator: "\n\n") {
                         ChatMarkdown(text: activity.text, identifier: "activity." + activity.kind + "." + activity.id)
                     }
-                    ForEach(Array(questions.enumerated()).filter { !activity.text.contains($0.element.title) }, id: \.offset) { index, question in
+                    ForEach(Array(questions.enumerated()), id: \.offset) { index, question in
                         VStack(alignment: .leading, spacing: 12) {
-                            Label(String(localized: "Question", bundle: relayLocalizationBundle), systemImage: "questionmark.bubble").font(.caption.weight(.semibold)).foregroundStyle(.orange)
-                            Text(question.title).font(.body).textSelection(.enabled)
-                                .accessibilityIdentifier("question." + activity.id + ".\(index)")
+                            Label(liveQuestion ? String(localized: "Asked during this live turn", bundle: relayLocalizationBundle) : String(localized: "Question", bundle: relayLocalizationBundle), systemImage: "questionmark.bubble").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                            if activity.text == questions.map(\.title).joined(separator: "\n\n") || !activity.text.contains(question.title) {
+                                Text(question.title).font(.body).textSelection(.enabled)
+                                    .accessibilityIdentifier("question." + activity.id + ".\(index)")
+                            }
                             ForEach(Array((question.options ?? []).enumerated()), id: \.offset) { _, option in
-                                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                                    Text("•").foregroundStyle(.secondary)
-                                    Text(option).font(.subheadline).textSelection(.enabled)
+                                if liveQuestion {
+                                    Button { onQuestionReply(question.title + "\n" + option) } label: {
+                                        HStack { Text(option); Spacer(); Image(systemName: "arrow.down.to.line") }.font(.subheadline).frame(minHeight: 44)
+                                    }.accessibilityHint(String(localized: "Adds this option to your draft. Review before sending.", bundle: relayLocalizationBundle))
+                                } else {
+                                    Text("• " + option).font(.subheadline).foregroundStyle(.secondary).textSelection(.enabled)
                                 }
                             }
-                        }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
-                            .background(.orange.opacity(0.055), in: RoundedRectangle(cornerRadius: 16))
-                            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.orange.opacity(0.2)))
+                            if liveQuestion { Text(String(localized: "Choose an option to prepare a message. This is not a pending approval.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary) }
+                        }.padding(RelaySpacing.row).frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
                     }
                     if activity.truncated == true { Text(String(localized: "Partial context · see Codex for the full content.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary) }
                 }

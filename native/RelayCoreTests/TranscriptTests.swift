@@ -160,3 +160,42 @@ extension TranscriptTests {
         XCTAssertEqual(TranscriptGroup.make(chat.items).map(\.id), ["terminal.command", "mcp.tool"])
     }
 }
+
+extension TranscriptTests {
+    private func liveQuestionEvent(_ id: String = "question", kind: String = "activity", turn: String = "turn") throws -> RelayEvent {
+        let data = try JSONSerialization.data(withJSONObject: ["kind": kind, "session_id": "machine~thread", "turn_id": turn,
+            "activity": ["id": id, "kind": "agentMessage", "text": "Which scope?", "questions": [["title": "Which scope?", "options": ["Focused", "Full"]]]]])
+        return try RelayJSON.decoder().decode(RelayEvent.self, from: data)
+    }
+    func testLiveQuestionHintNeverComesFromHistoryOrReconnect() throws {
+        var hints = LiveQuestions(); var chat = RecentChat()
+        let event = try liveQuestionEvent()
+        chat.mergeHistory([try XCTUnwrap(event.activity)])
+        hints.reconcile(activeTurn: "turn", current: true)
+        XCTAssertTrue(hints.itemIDs.isEmpty)
+        hints.observe(event, activeTurn: "turn", current: true)
+        hints.observe(event, activeTurn: "turn", current: true)
+        XCTAssertEqual(hints.itemIDs, ["question"])
+        hints.reset() // socket loss or leaving the conversation
+        hints.reconcile(activeTurn: "turn", current: true)
+        XCTAssertTrue(hints.itemIDs.isEmpty)
+        XCTAssertEqual(chat.items.first?.questions?.count, 1, "Conversation content remains readable")
+    }
+    func testLiveQuestionsExpireWithTurnAndConnectivityAndStayBounded() throws {
+        var hints = LiveQuestions()
+        hints.observe(try liveQuestionEvent(), activeTurn: "other", current: true)
+        XCTAssertTrue(hints.itemIDs.isEmpty)
+        hints.observe(try liveQuestionEvent(), activeTurn: "turn", current: false)
+        XCTAssertTrue(hints.itemIDs.isEmpty)
+        for i in 0..<100 { hints.observe(try liveQuestionEvent("q-\(i)"), activeTurn: "turn", current: true) }
+        XCTAssertEqual(hints.itemIDs.count, 64)
+        hints.observe(try liveQuestionEvent(kind: "turn_completed"), activeTurn: "turn", current: true)
+        XCTAssertTrue(hints.itemIDs.isEmpty)
+        hints.observe(try liveQuestionEvent(), activeTurn: "turn", current: true)
+        hints.reconcile(activeTurn: "next", current: true)
+        XCTAssertTrue(hints.itemIDs.isEmpty)
+        hints.observe(try liveQuestionEvent(), activeTurn: "turn", current: true)
+        hints.reconcile(activeTurn: "turn", current: false)
+        XCTAssertTrue(hints.itemIDs.isEmpty)
+    }
+}

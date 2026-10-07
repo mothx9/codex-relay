@@ -44,3 +44,25 @@ public struct TranscriptScrollPolicy: Equatable, Sendable {
     public mutating func readHistory() { followsLatest = false }
     public mutating func jumpToLatest() { followsLatest = true }
 }
+
+/// A live-stream presentation hint, never a pending request or persisted state.
+/// History results do not enter this reducer. Losing the stream loses the hint.
+public struct LiveQuestions: Equatable, Sendable {
+    public private(set) var itemIDs: [String] = []
+    private var turn: String?
+    public init() {}
+    public mutating func reset() { itemIDs.removeAll(); turn = nil }
+    public mutating func reconcile(activeTurn: String?, current: Bool) {
+        if !current || activeTurn != turn { reset() }
+    }
+    public mutating func observe(_ event: RelayEvent, activeTurn: String?, current: Bool) {
+        reconcile(activeTurn: activeTurn, current: current)
+        guard current, let activeTurn, !activeTurn.isEmpty else { return }
+        if ["turn_completed", "failed"].contains(event.kind) || event.activity?.kind == "userMessage" { reset(); return }
+        guard event.kind == "activity", event.turnId == activeTurn,
+              let item = event.activity, item.kind == "agentMessage", !(item.questions ?? []).isEmpty else { return }
+        turn = activeTurn
+        if !itemIDs.contains(item.id) { itemIDs.append(item.id) }
+        if itemIDs.count > 64 { itemIDs.removeFirst(itemIDs.count - 64) }
+    }
+}

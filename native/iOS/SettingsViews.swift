@@ -14,10 +14,8 @@ struct DevicesView: View {
             }
             Section(String(localized: "This iPhone", bundle: relayLocalizationBundle)) {
                 NavigationLink { NotificationSettingsView() } label: { Label(String(localized: "Notifications", bundle: relayLocalizationBundle), systemImage: "bell.badge") }
-                NavigationLink { ControllersView() } label: { Label(String(localized: "Controllers & Access", bundle: relayLocalizationBundle), systemImage: "lock.shield") }
             }
             Section {
-                NavigationLink { DiagnosticsView() } label: { Label(String(localized: "Diagnostics", bundle: relayLocalizationBundle), systemImage: "waveform.path.ecg") }
                 NavigationLink { AboutView() } label: { Label(String(localized: "About Codex Relay", bundle: relayLocalizationBundle), systemImage: "info.circle") }
             }
         }.navigationTitle(String(localized: "Settings", bundle: relayLocalizationBundle)).navigationBarTitleDisplayMode(.inline).task { await relay.loadDevices() }
@@ -29,7 +27,7 @@ struct MachinesView: View {
     @Environment(RelayController.self) private var relay
     var body: some View {
         List {
-            ForEach(relay.machines.values.filter { machineIDs == nil || machineIDs!.contains($0.id) }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) { machine in
+            ForEach(relay.machines.values.filter { machineIDs?.contains($0.id) ?? true }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) { machine in
                 NavigationLink { MachineSettingsView(id: machine.id) } label: {
                     HStack(spacing: RelaySpacing.row) {
                         Image(systemName: "desktopcomputer").foregroundStyle(.secondary)
@@ -296,7 +294,9 @@ private struct NotificationSettingsView: View {
                 Text(String(localized: "Needs You, completion, failure and machines offline after a grace period. No notifications for individual commands or tokens. Lock-screen previews omit project and conversation content by default.", bundle: relayLocalizationBundle))
             }.disabled(relay.settingsProgress["notifications"] != nil || relay.settingsProgress["pushRegistration"] != nil)
             if !relay.nativePushAvailable {
-                Section { Text(String(localized: "APNs must be configured on the Hub. The signed iPhone app also needs the Apple Push Notifications capability, unavailable with Personal Team provisioning. Relay control works independently.", bundle: relayLocalizationBundle)).font(.footnote).foregroundStyle(.secondary) }
+                Section { Text(String(localized: "APNs must be configured on the Hub. The signed iPhone app also needs the Apple Push Notifications capability, unavailable with Personal Team provisioning. Relay control works independently.", bundle: relayLocalizationBundle)).font(.footnote).foregroundStyle(.secondary)
+                    Link(String(localized: "Set up Hub notifications", bundle: relayLocalizationBundle), destination: URL(string: "https://github.com/mothx9/codex-relay/blob/main/docs/setup/notifications.md")!)
+                }
             }
         }.navigationTitle(String(localized: "Notifications", bundle: relayLocalizationBundle)).navigationBarTitleDisplayMode(.inline)
             .task { await relay.refreshNativePush() }.refreshable { await relay.refreshNativePush() }
@@ -330,12 +330,12 @@ struct DiagnosticsView: View {
                 }
                 LabeledContent(String(localized: "Hub APNs", bundle: relayLocalizationBundle), value: relay.nativePushAvailable ? String(localized: "Configured", bundle: relayLocalizationBundle) : String(localized: "Not configured", bundle: relayLocalizationBundle))
                 let unavailable = relay.machines.values.filter { $0.status != "ONLINE" }.count
-                if unavailable > 0 { Label(String(localized: "\(unavailable) machines need attention", bundle: relayLocalizationBundle), systemImage: "exclamationmark.circle").foregroundStyle(RelayPalette.attention) }
+                if unavailable > 0 { Label(unavailable == 1 ? String(localized: "1 machine needs attention", bundle: relayLocalizationBundle) : String(localized: "\(unavailable) machines need attention", bundle: relayLocalizationBundle), systemImage: "exclamationmark.circle").foregroundStyle(RelayPalette.attention) }
             }
             Section(String(localized: "Observed latency", bundle: relayLocalizationBundle)) {
                 LabeledContent(String(localized: "Samples", bundle: relayLocalizationBundle), value: "\(relay.receiptTiming.samples)")
                 LabeledContent("Hub → iPhone", value: relay.receiptTiming.clockSkew ? String(localized: "Clocks not comparable", bundle: relayLocalizationBundle) : relay.receiptTiming.samples == 0 ? String(localized: "No samples", bundle: relayLocalizationBundle) : String(format: "%.1f ms", relay.receiptTiming.hubToNativeMs)).accessibilityIdentifier("diagnostics.transport")
-                LabeledContent(String(localized: "State reducer", bundle: relayLocalizationBundle), value: String(format: "%.1f ms", relay.receiptTiming.reducerMs)).accessibilityIdentifier("diagnostics.reducer")
+                LabeledContent(String(localized: "State reducer", bundle: relayLocalizationBundle), value: relay.receiptTiming.samples == 0 ? String(localized: "No samples", bundle: relayLocalizationBundle) : String(format: "%.1f ms", relay.receiptTiming.reducerMs)).accessibilityIdentifier("diagnostics.reducer")
                 Text(String(localized: "Cross-host estimates include clock offset. These values do not measure model execution or rendering.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
             }
             Section {

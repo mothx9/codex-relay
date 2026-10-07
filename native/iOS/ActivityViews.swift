@@ -57,8 +57,8 @@ struct ToolSummaryView: View {
             }
             if running > 0, group.kind == .terminal, let item = current, !item.commandOutput.isEmpty {
                 // A bounded tail is a live preview, not another scrolling terminal.
-                Text(item.commandOutput.suffix(600).split(separator: "\n", omittingEmptySubsequences: false).suffix(3).joined(separator: "\n"))
-                    .font(.caption2.monospaced()).foregroundStyle(.secondary).lineLimit(3)
+                Text(item.commandOutput.suffix(600).split(separator: "\n", omittingEmptySubsequences: false).suffix(1).joined(separator: "\n"))
+                    .font(.caption2.monospaced()).foregroundStyle(.secondary).lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, 10).overlay(alignment: .leading) { Capsule().fill(tint.opacity(0.4)).frame(width: 2) }
                     .accessibilityIdentifier("tool.live." + group.id)
@@ -66,25 +66,6 @@ struct ToolSummaryView: View {
             if expanded {
                 VStack(alignment: .leading, spacing: RelaySpacing.row) {
                     Divider()
-                    if group.items.count > 3 { Text(String(localized: "Latest 3 operations", bundle: relayLocalizationBundle)).font(.caption2).foregroundStyle(.secondary) }
-                    ForEach(Array(group.items.suffix(3))) { item in
-                        HStack(alignment: .top, spacing: RelaySpacing.compact) {
-                            SessionStatusMark(status: item.state == "running" ? "WORKING" : item.state == "failed" || item.state == "declined" ? "FAILED" : item.state == "completed" ? "READY" : "INACTIVE")
-                                .font(.caption).frame(width: 20)
-                            VStack(alignment: .leading, spacing: RelaySpacing.small) {
-                                if let command = item.command { CommandPreviewView(command: command).lineLimit(3) }
-                                else {
-                                    Text(item.toolName ?? item.files?.first.map { URL(fileURLWithPath: $0.path).lastPathComponent } ?? toolTitle(group.kind))
-                                        .font(.subheadline).lineLimit(3).textSelection(.enabled)
-                                }
-                                HStack(spacing: 8) {
-                                    Text(activityState(item.state))
-                                    if let code = item.exitCode { Text("Exit \(code)") }
-                                    if let duration = item.durationMs { Text(String(format: "%.1f s", Double(duration) / 1000)) }
-                                }.font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                    }
                     Button(action: open) {
                         HStack {
                             Text(String(localized: "Open details and output", bundle: relayLocalizationBundle))
@@ -123,13 +104,21 @@ struct ToolDetailView: View {
                         let running = liveGroup.items.filter { $0.state == "running" }.count
                         if running > 0 { Text(String(localized: "\(running) running", bundle: relayLocalizationBundle)).foregroundStyle(RelayPalette.working) }
                     }.font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                    if group.kind == .terminal {
+                        let completed = liveGroup.items.filter { $0.state == "completed" }.count
+                        let failed = liveGroup.items.filter { $0.state == "failed" || $0.state == "declined" }.count
+                        HStack(spacing: RelaySpacing.page) {
+                            if completed > 0 { Label(String(localized: "\(completed) completed", bundle: relayLocalizationBundle), systemImage: "checkmark.circle") }
+                            if failed > 0 { Label(String(localized: "\(failed) failed", bundle: relayLocalizationBundle), systemImage: "xmark.circle").foregroundStyle(RelayPalette.failure) }
+                        }.font(.caption).foregroundStyle(.secondary)
+                    }
                     ForEach(liveGroup.items) { item in
                         ActivityDetailRow(item: item, initiallyExpanded: item.state == "running" || item.id == liveGroup.items.last?.id).id(item.id)
                         if item.id != liveGroup.items.last?.id { Divider() }
                     }
                 }.padding(RelaySpacing.page)
             }.onAppear {
-                if let target = liveGroup.items.first(where: { $0.state == "running" })?.id ?? liveGroup.items.last?.id {
+                if liveGroup.items.count > 3, let target = liveGroup.items.first(where: { $0.state == "running" })?.id ?? liveGroup.items.last?.id {
                     DispatchQueue.main.async { proxy.scrollTo(target, anchor: .top) }
                 }
             }

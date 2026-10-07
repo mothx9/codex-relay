@@ -93,6 +93,7 @@ import XCTest
         let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "machine.")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10))
         let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "M2 Machines live"; capture.lifetime = .keepAlways; add(capture)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         app.buttons["Close"].tap()
         let search = app.textFields["fleet.search"]; XCTAssertTrue(search.waitForExistence(timeout: 10)); search.tap(); search.typeText(config.sessionTitle)
         let session = app.buttons["session." + config.sessionID]
@@ -110,10 +111,42 @@ import XCTest
         // Menu inspection only; no mutation of this real workload.
         app.terminate()
     }
+    func testLiveQuestionDraftIsSeparateFromPendingInbox() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--product-screenshot", "live-question", "-AppleLanguages", "(en)"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Asked during this live turn"].waitForExistence(timeout: 10))
+        app.buttons.containing(.staticText, identifier: "Full suite").firstMatch.tap()
+        let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
+        XCTAssertEqual(composer.value as? String, "Which validation scope should I use?\nFull suite")
+        XCTAssertEqual(app.buttons["composer.send"].label, "Send follow-up")
+        XCTAssertFalse(app.buttons["Respond"].exists)
+        // Preparing text never sends or resolves a request. History has no live action.
+        app.terminate()
+        app.launchArguments = ["--product-screenshot", "history-question", "-AppleLanguages", "(en)"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["question.example-async.0"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["Asked during this live turn"].exists)
+        XCTAssertFalse(app.buttons.containing(.staticText, identifier: "Full suite").firstMatch.exists)
+        XCTAssertFalse(app.buttons["Respond"].exists)
+    }
+    func testAdministrativeHomesDoNotDuplicateSettings() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--product-screenshot", "fleet", "-AppleLanguages", "(en)"]
+        app.launch()
+        XCTAssertTrue(app.buttons["navigation.relay"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.tabBars.buttons["Settings"].exists)
+        app.buttons["navigation.relay"].tap()
+        for label in ["Machines", "Codex Accounts", "Controllers & Access", "Diagnostics", "Settings"] { XCTAssertTrue(app.buttons[label].exists) }
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.buttons["Notifications"].exists)
+        for label in ["Machines", "Codex Accounts", "Controllers & Access", "Diagnostics"] { XCTAssertFalse(app.buttons[label].exists) }
+    }
     func testPublicProductScreenshots() {
         continueAfterFailure = false
         let app = XCUIApplication()
-        for surface in ["fleet", "conversation", "needs-you", "question", "terminal", "tools", "diff", "machines", "account", "settings", "diagnostics", "pairing", "navigation", "machine-diagnostics"] {
+        for surface in ["fleet", "conversation", "needs-you", "question", "terminal", "tools", "diff", "machines", "account", "settings", "diagnostics", "pairing", "navigation", "machine-diagnostics", "live-question"] {
             app.launchArguments = ["--product-screenshot", surface, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
             app.launch()
             XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))
@@ -181,8 +214,11 @@ import XCTest
         XCTAssertTrue(app.buttons["Controllers & Access"].waitForExistence(timeout: 10))
         app.buttons["Settings"].tap()
         XCTAssertTrue(app.buttons["settings.hub"].exists)
-        for label in ["Notifications", "Diagnostics"] { XCTAssertTrue(app.buttons[label].exists, label) }
+        XCTAssertTrue(app.buttons["Notifications"].exists)
+        XCTAssertFalse(app.buttons["Controllers & Access"].exists)
+        XCTAssertFalse(app.buttons["Diagnostics"].exists)
         let settings = XCTAttachment(screenshot: app.screenshot()); settings.name = "M2 Settings"; settings.lifetime = .keepAlways; add(settings)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         app.buttons["Diagnostics"].tap()
         let copy = app.buttons["diagnostics.copy"]
         reveal(copy, in: app);
@@ -232,7 +268,10 @@ import XCTest
         let registry = XCTAttachment(screenshot: app.screenshot()); registry.name = "M2 actual Account Registry"; registry.lifetime = .keepAlways; add(registry)
         entry.tap()
         XCTAssertTrue(app.staticTexts["Plan"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Data"].exists)
+        XCTAssertTrue(app.staticTexts["Updated"].exists)
+        let relationship = app.buttons.containing(.staticText, identifier: "Used on").firstMatch
+        reveal(relationship, in: app)
+        XCTAssertTrue(relationship.exists)
         let detail = XCTAttachment(screenshot: app.screenshot()); detail.name = "M2 actual Codex Account"; detail.lifetime = .keepAlways; add(detail)
         // Only runtime-reported fields. No login, quota reset or account mutation.
     }
@@ -475,10 +514,12 @@ import XCTest
         app.buttons["Diagnostics"].tap()
         for id in ["diagnostics.transport", "diagnostics.reducer"] {
             let row = app.descendants(matching: .any).matching(identifier: id).firstMatch
-            XCTAssertTrue(row.waitForExistence(timeout: 5))
+            reveal(row, in: app)
+            XCTAssertTrue(row.exists)
             print("M1_NATIVE_TIMING", id, row.label, row.value ?? "")
         }
         app.navigationBars.buttons.firstMatch.tap()
+        app.buttons["Settings"].tap()
         app.buttons["Notifications"].tap()
         XCTAssertTrue(app.staticTexts["iOS permission"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Relay registration"].exists)
@@ -497,6 +538,16 @@ import XCTest
         XCTAssertTrue(transcript.waitForExistence(timeout: 15))
         let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'tool.' AND NOT identifier BEGINSWITH 'tool.details.'"))
         wait(20) { cards.allElementsBoundByIndex.contains { $0.isHittable } }
+        // Compact summaries can make a 40-item page fit entirely onscreen.
+        // Load real earlier context so an upward reading gesture has scroll range.
+        let earlier = app.buttons["history.older"]
+        if earlier.isHittable {
+            let count = transcript.value as? String
+            earlier.tap()
+            wait(20) { transcript.value as? String != count }
+            let latest = app.buttons["transcript.latest"]
+            XCTAssertTrue(latest.waitForExistence(timeout: 5)); latest.tap()
+        }
         let anchor = try XCTUnwrap(cards.allElementsBoundByIndex.last(where: { $0.isHittable && $0.frame.midY > transcript.frame.minY + 60 }))
         let before = anchor.frame.minY
         let start = transcript.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
@@ -616,6 +667,7 @@ import XCTest
         app.buttons["navigation.relay"].tap()
         app.buttons["Machines"].tap()
         for machine in config.machineIDs { XCTAssertTrue(app.buttons["machine." + machine].exists) }
+        app.navigationBars.buttons.element(boundBy: 0).tap()
         app.buttons["Close"].tap()
         // A process restart must recover the paired credential from Keychain.
         app.terminate(); app.launch()
