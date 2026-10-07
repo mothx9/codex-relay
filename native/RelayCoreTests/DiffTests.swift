@@ -24,9 +24,9 @@ final class DiffTests: XCTestCase {
     func testChangeOverviewUsesLatestPatchWithoutDoubleCounting() {
         var file = Activity(id: "edit", kind: "fileChange", text: "Changed")
         file.files = [ChangedFile(path: "a.c", kind: "modify", previousPath: nil, patch: nil)]
-        XCTAssertEqual(ChangeOverview.describe([file]), "1 file modificato")
+        XCTAssertEqual(ChangeOverview.describe([file]), "1 file changed")
         let old = Activity(id: "old", kind: "diff", text: "--- a/a.c\n+++ b/a.c\n@@ -1 +1 @@\n-old\n+intermediate")
         let latest = Activity(id: "new", kind: "diff", text: "--- a/a.c\n+++ b/a.c\n@@ -1 +1,2 @@\n-old\n+new\n+second")
-        XCTAssertEqual(ChangeOverview.describe([file, old, latest]), "1 file modificato · +2 −1")
+        XCTAssertEqual(ChangeOverview.describe([file, old, latest]), "1 file changed · +2 −1")
     }
 }

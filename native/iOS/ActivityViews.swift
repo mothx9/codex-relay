@@ -13,9 +13,9 @@ struct ToolSummaryView: View {
     @State private var changeOverview = ""
     private var summary: String {
         var value = group.kind == .changes && !changeOverview.isEmpty ? changeOverview : toolCount(group)
-        if running > 0 { value += " · \(running) in corso" }
-        if failed > 0 { value += " · \(failed) \(failed == 1 ? "non riuscito" : "non riusciti")" }
-        if state == "READY" { value += group.items.count == 1 ? " · completato" : " · completati" }
+        if running > 0 { value += " · " + String(localized: "\(running) running", bundle: relayLocalizationBundle) }
+        if failed > 0 { value += " · " + String(localized: "\(failed) failed", bundle: relayLocalizationBundle) }
+        if state == "READY" { value += " · " + String(localized: "Completed", bundle: relayLocalizationBundle) }
         return value
     }
     private var preview: String? {
@@ -49,7 +49,7 @@ struct ToolSummaryView: View {
                     }
                 }.foregroundStyle(.primary).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
             }.buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("tool." + group.id)
-                .accessibilityValue(expanded ? "Dettagli aperti" : "Dettagli chiusi")
+                .accessibilityValue(expanded ? String(localized: "Details expanded", bundle: relayLocalizationBundle) : String(localized: "Details collapsed", bundle: relayLocalizationBundle))
             if running > 0, let progress = current?.progress, !progress.isEmpty {
                 Text(progress).font(.caption).foregroundStyle(.secondary).lineLimit(3)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -66,7 +66,7 @@ struct ToolSummaryView: View {
             if expanded {
                 VStack(alignment: .leading, spacing: RelaySpacing.row) {
                     Divider()
-                    if group.items.count > 3 { Text("Ultime 3 operazioni").font(.caption2).foregroundStyle(.secondary) }
+                    if group.items.count > 3 { Text(String(localized: "Latest 3 operations", bundle: relayLocalizationBundle)).font(.caption2).foregroundStyle(.secondary) }
                     ForEach(Array(group.items.suffix(3))) { item in
                         HStack(alignment: .top, spacing: RelaySpacing.compact) {
                             SessionStatusMark(status: item.state == "running" ? "WORKING" : item.state == "failed" || item.state == "declined" ? "FAILED" : item.state == "completed" ? "READY" : "INACTIVE")
@@ -87,7 +87,7 @@ struct ToolSummaryView: View {
                     }
                     Button(action: open) {
                         HStack {
-                            Text("Apri dettagli e output")
+                            Text(String(localized: "Open details and output", bundle: relayLocalizationBundle))
                             Spacer()
                             Image(systemName: "arrow.up.right")
                         }.font(.caption.weight(.semibold)).frame(minHeight: 44)
@@ -121,7 +121,7 @@ struct ToolDetailView: View {
                         Label(toolCount(liveGroup), systemImage: toolIcon(group.kind))
                         Spacer()
                         let running = liveGroup.items.filter { $0.state == "running" }.count
-                        if running > 0 { Text("\(running) in corso").foregroundStyle(RelayPalette.working) }
+                        if running > 0 { Text(String(localized: "\(running) running", bundle: relayLocalizationBundle)).foregroundStyle(RelayPalette.working) }
                     }.font(.caption.weight(.medium)).foregroundStyle(.secondary)
                     ForEach(liveGroup.items) { item in
                         ActivityDetailRow(item: item, initiallyExpanded: item.state == "running" || item.id == liveGroup.items.last?.id).id(item.id)
@@ -137,12 +137,12 @@ struct ToolDetailView: View {
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Menu {
-                            Button("Copia tutti gli output", systemImage: "doc.on.doc") {
+                            Button(String(localized: "Copy All Outputs", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") {
                                 UIPasteboard.general.string = liveGroup.items.map { $0.command != nil ? $0.commandOutput : $0.resultSummary ?? $0.text }.joined(separator: "\n\n")
                             }
-                        } label: { Image(systemName: "doc.on.doc").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("Copia attività")
+                        } label: { Image(systemName: "doc.on.doc").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel(String(localized: "Copy Activity", bundle: relayLocalizationBundle))
                     }
-                    ToolbarItem(placement: .confirmationAction) { Button("Chiudi") { dismiss() } }
+                    ToolbarItem(placement: .confirmationAction) { Button(String(localized: "Close", bundle: relayLocalizationBundle)) { dismiss() } }
                 }
         }
     }
@@ -162,8 +162,8 @@ private struct ActivityDetailRow: View {
     private var title: String {
         if item.kind == "diff" { return "Diff" }
         if let name = item.toolName { return name }
-        if item.kind == "fileChange" { return "File changes" }
-        return "Command"
+        if item.kind == "fileChange" { return String(localized: "File changes", bundle: relayLocalizationBundle) }
+        return String(localized: "Command", bundle: relayLocalizationBundle)
     }
     var body: some View {
         VStack(alignment: .leading, spacing: RelaySpacing.row) {
@@ -173,21 +173,21 @@ private struct ActivityDetailRow: View {
                 Spacer(minLength: 4)
                 Text(activityState(item.state)).font(.caption).foregroundStyle(.secondary)
                 Menu {
-                    if let command = item.command { Button("Copia comando", systemImage: "terminal") { UIPasteboard.general.string = command } }
-                    Button("Copia output completo", systemImage: "doc.on.doc") { UIPasteboard.general.string = output }
+                    if let command = item.command { Button(String(localized: "Copy Command", bundle: relayLocalizationBundle), systemImage: "terminal") { UIPasteboard.general.string = command } }
+                    Button(String(localized: "Copy Available Output", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = output }
                 } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
-                    .accessibilityLabel("Azioni output")
+                    .accessibilityLabel(String(localized: "Output actions", bundle: relayLocalizationBundle))
             }
             if let server = item.toolServer { Text(server).font(.caption).foregroundStyle(.secondary) }
             if let command = item.command {
                 ScrollView(.horizontal) {
                     CommandPreviewView(command: command).fixedSize(horizontal: true, vertical: false)
-                }.contextMenu { Button("Copia comando", systemImage: "doc.on.doc") { UIPasteboard.general.string = command } }
+                }.contextMenu { Button(String(localized: "Copy Command", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = command } }
             }
             HStack(spacing: RelaySpacing.row) {
                 if let code = item.exitCode { Label("Exit \(code)", systemImage: code == 0 ? "checkmark.circle" : "exclamationmark.circle") }
                 if let duration = item.durationMs { Text(String(format: "%.1f s", Double(duration) / 1000)) }
-                if item.truncated == true { Text("Contenuto parziale") }
+                if item.truncated == true { Text(String(localized: "Partial content", bundle: relayLocalizationBundle)) }
             }.font(.caption).foregroundStyle(.secondary)
             if let progress = item.progress, item.state == "running" {
                 Text(progress).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
@@ -197,12 +197,12 @@ private struct ActivityDetailRow: View {
             } label: {
                 HStack {
                     Image(systemName: "chevron.right").rotationEffect(.degrees(expanded ? 90 : 0))
-                    Text(item.files?.isEmpty == false || item.kind == "diff" ? "Changes" : "Output")
+                    Text(item.files?.isEmpty == false || item.kind == "diff" ? String(localized: "Changes", bundle: relayLocalizationBundle) : "Output")
                     Spacer()
-                    if !output.isEmpty { Text("\(output.split(separator: "\n", omittingEmptySubsequences: false).count) lines").foregroundStyle(.secondary) }
+                    if !output.isEmpty { Text(String(localized: "\(output.split(separator: "\n", omittingEmptySubsequences: false).count) lines", bundle: relayLocalizationBundle)).foregroundStyle(.secondary) }
                 }.font(.caption.weight(.medium)).frame(minHeight: 44).contentShape(Rectangle())
             }.buttonStyle(.plain).accessibilityIdentifier("activity.output." + item.id)
-                .accessibilityValue(expanded ? "Expanded" : "Collapsed")
+                .accessibilityValue(expanded ? String(localized: "Expanded", bundle: relayLocalizationBundle) : String(localized: "Collapsed", bundle: relayLocalizationBundle))
             if expanded {
                 outputContent.transition(.opacity)
             }
@@ -219,8 +219,8 @@ private struct ActivityDetailRow: View {
                         Spacer()
                         Text(fileChangeLabel(file.kind)).font(.caption).foregroundStyle(.secondary).fixedSize()
                     }.contextMenu {
-                        Button("Copy Path", systemImage: "doc.on.doc") { UIPasteboard.general.string = file.path }
-                        if let previous = file.previousPath { Button("Copy Previous Path") { UIPasteboard.general.string = previous } }
+                        Button(String(localized: "Copy Path", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = file.path }
+                        if let previous = file.previousPath { Button(String(localized: "Copy Previous Path", bundle: relayLocalizationBundle)) { UIPasteboard.general.string = previous } }
                     }
                     if let patch = file.patch, !patch.isEmpty {
                         if patch.hasPrefix("diff --git ") || patch.hasPrefix("@@ ") || patch.contains("\n@@ ") { PatchView(patch: patch, path: file.path) }
@@ -229,7 +229,7 @@ private struct ActivityDetailRow: View {
                 }
             }
         } else if item.kind == "commandExecution" || item.kind == "command_output" {
-            if output.isEmpty { Text(item.state == "running" ? "Waiting for output…" : "No output").font(.caption).foregroundStyle(.secondary) }
+            if output.isEmpty { Text(item.state == "running" ? String(localized: "Waiting for output…", bundle: relayLocalizationBundle) : String(localized: "No output", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary) }
             else if #available(iOS 18.0, *) {
                 TerminalOutputView(text: output).accessibilityIdentifier("activity." + item.kind + "." + item.id)
             } else { CodeBlockView(code: output, language: "output") }
@@ -238,14 +238,14 @@ private struct ActivityDetailRow: View {
         } else if item.toolName == nil {
             Text(output).font(.callout).textSelection(.enabled)
         } else {
-            Text(item.state == "running" ? "Waiting for tool result…" : "No text result provided")
+            Text(item.state == "running" ? String(localized: "Waiting for tool result…", bundle: relayLocalizationBundle) : String(localized: "No text result provided", bundle: relayLocalizationBundle))
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
 }
 
 private func toolTitle(_ kind: TranscriptGroup.Kind) -> String {
-    switch kind { case .terminal: "Terminale"; case .mcp: "MCP"; case .changes: "Modifiche"; default: "Attività" }
+    switch kind { case .terminal: String(localized: "Terminal", bundle: relayLocalizationBundle); case .mcp: "MCP"; case .changes: String(localized: "Changes", bundle: relayLocalizationBundle); default: String(localized: "Activity", bundle: relayLocalizationBundle) }
 }
 private func toolIcon(_ kind: TranscriptGroup.Kind) -> String {
     switch kind { case .terminal: "terminal"; case .mcp: "wrench.and.screwdriver"; case .changes: "doc.text"; default: "list.bullet" }
@@ -253,17 +253,17 @@ private func toolIcon(_ kind: TranscriptGroup.Kind) -> String {
 private func toolCount(_ group: TranscriptGroup) -> String {
     let count = group.items.count
     switch group.kind {
-    case .terminal: return "\(count) \(count == 1 ? "comando" : "comandi")"
-    case .mcp: return "\(count) \(count == 1 ? "operazione" : "operazioni")"
-    case .changes: return "\(count) \(count == 1 ? "evento" : "eventi")"
-    default: return "\(count) \(count == 1 ? "elemento" : "elementi")"
+    case .terminal: return count == 1 ? String(localized: "1 command", bundle: relayLocalizationBundle) : String(localized: "\(count) commands", bundle: relayLocalizationBundle)
+    case .mcp: return count == 1 ? String(localized: "1 operation", bundle: relayLocalizationBundle) : String(localized: "\(count) operations", bundle: relayLocalizationBundle)
+    case .changes: return count == 1 ? String(localized: "1 event", bundle: relayLocalizationBundle) : String(localized: "\(count) events", bundle: relayLocalizationBundle)
+    default: return count == 1 ? String(localized: "1 item", bundle: relayLocalizationBundle) : String(localized: "\(count) items", bundle: relayLocalizationBundle)
     }
 }
 
 private func activityState(_ state: String?) -> String {
-    switch state { case "running": "In corso"; case "completed": "Completato"; case "failed": "Fallito"; case "declined": "Rifiutato"; default: "" }
+    switch state { case "running": String(localized: "Working", bundle: relayLocalizationBundle); case "completed": String(localized: "Completed", bundle: relayLocalizationBundle); case "failed": String(localized: "Failed", bundle: relayLocalizationBundle); case "declined": String(localized: "Declined", bundle: relayLocalizationBundle); default: "" }
 }
 
 private func fileChangeLabel(_ kind: String) -> String {
-    switch kind { case "add", "create": "Creato"; case "delete": "Eliminato"; case "rename", "move": "Rinominato"; default: "Modificato" }
+    switch kind { case "add", "create": String(localized: "Created", bundle: relayLocalizationBundle); case "delete": String(localized: "Deleted", bundle: relayLocalizationBundle); case "rename", "move": String(localized: "Renamed", bundle: relayLocalizationBundle); default: String(localized: "Modified", bundle: relayLocalizationBundle) }
 }

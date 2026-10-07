@@ -35,11 +35,11 @@ struct SessionView: View {
                                 Text("\(relay.machines[session.machineId]?.name ?? session.machineId) · \(session.project)")
                                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                             }.frame(minHeight: 44)
-                        }.buttonStyle(.plain).accessibilityLabel("Session Info")
+                        }.buttonStyle(.plain).accessibilityLabel(String(localized: "Session Info", bundle: relayLocalizationBundle))
                     }
                 }
-                .confirmationDialog("Interrompere il turno in corso?", isPresented: $interrupt, titleVisibility: .visible) {
-                    Button("Interrompi", role: .destructive) { Task { await relay.action("interrupt", expectedTurn: interruptTurn) } }
+                .confirmationDialog(String(localized: "Interrupt the current turn?", bundle: relayLocalizationBundle), isPresented: $interrupt, titleVisibility: .visible) {
+                    Button(String(localized: "Interrupt", bundle: relayLocalizationBundle), role: .destructive) { Task { await relay.action("interrupt", expectedTurn: interruptTurn) } }
                 }
                 .onChange(of: relay.outbox.items.filter { $0.sessionId == session.id && $0.kind == "steer" && $0.phase == .failed && $0.errorCode != "UNKNOWN_OUTCOME" }.map(\.id)) { old, new in
                     guard draft.isEmpty, let id = new.last(where: { !old.contains($0) }),
@@ -48,20 +48,20 @@ struct SessionView: View {
                     steer = false
                 }
                 .sheet(isPresented: $context) { contextSheet(session) }
-        } else { ContentUnavailableView("Sessione non disponibile", systemImage: "bubble.left.and.bubble.right") }
+        } else { ContentUnavailableView(String(localized: "Session unavailable", bundle: relayLocalizationBundle), systemImage: "bubble.left.and.bubble.right") }
     }
 
     @ViewBuilder private func composer(_ session: RelaySession) -> some View {
         VStack(spacing: 8) {
             if session.readOnly {
-                Text("Collega questo thread a Codex per inviare messaggi.").font(.caption).foregroundStyle(.secondary)
-                Button("Collega thread") { Task { await relay.action("attach") } }.disabled(!machineOnline(session))
+                Text(String(localized: "Connect this thread to Codex to send messages.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
+                Button(String(localized: "Connect thread", bundle: relayLocalizationBundle)) { Task { await relay.action("attach") } }.disabled(!machineOnline(session))
             } else {
                 if let editingQueue {
                     HStack {
-                        Label("Modifica messaggio in coda", systemImage: "pencil").font(.caption)
+                        Label(String(localized: "Edit queued message", bundle: relayLocalizationBundle), systemImage: "pencil").font(.caption)
                         Spacer()
-                        Button("Annulla") {
+                        Button(String(localized: "Cancel", bundle: relayLocalizationBundle)) {
                             withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
                                 self.editingQueue = nil; draft = draftBeforeEdit; draftBeforeEdit = ""
                             }
@@ -70,39 +70,39 @@ struct SessionView: View {
                     }.accessibilityIdentifier("composer.editingQueue")
                     if let error = relay.queueEditError { Text(error).font(.caption).foregroundStyle(.orange) }
                     if relay.outbox.items.first(where: { $0.id == editingQueue.id })?.phase != .queued {
-                        Text("Il messaggio è già partito. Il testo modificato rimane qui.").font(.caption).foregroundStyle(.secondary)
+                        Text(String(localized: "The message was already dispatched. Your edited text stays here.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
                     }
                 } else if steer {
                     HStack {
-                        Label("Steer · invia subito al turno corrente", systemImage: "arrow.triangle.branch").font(.caption).foregroundStyle(.orange)
+                        Label(String(localized: "Steer · send to the current turn now", bundle: relayLocalizationBundle), systemImage: "arrow.triangle.branch").font(.caption).foregroundStyle(.orange)
                         Spacer()
-                        Button("Annulla") { steer = false }.font(.caption)
+                        Button(String(localized: "Cancel", bundle: relayLocalizationBundle)) { steer = false }.font(.caption)
                     }
                 } else if session.status == "NEEDS_YOU" {
-                    Button("Vai alla richiesta", systemImage: "arrow.down.message") { scrollRequest += 1 }.font(.caption).foregroundStyle(.orange).frame(minHeight: 44)
+                    Button(String(localized: "Go to request", bundle: relayLocalizationBundle), systemImage: "arrow.down.message") { scrollRequest += 1 }.font(.caption).foregroundStyle(.orange).frame(minHeight: 44)
                 } else if !machineOnline(session) {
-                    Text("I messaggi potranno essere inviati dopo la riconnessione.").font(.caption).foregroundStyle(.secondary)
+                    Text(String(localized: "Messages can be sent after reconnecting.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
                 }
                 let kind = editingQueue != nil ? "queue_update" : steer ? "steer" : session.defaultCommand
                 let available = machineOnline(session) && session.allows(kind) && (editingQueue != nil || ["READY", "WORKING"].contains(session.status))
                 let canSend = available && !submitting && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 HStack(alignment: .bottom, spacing: 6) {
                         Menu {
-                            Button("Contesto della sessione", systemImage: "info.circle") { context = true }
+                            Button(String(localized: "Session Info", bundle: relayLocalizationBundle), systemImage: "info.circle") { context = true }
                             if let last = relay.outbox.visible(session: session.id).last(where: { $0.phase == .queued && $0.queueEditable }) {
-                                Button("Modifica ultimo messaggio in coda", systemImage: "pencil") { beginQueueEdit(last) }
+                                Button(String(localized: "Edit Last Queued Message", bundle: relayLocalizationBundle), systemImage: "pencil") { beginQueueEdit(last) }
                                     .disabled(!machineOnline(session) || !session.allows("queue_update") || submitting)
                             }
-                            Button(steer ? "Torna al follow-up" : "Steer del turno corrente", systemImage: "arrow.triangle.branch") {
+                            Button(steer ? String(localized: "Back to follow-up", bundle: relayLocalizationBundle) : String(localized: "Steer Current Turn", bundle: relayLocalizationBundle), systemImage: "arrow.triangle.branch") {
                                 steer.toggle(); expectedTurn = session.turnId ?? ""; composing = true
                             }.disabled(editingQueue != nil || (!steer && (!machineOnline(session) || !session.allows("steer"))))
-                            Button("Interrompi turno", systemImage: "stop.circle", role: .destructive) {
+                            Button(String(localized: "Interrupt Turn", bundle: relayLocalizationBundle), systemImage: "stop.circle", role: .destructive) {
                                 interruptTurn = session.turnId ?? ""; interrupt = true
                             }.disabled(!machineOnline(session) || !session.allows("interrupt"))
                         } label: { Image(systemName: "plus").frame(minWidth: 44, minHeight: 44) }
-                            .accessibilityLabel("Azioni della sessione")
+                            .accessibilityLabel(String(localized: "Session actions", bundle: relayLocalizationBundle))
 
-                    TextField(steer ? "Correggi il lavoro in corso…" : session.status == "WORKING" ? "Aggiungi un follow-up…" : "Scrivi a Codex…", text: $draft, axis: .vertical)
+                    TextField(steer ? String(localized: "Change the work in progress…", bundle: relayLocalizationBundle) : session.status == "WORKING" ? String(localized: "Add a follow-up…", bundle: relayLocalizationBundle) : String(localized: "Message Codex…", bundle: relayLocalizationBundle), text: $draft, axis: .vertical)
                         .font(.body).lineLimit(1...5).focused($composing).padding(.leading, 20).padding(.vertical, 16)
                         .disabled(!available).accessibilityIdentifier("composer.text")
                     Button {
@@ -124,16 +124,16 @@ struct SessionView: View {
                             .frame(width: 44, height: 44).background(Color.primary.opacity(canSend ? 1 : 0.22), in: Circle())
                     }
                     .buttonStyle(.plain).disabled(!canSend).padding(6)
-                    .accessibilityLabel(editingQueue != nil ? "Salva messaggio in coda" : steer ? "Invia Steer" : session.status == "WORKING" ? "Invia follow-up" : "Invia")
+                    .accessibilityLabel(editingQueue != nil ? String(localized: "Save queued message", bundle: relayLocalizationBundle) : steer ? String(localized: "Send Steer", bundle: relayLocalizationBundle) : session.status == "WORKING" ? String(localized: "Send follow-up", bundle: relayLocalizationBundle) : String(localized: "Send", bundle: relayLocalizationBundle))
                     .accessibilityIdentifier("composer.send")
                     .contextMenu {
                         if editingQueue == nil && session.allows("steer") {
-                            Button("Invia ora (Steer)", systemImage: "arrow.triangle.branch") {
+                            Button(String(localized: "Send Now (Steer)", bundle: relayLocalizationBundle), systemImage: "arrow.triangle.branch") {
                                 sendDraft(session, kind: "steer", targetTurn: session.turnId)
                             }.disabled(!machineOnline(session) || submitting || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         }
                     }
-                    .accessibilityHint(session.status == "WORKING" ? "Invia in coda. Tieni premuto per inviare subito con Steer." : "Invia un nuovo messaggio")
+                    .accessibilityHint(session.status == "WORKING" ? String(localized: "Queue this message. Touch and hold to send immediately with Steer.", bundle: relayLocalizationBundle) : String(localized: "Send a new message", bundle: relayLocalizationBundle))
                 }.modifier(ComposerSurface())
             }
         }
@@ -165,20 +165,20 @@ struct SessionView: View {
     private func contextSheet(_ session: RelaySession) -> some View {
         NavigationStack {
             List {
-                LabeledContent("Macchina", value: relay.machines[session.machineId]?.name ?? session.machineId)
-                LabeledContent("Progetto", value: session.project)
-                LabeledContent("Cartella", value: session.cwd)
+                LabeledContent(String(localized: "Machine", bundle: relayLocalizationBundle), value: relay.machines[session.machineId]?.name ?? session.machineId)
+                LabeledContent(String(localized: "Project", bundle: relayLocalizationBundle), value: session.project)
+                LabeledContent(String(localized: "Folder", bundle: relayLocalizationBundle), value: session.cwd)
                 if let branch = session.branch, !branch.isEmpty { LabeledContent("Branch", value: branch) }
                 LabeledContent("Thread", value: session.threadId)
                 if let machine = relay.machines[session.machineId] {
                     if let version = machine.codexVersion { LabeledContent("Codex", value: version) }
-                    if let account = machine.account { LabeledContent("Codex Account", value: account.email ?? account.kind) }
-                    LabeledContent("Connection", value: relay.machineConnectionLabel(machine.id))
+                    if let account = machine.account { LabeledContent(String(localized: "Codex Account", bundle: relayLocalizationBundle), value: account.email ?? account.kind) }
+                    LabeledContent(String(localized: "Connection", bundle: relayLocalizationBundle), value: relay.machineConnectionLabel(machine.id))
                 }
                 if let usage = session.tokenUsage { SessionUsageView(usage: usage) }
-                Text("Questa chat mostra contesto recente ed effimero. La cronologia rimane in Codex.").font(.footnote).foregroundStyle(.secondary)
-            }.textSelection(.enabled).navigationTitle("Contesto").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Chiudi") { context = false } } }
+                Text(String(localized: "This chat shows temporary recent context. History remains in Codex.", bundle: relayLocalizationBundle)).font(.footnote).foregroundStyle(.secondary)
+            }.textSelection(.enabled).navigationTitle(String(localized: "Session Info", bundle: relayLocalizationBundle)).navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Button(String(localized: "Close", bundle: relayLocalizationBundle)) { context = false } } }
         }
     }
 }
@@ -214,24 +214,24 @@ private struct SessionTranscript: View {
                     // from the keyboard; the selected-session memory is bounded.
                     VStack(alignment: .leading, spacing: RelaySpacing.page) {
                         if relay.historyLoading {
-                            ProgressView("Caricamento cronologia…").font(.caption).frame(maxWidth: .infinity)
+                            ProgressView(String(localized: "Loading history…", bundle: relayLocalizationBundle)).font(.caption).frame(maxWidth: .infinity)
                         } else if relay.historyCursor != nil && !relay.chat.atCapacity {
-                            Button("Carica messaggi precedenti") {
+                            Button(String(localized: "Load earlier messages", bundle: relayLocalizationBundle)) {
                                 nearBottom = false
                                 Task { await relay.loadOlderHistory() }
                             }.frame(minHeight: 44).frame(maxWidth: .infinity).accessibilityIdentifier("history.older")
-                                .accessibilityValue("\(relay.chat.items.count) elementi caricati")
+                                .accessibilityValue(String(localized: "\(relay.chat.items.count) items loaded", bundle: relayLocalizationBundle))
                                 .disabled(!machineOnline(session))
                         }
                         if let error = relay.historyError {
                             Text(error).font(.caption).foregroundStyle(.secondary)
                             if relay.registry?.machines.first(where: { $0.id == session.machineId })?.access == "PAUSED" {
-                                Button("Riprendi Relay su questa macchina") { Task { await relay.manageMachine(session.machineId, action: "resume") } }
+                                Button(String(localized: "Resume Relay on this machine", bundle: relayLocalizationBundle)) { Task { await relay.manageMachine(session.machineId, action: "resume") } }
                                     .font(.subheadline).frame(minHeight: 44)
                             }
                         }
                         if relay.chat.atCapacity || relay.chat.trimmed {
-                            Text("Finestra in memoria limitata. La cronologia completa rimane in Codex.")
+                            Text(String(localized: "The memory window is limited. Full history remains in Codex.", bundle: relayLocalizationBundle))
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         ForEach(TranscriptGroup.make(relay.chat.items)) { group in
@@ -248,7 +248,7 @@ private struct SessionTranscript: View {
                             PendingView(request: request).id(request.presentationID)
                         }
                         if relay.chat.items.isEmpty && relay.outbox.visible(session: session.id).isEmpty {
-                            Text("Il contesto recente di Codex apparirà qui.").font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 24)
+                            Text(String(localized: "Recent Codex context will appear here.", bundle: relayLocalizationBundle)).font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 24)
                         }
                         Color.clear.frame(height: 1).id(bottomID)
                             .background(GeometryReader { geometry in
@@ -292,7 +292,7 @@ private struct SessionTranscript: View {
                 }
                 .overlay(alignment: .bottomTrailing) {
                     if unread {
-                        Button { scrollRequest += 1 } label: { Label("Messaggi recenti", systemImage: "arrow.down") }
+                        Button { scrollRequest += 1 } label: { Label(String(localized: "Latest messages", bundle: relayLocalizationBundle), systemImage: "arrow.down") }
                             .font(.caption.weight(.medium)).buttonStyle(.bordered).padding(12)
                             .accessibilityIdentifier("transcript.latest")
                     }
@@ -337,7 +337,7 @@ private struct ChatMessageView: View, Equatable {
                     }
                     ForEach(Array(questions.enumerated()).filter { !activity.text.contains($0.element.title) }, id: \.offset) { index, question in
                         VStack(alignment: .leading, spacing: 12) {
-                            Label("Domanda", systemImage: "questionmark.bubble").font(.caption.weight(.semibold)).foregroundStyle(.orange)
+                            Label(String(localized: "Question", bundle: relayLocalizationBundle), systemImage: "questionmark.bubble").font(.caption.weight(.semibold)).foregroundStyle(.orange)
                             Text(question.title).font(.body).textSelection(.enabled)
                                 .accessibilityIdentifier("question." + activity.id + ".\(index)")
                             ForEach(Array((question.options ?? []).enumerated()), id: \.offset) { _, option in
@@ -350,24 +350,24 @@ private struct ChatMessageView: View, Equatable {
                             .background(.orange.opacity(0.055), in: RoundedRectangle(cornerRadius: 16))
                             .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.orange.opacity(0.2)))
                     }
-                    if activity.truncated == true { Text("Contesto parziale · consulta Codex per il contenuto completo.").font(.caption).foregroundStyle(.secondary) }
+                    if activity.truncated == true { Text(String(localized: "Partial context · see Codex for the full content.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary) }
                 }
                 Menu {
-                    Button("Copia messaggio completo", systemImage: "doc.on.doc") { UIPasteboard.general.string = activity.text }
-                    if !user { ShareLink(item: activity.text) { Label("Condividi", systemImage: "square.and.arrow.up") } }
+                    Button(String(localized: "Copy Full Message", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = activity.text }
+                    if !user { ShareLink(item: activity.text) { Label(String(localized: "Share", bundle: relayLocalizationBundle), systemImage: "square.and.arrow.up") } }
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "ellipsis").font(.caption)
                     }.font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                         .frame(minWidth: 44, minHeight: 44, alignment: user ? .trailing : .leading)
                         .contentShape(Rectangle())
-                }.buttonStyle(.plain).accessibilityLabel("Azioni del messaggio")
+                }.buttonStyle(.plain).accessibilityLabel(String(localized: "Message actions", bundle: relayLocalizationBundle))
                     .accessibilityIdentifier("message.actions." + activity.id)
             }.frame(maxWidth: .infinity, alignment: user ? .trailing : .leading)
                 .environment(\.completeMessage, activity.text)
                 .contextMenu {
-                    Button("Copia messaggio completo", systemImage: "doc.on.doc") { UIPasteboard.general.string = activity.text }
-                    if !user { ShareLink(item: activity.text) { Label("Condividi", systemImage: "square.and.arrow.up") } }
+                    Button(String(localized: "Copy Full Message", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = activity.text }
+                    if !user { ShareLink(item: activity.text) { Label(String(localized: "Share", bundle: relayLocalizationBundle), systemImage: "square.and.arrow.up") } }
                 }
         }
     }
@@ -380,15 +380,15 @@ private struct OutgoingMessageView: View {
     var onEdit: (Outgoing) -> Void = { _ in }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var caption: String {
-        let kind = item.kind == "follow_up" ? "FOLLOW-UP" : item.kind == "steer" ? "STEER" : "NUOVO TURNO"
+        let kind = item.kind == "follow_up" ? "FOLLOW-UP" : item.kind == "steer" ? "STEER" : String(localized: "NEW TURN", bundle: relayLocalizationBundle)
         let phase: String
         switch item.phase {
-        case .local, .sending, .steering: phase = "INVIO…"
-        case .queued: phase = "IN CODA"
-        case .dispatched: phase = "IN ESECUZIONE"
-        case .accepted: phase = "INVIATO"
-        case .applied: phase = "APPLICATO"
-        case .failed: phase = item.errorCode == "UNKNOWN_OUTCOME" ? "ESITO DA VERIFICARE" : "INVIO NON RIUSCITO"
+        case .local, .sending, .steering: phase = String(localized: "SENDING…", bundle: relayLocalizationBundle)
+        case .queued: phase = String(localized: "QUEUED", bundle: relayLocalizationBundle)
+        case .dispatched: phase = String(localized: "RUNNING", bundle: relayLocalizationBundle)
+        case .accepted: phase = String(localized: "SENT", bundle: relayLocalizationBundle)
+        case .applied: phase = String(localized: "APPLIED", bundle: relayLocalizationBundle)
+        case .failed: phase = item.errorCode == "UNKNOWN_OUTCOME" ? String(localized: "VERIFY OUTCOME", bundle: relayLocalizationBundle) : String(localized: "SEND FAILED", bundle: relayLocalizationBundle)
         case .materialized: phase = ""
         }
         return kind + " · " + phase
@@ -407,20 +407,20 @@ private struct OutgoingMessageView: View {
                     .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: item.phase)
                     .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: relay.queueEditingID)
                 if item.phase == .queued && item.queueEditable {
-                    Button("Modifica", systemImage: "pencil") { onEdit(item) }.font(.caption).frame(minHeight: 44)
+                    Button(String(localized: "Edit", bundle: relayLocalizationBundle), systemImage: "pencil") { onEdit(item) }.font(.caption).frame(minHeight: 44)
                         .disabled(!session.allows("queue_update") || !relay.online || relay.machines[session.machineId]?.status != "ONLINE" || relay.queueEditingID != nil)
                 }
                 if item.phase == .failed {
-                    Text(item.error ?? "Invio fallito").font(.caption).foregroundStyle(.orange)
+                    Text(item.error ?? String(localized: "Send failed", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.orange)
                     if session.allows(item.kind) {
-                        Button(item.errorCode == "UNKNOWN_OUTCOME" ? "Ho verificato Codex: reinvia" : "Riprova") { Task { await relay.retry(item) } }
+                        Button(item.errorCode == "UNKNOWN_OUTCOME" ? String(localized: "I checked Codex: resend", bundle: relayLocalizationBundle) : String(localized: "Retry", bundle: relayLocalizationBundle)) { Task { await relay.retry(item) } }
                             .disabled(!relay.online || relay.machines[session.machineId]?.status != "ONLINE")
                     }
                     if item.kind == "steer", session.allows(session.defaultCommand) {
-                        Button("Invia come \(session.defaultCommand == "follow_up" ? "follow-up" : "nuovo turno")") { Task { await relay.retry(item, as: session.defaultCommand) } }
+                        Button(session.defaultCommand == "follow_up" ? String(localized: "Send as follow-up", bundle: relayLocalizationBundle) : String(localized: "Send as new turn", bundle: relayLocalizationBundle)) { Task { await relay.retry(item, as: session.defaultCommand) } }
                             .disabled(!relay.online || relay.machines[session.machineId]?.status != "ONLINE")
                     }
-                    Button("Scarta") { relay.outbox.discard(item.id) }
+                    Button(String(localized: "Discard", bundle: relayLocalizationBundle)) { relay.outbox.discard(item.id) }
                 }
             }.font(.subheadline)
         }
@@ -428,7 +428,7 @@ private struct OutgoingMessageView: View {
 }
 
 private func conversationStatus(_ status: String) -> String {
-    ["WORKING": "In corso", "READY": "Pronto", "NEEDS_YOU": "Serve una risposta", "INACTIVE": "Inattivo", "FAILED": "Errore"][status] ?? status
+    ["WORKING": String(localized: "Working", bundle: relayLocalizationBundle), "READY": String(localized: "Ready", bundle: relayLocalizationBundle), "NEEDS_YOU": String(localized: "Needs You", bundle: relayLocalizationBundle), "INACTIVE": String(localized: "Inactive", bundle: relayLocalizationBundle), "FAILED": String(localized: "Error", bundle: relayLocalizationBundle)][status] ?? status
 }
 
 

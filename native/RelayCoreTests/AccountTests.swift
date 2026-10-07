@@ -19,3 +19,15 @@ final class AccountTests: XCTestCase {
         XCTAssertEqual(account.usageBuckets.count, 2)
     }
 }
+
+extension AccountTests {
+    func testCreditBalancePresentationDoesNotInventUnitsOrRoundPrecision() throws {
+        func credits(_ value: String) throws -> AccountCredits {
+            try RelayJSON.decoder().decode(AccountCredits.self, from: JSONSerialization.data(withJSONObject: ["has_credits": true, "unlimited": false, "balance": value]))
+        }
+        let expected = NSDecimalNumber(string: "12.123456789").description(withLocale: Locale.current)
+        XCTAssertEqual(try credits("12.12345678900000").displayBalance, expected)
+        XCTAssertEqual(try credits("unknown").displayBalance, "unknown")
+        XCTAssertEqual(try credits("12 credits").displayBalance, "12 credits")
+    }
+}

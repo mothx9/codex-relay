@@ -49,12 +49,12 @@ struct FleetView: View {
             LazyVStack(alignment: .leading, spacing: 24) {
                 if search.isEmpty { fleetHeader }
                 if !browsingAll {
-                    sessionSection("Serve una risposta", symbol: "bubble.left.and.exclamationmark.bubble.right", sessions: sorted.filter { state($0) == "NEEDS_YOU" }, tint: RelayPalette.attention)
-                    sessionSection("In corso", symbol: "waveform.path", sessions: sorted.filter { state($0) == "WORKING" }, tint: RelayPalette.working)
-                    sessionSection("Recenti", symbol: "clock", sessions: Array(sorted.filter { !["WORKING", "NEEDS_YOU"].contains(state($0)) }.prefix(6)), tint: .secondary)
+                    sessionSection(String(localized: "Needs You", bundle: relayLocalizationBundle), symbol: "bubble.left.and.exclamationmark.bubble.right", sessions: sorted.filter { state($0) == "NEEDS_YOU" }, tint: RelayPalette.attention)
+                    sessionSection(String(localized: "Working", bundle: relayLocalizationBundle), symbol: "waveform.path", sessions: sorted.filter { state($0) == "WORKING" }, tint: RelayPalette.working)
+                    sessionSection(String(localized: "Recent", bundle: relayLocalizationBundle), symbol: "clock", sessions: Array(sorted.filter { !["WORKING", "NEEDS_YOU"].contains(state($0)) }.prefix(6)), tint: .secondary)
                     Button { filter = "HISTORY" } label: {
                         HStack {
-                            Label("Tutte le sessioni", systemImage: "clock.arrow.circlepath")
+                            Label(String(localized: "All sessions", bundle: relayLocalizationBundle), systemImage: "clock.arrow.circlepath")
                             Spacer()
                             Text("\(sorted.count)").monospacedDigit().foregroundStyle(.secondary)
                             Image(systemName: "chevron.right").font(.caption.weight(.semibold))
@@ -62,7 +62,7 @@ struct FleetView: View {
                             .background(RelayPalette.surface, in: RoundedRectangle(cornerRadius: 18))
                     }.buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("fleet.history")
                 } else {
-                    sessionSection(filter == "HISTORY" || filter == "ALL" ? "Sessioni" : statusLabel(filter), symbol: "line.3.horizontal", sessions: visible, tint: .secondary)
+                    sessionSection(filter == "HISTORY" || filter == "ALL" ? String(localized: "Sessions", bundle: relayLocalizationBundle) : statusLabel(filter), symbol: "line.3.horizontal", sessions: visible, tint: .secondary)
                     if visible.isEmpty { ContentUnavailableView.search(text: search) }
                     if filter == "HISTORY" || !search.isEmpty { catalogueControls }
                 }
@@ -71,17 +71,17 @@ struct FleetView: View {
         .safeAreaInset(edge: .top, spacing: 0) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Sessione, macchina o progetto", text: $search)
+                TextField(String(localized: "Session, machine or project", bundle: relayLocalizationBundle), text: $search)
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                     .accessibilityIdentifier("fleet.search")
-                if !search.isEmpty { Button { search = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }.accessibilityLabel("Clear search").frame(minWidth: 44, minHeight: 44) }
+                if !search.isEmpty { Button { search = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }.accessibilityLabel(String(localized: "Clear search", bundle: relayLocalizationBundle)).frame(minWidth: 44, minHeight: 44) }
             }.padding(.horizontal, 16).frame(minHeight: 48).modifier(SearchChrome())
                 .padding(.horizontal, RelaySpacing.page).padding(.vertical, 8)
         }
         .background(RelayPalette.canvas)
         .sheet(isPresented: $showingMachines) {
             NavigationStack {
-                MachinesView().toolbar { ToolbarItem(placement: .confirmationAction) { Button("Close") { showingMachines = false }.accessibilityIdentifier("machines.close") } }
+                MachinesView().toolbar { ToolbarItem(placement: .confirmationAction) { Button(String(localized: "Close", bundle: relayLocalizationBundle)) { showingMachines = false }.accessibilityIdentifier("machines.close") } }
             }
         }
         .scrollDismissesKeyboard(.interactively)
@@ -92,12 +92,12 @@ struct FleetView: View {
         VStack(alignment: .leading, spacing: RelaySpacing.compact) {
             let waiting = relay.requests.count
             let working = relay.sessions.values.filter { state($0) == "WORKING" }.count
-            Text(waiting > 0 ? "\(waiting) needs you · \(working) working" : working > 0 ? "\(working) sessions working" : "Your fleet, at a glance")
+            Text(waiting > 0 ? String(localized: "\(waiting) needs you · \(working) working", bundle: relayLocalizationBundle) : working > 0 ? (working == 1 ? String(localized: "1 session working", bundle: relayLocalizationBundle) : String(localized: "\(working) sessions working", bundle: relayLocalizationBundle)) : String(localized: "Your fleet, at a glance", bundle: relayLocalizationBundle))
                 .font(.title3.weight(.semibold)).accessibilityIdentifier("fleet.summary")
             Button { showingMachines = true } label: {
                 HStack(spacing: 8) {
                     Image(systemName: relay.online ? "network" : "network.slash")
-                    Text(relay.online ? "\(relay.machines.values.filter { $0.status == "ONLINE" }.count)/\(relay.machines.count) machines online" : "Connecting to Hub…")
+                    Text(relay.online ? String(localized: "\(relay.machines.values.filter { $0.status == "ONLINE" }.count)/\(relay.machines.count) machines online", bundle: relayLocalizationBundle) : String(localized: "Connecting to Hub…", bundle: relayLocalizationBundle))
                     Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
                 }.font(.subheadline).foregroundStyle(.secondary).frame(minHeight: 44)
             }.accessibilityIdentifier("fleet.connection")
@@ -120,14 +120,14 @@ struct FleetView: View {
     }
     private var catalogueControls: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Cronologia su Codex").font(.caption).foregroundStyle(.secondary)
+            Text(String(localized: "History on Codex", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
             ForEach(relay.machines.values.filter { machine.isEmpty || $0.id == machine }.sorted { $0.name < $1.name }) { host in
                 Button {
                     if relay.catalogue.completed.contains(host.id) { relay.catalogue.restart(machine: host.id) }
                     Task { await relay.loadCatalogue(machine: host.id) }
                 } label: {
                     HStack {
-                        Text((relay.catalogue.completed.contains(host.id) ? "Rileggi cronologia · " : "Carica altre sessioni · ") + host.name)
+                        Text((relay.catalogue.completed.contains(host.id) ? String(localized: "Reload history · ", bundle: relayLocalizationBundle) : String(localized: "Load more sessions · ", bundle: relayLocalizationBundle)) + host.name)
                         Spacer()
                         if relay.catalogueLoading.contains(host.id) { ProgressView() }
                     }.font(.subheadline).frame(minHeight: 44)

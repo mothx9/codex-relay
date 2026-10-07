@@ -33,11 +33,11 @@ import XCTest
         XCTAssertTrue(composer.waitForExistence(timeout: 10))
         XCTAssertTrue(composer.isHittable)
         XCTAssertTrue(app.staticTexts["question.preview-question.0"].exists)
-        let queued = app.staticTexts["FOLLOW-UP · IN CODA"]
+        let queued = app.staticTexts["FOLLOW-UP · QUEUED"]
         wait(10) { queued.isHittable }
         XCTAssertLessThanOrEqual(queued.frame.maxY, composer.frame.minY, "queued=\(queued.frame) composer=\(composer.frame) type=\(composer.elementType.rawValue)")
         let send = app.buttons["composer.send"]
-        XCTAssertEqual(send.label, "Invia follow-up")
+        XCTAssertEqual(send.label, "Send follow-up")
         XCTAssertFalse(send.isEnabled)
         composer.tap(); composer.typeText("Mantieni il testo corrente.")
         XCTAssertTrue(send.isEnabled); XCTAssertTrue(send.isHittable)
@@ -52,8 +52,11 @@ import XCTest
         XCTAssertTrue(composer.isHittable)
         terminal.tap()
         app.buttons["tool.details.terminal.preview-command-0"].tap()
+        let output = app.buttons["activity.output.preview-command-0"]
+        reveal(output, in: app)
+        if output.value as? String == "Collapsed" { output.tap() }
         XCTAssertTrue(app.staticTexts["activity.commandExecution.preview-command-0"].waitForExistence(timeout: 5))
-        app.buttons["Chiudi"].tap()
+        app.buttons["Close"].tap()
         XCTAssertTrue(composer.isHittable)
         XCTAssertEqual(composer.value as? String, "Mantieni il testo corrente.")
     }
@@ -78,9 +81,9 @@ import XCTest
         XCTAssertLessThan(heartbeat.frame.maxY, composer.frame.minY)
         XCTAssertFalse(app.tabBars.firstMatch.isHittable)
         app.buttons["Session Info"].tap()
-        XCTAssertTrue(app.staticTexts["Thread"].waitForExistence(timeout: 5)); app.buttons["Chiudi"].tap()
-        app.buttons["Azioni della sessione"].tap()
-        XCTAssertTrue(app.buttons["Steer del turno corrente"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Thread"].waitForExistence(timeout: 5)); app.buttons["Close"].tap()
+        app.buttons["Session actions"].tap()
+        XCTAssertTrue(app.buttons["Steer Current Turn"].waitForExistence(timeout: 5))
         // Menu inspection only; no mutation of this real workload.
         app.terminate()
     }
@@ -101,12 +104,26 @@ import XCTest
         // No pairing request is submitted; the existing Keychain is never read or erased.
         app.terminate()
     }
+    func testIsolatedItalianOnboardingAtLargeDynamicType() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--preview-onboarding", "-AppleLanguages", "(it)", "-AppleLocale", "it_IT", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Un Hub"].waitForExistence(timeout: 10))
+        let submit = app.buttons["pairing.submit"]
+        XCTAssertEqual(submit.label, "Abbina")
+        XCTAssertLessThan(submit.frame.height, app.frame.height / 5)
+        XCTAssertTrue(submit.isHittable)
+        let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = "M2 Italian onboarding large Dynamic Type"; screenshot.lifetime = .keepAlways; add(screenshot)
+        XCTAssertFalse(app.staticTexts["One Hub"].exists)
+        app.terminate()
+    }
     func testLiveSettingsAndRedactedDiagnostics() throws {
         guard Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") != nil else { throw XCTSkip("Uses the existing paired controller without enrollment or mutations.") }
         continueAfterFailure = false
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.textFields["fleet.search"].waitForExistence(timeout: 20))
-        app.tabBars.buttons["Impostazioni"].tap()
+        app.tabBars.buttons["Settings"].tap()
         XCTAssertTrue(app.buttons["Controllers & Access"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["settings.hub"].exists)
         for label in ["Machines", "Codex Accounts", "Notifications", "Diagnostics"] { XCTAssertTrue(app.buttons[label].exists, label) }
@@ -152,7 +169,7 @@ import XCTest
         continueAfterFailure = false
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.textFields["fleet.search"].waitForExistence(timeout: 15))
-        app.tabBars.buttons["Impostazioni"].tap()
+        app.tabBars.buttons["Settings"].tap()
         let accounts = app.buttons["Codex Accounts"]
         XCTAssertTrue(accounts.waitForExistence(timeout: 10)); accounts.tap()
         let entry = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "account.")).firstMatch
@@ -179,12 +196,12 @@ import XCTest
             XCTAssertTrue(load.waitForExistence(timeout: 10))
             for _ in 0..<8 {
                 wait(15) { load.isEnabled }
-                if load.label.contains("Rileggi cronologia") { break }
+                if load.label.contains("Reload history") { break }
                 load.tap()
                 // Wait for the response without racing the next page's cursor.
                 sleep(1)
             }
-            wait(15) { load.label.contains("Rileggi cronologia") }
+            wait(15) { load.label.contains("Reload history") }
         }
         let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Live Codex catalogue pages completed"; capture.lifetime = .keepAlways; add(capture)
     }
@@ -198,7 +215,7 @@ import XCTest
         XCTAssertTrue(search.waitForExistence(timeout: 15))
         let row = app.buttons["session." + config.sessionID]
         XCTAssertTrue(row.waitForExistence(timeout: 20)); row.tap()
-        let attach = app.buttons["Collega thread"]
+        let attach = app.buttons["Connect thread"]
         if attach.waitForExistence(timeout: 3) { attach.tap() }
         let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
         XCTAssertTrue(composer.waitForExistence(timeout: 15))
@@ -206,17 +223,17 @@ import XCTest
         XCTAssertTrue(live.waitForExistence(timeout: 120), "Output must be visible while its command is running")
         XCTAssertTrue(live.label.contains("RELAY_PROGRESS_"))
         let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Actual output before command completion"; capture.lifetime = .keepAlways; add(capture)
-        XCTAssertEqual(app.buttons["composer.send"].label, "Invia follow-up")
+        XCTAssertEqual(app.buttons["composer.send"].label, "Send follow-up")
         let marker = "RELAY_QUEUE_" + UUID().uuidString.prefix(8)
         let original = "Reply " + marker + "_ORIGINAL without tools."
         composer.tap(); composer.typeText(original); app.buttons["composer.send"].tap()
-        XCTAssertTrue(app.staticTexts["FOLLOW-UP · IN CODA"].waitForExistence(timeout: 15))
-        app.buttons["Azioni della sessione"].tap()
-        let edit = app.buttons["Modifica ultimo messaggio in coda"]
+        XCTAssertTrue(app.staticTexts["FOLLOW-UP · QUEUED"].waitForExistence(timeout: 15))
+        app.buttons["Session actions"].tap()
+        let edit = app.buttons["Edit Last Queued Message"]
         XCTAssertTrue(edit.waitForExistence(timeout: 5)); XCTAssertTrue(edit.isEnabled); edit.tap()
         XCTAssertEqual(composer.value as? String, original)
         composer.tap(); composer.typeText(" Reply " + marker + "_EDITED instead.")
-        XCTAssertEqual(app.buttons["composer.send"].label, "Salva messaggio in coda")
+        XCTAssertEqual(app.buttons["composer.send"].label, "Save queued message")
         app.buttons["composer.send"].tap()
         wait(15) { !app.descendants(matching: .any)["composer.editingQueue"].exists }
         let edited = original + " Reply " + marker + "_EDITED instead."
@@ -251,8 +268,8 @@ import XCTest
         wait(90) { !question.exists }
         app.navigationBars.buttons.element(boundBy: 0).tap()
         wait(10) { !inbox.exists }
-        app.tabBars.buttons["Impostazioni"].tap()
-        app.buttons["Connessione e diagnostica"].tap()
+        app.tabBars.buttons["Settings"].tap()
+        app.buttons["Diagnostics"].tap()
         for id in ["diagnostics.transport", "diagnostics.reducer"] {
             let timing = app.descendants(matching: .any).matching(identifier: id).firstMatch
             XCTAssertTrue(timing.waitForExistence(timeout: 5))
@@ -275,11 +292,11 @@ import XCTest
         wait(20) { connection.value as? String == "Live" }
         print("M1_AGENT_SILENCE_READY")
         wait(120) { connection.value as? String == "Offline" }
-        XCTAssertTrue(app.staticTexts["Ultimo stato: In corso"].isHittable, "Stale state must remain visible at the recent end of a long conversation")
+        XCTAssertTrue(app.staticTexts["Last known: Working"].isHittable, "Stale state must remain visible at the recent end of a long conversation")
         let stale = XCTAttachment(screenshot: app.screenshot()); stale.name = "M1 offline last-known Working"; stale.lifetime = .keepAlways; add(stale)
         print("M1_OFFLINE_LAST_KNOWN_CONFIRMED")
         wait(45) { connection.value as? String == "Live" }
-        XCTAssertFalse(app.staticTexts["Ultimo stato: In corso"].exists)
+        XCTAssertFalse(app.staticTexts["Last known: Working"].exists)
         let current = XCTAttachment(screenshot: app.screenshot()); current.name = "M1 reconnect current state"; current.lifetime = .keepAlways; add(current)
     }
     func testLiveCompleteMessageClipboard() throws {
@@ -321,7 +338,7 @@ import XCTest
             }
             XCTAssertTrue(source.isHittable)
             if route == 0 { source.press(forDuration: 1) } else { source.tap() }
-            let copy = app.buttons["Copia messaggio completo"]
+            let copy = app.buttons["Copy Full Message"]
             XCTAssertTrue(copy.waitForExistence(timeout: 5)); copy.tap()
             composer.tap(); composer.press(forDuration: 1)
             let paste = app.menuItems.matching(NSPredicate(format: "label IN %@", ["Paste", "Incolla"])).firstMatch
@@ -342,19 +359,19 @@ import XCTest
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.textFields["fleet.search"].waitForExistence(timeout: 15))
         let fleet = XCTAttachment(screenshot: app.screenshot()); fleet.name = "Live Fleet iPhone 16"; fleet.lifetime = .keepAlways; add(fleet)
-        app.tabBars.buttons["Impostazioni"].tap()
-        XCTAssertTrue(app.buttons["Connessione e diagnostica"].waitForExistence(timeout: 10))
+        app.tabBars.buttons["Settings"].tap()
+        XCTAssertTrue(app.buttons["Diagnostics"].waitForExistence(timeout: 10))
         let settings = XCTAttachment(screenshot: app.screenshot()); settings.name = "Live Settings"; settings.lifetime = .keepAlways; add(settings)
-        app.buttons["Connessione e diagnostica"].tap()
+        app.buttons["Diagnostics"].tap()
         for id in ["diagnostics.transport", "diagnostics.reducer"] {
             let row = app.descendants(matching: .any).matching(identifier: id).firstMatch
             XCTAssertTrue(row.waitForExistence(timeout: 5))
             print("M1_NATIVE_TIMING", id, row.label, row.value ?? "")
         }
         app.navigationBars.buttons.firstMatch.tap()
-        app.buttons["Notifiche"].tap()
-        XCTAssertTrue(app.staticTexts["Permesso iOS"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Registrazione Relay"].exists)
+        app.buttons["Notifications"].tap()
+        XCTAssertTrue(app.staticTexts["iOS permission"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Relay registration"].exists)
         let notifications = XCTAttachment(screenshot: app.screenshot()); notifications.name = "Live notification capability"; notifications.lifetime = .keepAlways; add(notifications)
     }
     func testLiveReadOnlyHistoryNavigation() throws {
@@ -371,15 +388,15 @@ import XCTest
         XCTAssertTrue(session.waitForExistence(timeout: 15)); session.tap()
         let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
         XCTAssertTrue(composer.waitForExistence(timeout: 15)); XCTAssertTrue(composer.isHittable)
-        app.buttons["Azioni della sessione"].tap()
-        let steer = app.buttons["Steer del turno corrente"]
+        app.buttons["Session actions"].tap()
+        let steer = app.buttons["Steer Current Turn"]
         XCTAssertTrue(steer.waitForExistence(timeout: 5))
         if steer.isEnabled {
             steer.tap()
-            XCTAssertTrue(app.buttons["composer.send"].label == "Invia Steer")
-            app.buttons["Annulla"].tap()
+            XCTAssertTrue(app.buttons["composer.send"].label == "Send Steer")
+            app.buttons["Cancel"].tap()
         } else {
-            app.buttons["Azioni della sessione"].tap()
+            app.buttons["Session actions"].tap()
         }
         let older = app.buttons["history.older"]
         let transcript = app.scrollViews["session.transcript"]
@@ -403,7 +420,7 @@ import XCTest
         }
         if let paragraph {
             paragraph.press(forDuration: 1)
-            let copy = app.buttons["Copia messaggio completo"]
+            let copy = app.buttons["Copy Full Message"]
             XCTAssertTrue(copy.waitForExistence(timeout: 5)); copy.tap()
         } else { XCTFail("No real assistant paragraph available for whole-message copy acceptance") }
         for kind in ["changes", "terminal"] {
@@ -415,7 +432,7 @@ import XCTest
             }
             if let activity = visible {
                 let identity = activity.identifier
-                if activity.value as? String != "Dettagli aperti" { activity.tap() }
+                if activity.value as? String != "Details expanded" { activity.tap() }
                 let details = app.buttons[identity.replacingOccurrences(of: "tool.", with: "tool.details.")]
                 for _ in 0..<8 {
                     if details.isHittable { break }
@@ -423,18 +440,18 @@ import XCTest
                     else { transcript.swipeUp() }
                 }
                 XCTAssertTrue(details.isHittable); details.tap()
-                XCTAssertTrue(app.buttons["Chiudi"].waitForExistence(timeout: 5))
+                XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 5))
                 let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Live " + kind; capture.lifetime = .keepAlways; add(capture)
                 if kind == "terminal" {
-                    app.buttons["Copia attività"].tap()
-                    let copy = app.buttons["Copia tutti gli output"]
+                    app.buttons["Copy Activity"].tap()
+                    let copy = app.buttons["Copy All Outputs"]
                     XCTAssertTrue(copy.waitForExistence(timeout: 5)); copy.tap()
-                    let outputActions = app.buttons.matching(identifier: "Azioni output").allElementsBoundByIndex.first { $0.isHittable }
+                    let outputActions = app.buttons.matching(identifier: "Output actions").allElementsBoundByIndex.first { $0.isHittable }
                     XCTAssertNotNil(outputActions); outputActions?.tap()
-                    XCTAssertTrue(app.buttons["Copia output completo"].waitForExistence(timeout: 5))
-                    app.buttons["Copia output completo"].tap()
+                    XCTAssertTrue(app.buttons["Copy Available Output"].waitForExistence(timeout: 5))
+                    app.buttons["Copy Available Output"].tap()
                 }
-                app.buttons["Chiudi"].tap()
+                app.buttons["Close"].tap()
             }
         }
         // No attach, send, approval, interruption or other Codex mutation.
@@ -453,24 +470,24 @@ import XCTest
         if pairing.waitForExistence(timeout: 3) {
             throw XCTSkip("Live acceptance reuses one explicitly paired development controller. Pairing/security tests run against isolated temporary Hubs; never enroll a production controller per test run.")
         }
-        wait { app.staticTexts["fleet.connection"].exists && app.staticTexts["fleet.connection"].label.contains("macchine online") }
-        for machine in config.machineIDs {
-            XCTAssertGreaterThan(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "session." + machine + "~")).count, 0)
-        }
+        wait { app.buttons["fleet.connection"].exists && app.buttons["fleet.connection"].label.contains("machines online") }
+        app.buttons["fleet.connection"].tap()
+        for machine in config.machineIDs { XCTAssertTrue(app.buttons["machine." + machine].exists) }
+        app.buttons["machines.close"].tap()
         // A process restart must recover the paired credential from Keychain.
         app.terminate(); app.launch()
-        wait { app.staticTexts["fleet.connection"].exists && app.staticTexts["fleet.connection"].label.contains("macchine online") }
+        wait { app.buttons["fleet.connection"].exists && app.buttons["fleet.connection"].label.contains("machines online") }
         XCTAssertFalse(app.textFields["pairing.url"].exists)
         let search = app.textFields["fleet.search"]
         search.tap(); search.typeText(config.sessionTitle)
         let session = app.buttons["session." + config.sessionID]
         XCTAssertTrue(session.waitForExistence(timeout: 15)); session.tap()
         guard config.sendTurn else { return }
-        if app.buttons["Collega thread"].exists { app.buttons["Collega thread"].tap() }
+        if app.buttons["Connect thread"].exists { app.buttons["Connect thread"].tap() }
         let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
         reveal(composer, in: app)
         let send = app.buttons["composer.send"]
-        wait { send.exists && send.label == "Invia" }
+        wait { send.exists && send.label == "Send" }
         let marker = "native-acceptance-" + UUID().uuidString
         let text = "Reply with exactly " + marker + ". Do not use tools or modify files."
         composer.tap(); composer.typeText(text)

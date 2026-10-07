@@ -1,0 +1,5407 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "8-digit pairing code": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codice di abbinamento a 8 cifre"
+          }
+        }
+      }
+    },
+    "Invalid pairing response.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbinamento non valido."
+          }
+        }
+      }
+    },
+    "About": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informazioni"
+          }
+        }
+      }
+    },
+    "About Codex Relay": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informazioni su Codex Relay"
+          }
+        }
+      }
+    },
+    "Access": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accesso"
+          }
+        }
+      }
+    },
+    "Relay access revoked": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accesso Relay revocato"
+          }
+        }
+      }
+    },
+    "Access not revoked. ": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accesso non revocato. "
+          }
+        }
+      }
+    },
+    "Sign-in required": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accesso richiesto"
+          }
+        }
+      }
+    },
+    "Account no longer reported": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account non più disponibile"
+          }
+        }
+      }
+    },
+    "Add a machine": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungi una macchina"
+          }
+        }
+      }
+    },
+    "Add machine": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungi macchina"
+          }
+        }
+      }
+    },
+    "Agent epoch": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Epoca agent"
+          }
+        }
+      }
+    },
+    "Agent → Hub": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent → Hub"
+          }
+        }
+      }
+    },
+    "Agents on your machines": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent sulle tue macchine"
+          }
+        }
+      }
+    },
+    "Add a follow-up…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungi un follow-up…"
+          }
+        }
+      }
+    },
+    "All machines": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tutte le macchine"
+          }
+        }
+      }
+    },
+    "Allow notifications": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consenti notifiche"
+          }
+        }
+      }
+    },
+    "Allowed": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consentito"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annulla"
+          }
+        }
+      }
+    },
+    "App": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App"
+          }
+        }
+      }
+    },
+    "Apple device token": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token dispositivo Apple"
+          }
+        }
+      }
+    },
+    "Approve Once": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approva una volta"
+          }
+        }
+      }
+    },
+    "Approval requested": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approvazione richiesta"
+          }
+        }
+      }
+    },
+    "Open details and output": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri dettagli e output"
+          }
+        }
+      }
+    },
+    "Open Link": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri link"
+          }
+        }
+      }
+    },
+    "Activity": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attività"
+          }
+        }
+      }
+    },
+    "Authorization": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autorizzazione"
+          }
+        }
+      }
+    },
+    "Authorized": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autorizzato"
+          }
+        }
+      }
+    },
+    "Authorized controller": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controller autorizzato"
+          }
+        }
+      }
+    },
+    "Authorized controllers": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controller autorizzati"
+          }
+        }
+      }
+    },
+    "Availability": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disponibilità"
+          }
+        }
+      }
+    },
+    "Available": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disponibile"
+          }
+        }
+      }
+    },
+    "Message actions": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Azioni del messaggio"
+          }
+        }
+      }
+    },
+    "Session actions": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Azioni della sessione"
+          }
+        }
+      }
+    },
+    "Output actions": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Azioni output"
+          }
+        }
+      }
+    },
+    "Actions for ": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Azioni per "
+          }
+        }
+      }
+    },
+    "Branch": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Branch"
+          }
+        }
+      }
+    },
+    "Cache write input": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Input scrittura cache"
+          }
+        }
+      }
+    },
+    "Cached input": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Input in cache"
+          }
+        }
+      }
+    },
+    "Load more sessions · ": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carica altre sessioni · "
+          }
+        }
+      }
+    },
+    "Load earlier messages": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carica messaggi precedenti"
+          }
+        }
+      }
+    },
+    "Loading history…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caricamento cronologia…"
+          }
+        }
+      }
+    },
+    "Folder": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cartella"
+          }
+        }
+      }
+    },
+    "Changes": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifiche"
+          }
+        }
+      }
+    },
+    "Checked": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificato"
+          }
+        }
+      }
+    },
+    "Close": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiudi"
+          }
+        }
+      }
+    },
+    "Clear search": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancella ricerca"
+          }
+        }
+      }
+    },
+    "Clocks not comparable": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orologi non confrontabili"
+          }
+        }
+      }
+    },
+    "Code expired. Create a new one.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codice scaduto. Creane uno nuovo."
+          }
+        }
+      }
+    },
+    "Codex Account": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account Codex"
+          }
+        }
+      }
+    },
+    "Codex Accounts": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account Codex"
+          }
+        }
+      }
+    },
+    "Codex account": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account Codex"
+          }
+        }
+      }
+    },
+    "Codex needs your input": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex ha bisogno del tuo input"
+          }
+        }
+      }
+    },
+    "Codex has a question": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex ha una domanda"
+          }
+        }
+      }
+    },
+    "Codex not connected": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex non connesso"
+          }
+        }
+      }
+    },
+    "Codex owns conversations and queued work": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conversazioni e coda rimangono in Codex"
+          }
+        }
+      }
+    },
+    "Codex requests permission": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex richiede un permesso"
+          }
+        }
+      }
+    },
+    "Codex needs a decision": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex richiede una decisione"
+          }
+        }
+      }
+    },
+    "Codex snapshot": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Snapshot Codex"
+          }
+        }
+      }
+    },
+    "Generating response…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex sta scrivendo"
+          }
+        }
+      }
+    },
+    "Codex wants to run": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex vuole eseguire"
+          }
+        }
+      }
+    },
+    "Codex wants to change files": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex vuole modificare dei file"
+          }
+        }
+      }
+    },
+    "Code": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codice"
+          }
+        }
+      }
+    },
+    "Code expired or access revoked or invalid.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codice scaduto, accesso revocato o non valido."
+          }
+        }
+      }
+    },
+    "Collapsed": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiuso"
+          }
+        }
+      }
+    },
+    "Connect this thread to Codex to send messages.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collega questo thread a Codex per inviare messaggi."
+          }
+        }
+      }
+    },
+    "Connect thread": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collega thread"
+          }
+        }
+      }
+    },
+    "Command rejected.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comando rifiutato."
+          }
+        }
+      }
+    },
+    "Command": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comando"
+          }
+        }
+      }
+    },
+    "Completed": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completato"
+          }
+        }
+      }
+    },
+    "Grant permissions for this turn": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concedi i permessi per questo turno"
+          }
+        }
+      }
+    },
+    "Share": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Condividi"
+          }
+        }
+      }
+    },
+    "Configured": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configurato"
+          }
+        }
+      }
+    },
+    "Connected": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collegato"
+          }
+        }
+      }
+    },
+    "Connected to your Hub": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collegato al tuo Hub"
+          }
+        }
+      }
+    },
+    "Connecting to Hub…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connessione al Hub…"
+          }
+        }
+      }
+    },
+    "Connection": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collegamento"
+          }
+        }
+      }
+    },
+    "Connection diagnostics": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diagnostica collegamento"
+          }
+        }
+      }
+    },
+    "Connection → Online": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collegamento → Online"
+          }
+        }
+      }
+    },
+    "Connection lost while sending. Check the request before retrying.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connessione interrotta durante l’invio. Verifica la richiesta prima di riprovare."
+          }
+        }
+      }
+    },
+    "Connection lost.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connessione interrotta."
+          }
+        }
+      }
+    },
+    "Connection lost. Try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connessione interrotta. Riprova."
+          }
+        }
+      }
+    },
+    "Connecting…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connessione…"
+          }
+        }
+      }
+    },
+    "Partial content": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contenuto parziale"
+          }
+        }
+      }
+    },
+    "Session Info": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contesto della sessione"
+          }
+        }
+      }
+    },
+    "Permission context unavailable: resolve in local Codex.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contesto dei permessi non disponibile: risolvi da Codex locale."
+          }
+        }
+      }
+    },
+    "Partial context · see Codex for the full content.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contesto parziale · consulta Codex per il contenuto completo."
+          }
+        }
+      }
+    },
+    "Controller": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controller"
+          }
+        }
+      }
+    },
+    "Controllers & Access": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controller e accesso"
+          }
+        }
+      }
+    },
+    "Controllers & recovery": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controller e recupero"
+          }
+        }
+      }
+    },
+    "Control unavailable for this session.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controllo non disponibile per questa sessione."
+          }
+        }
+      }
+    },
+    "Copy Activity": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia attività"
+          }
+        }
+      }
+    },
+    "Copy Code": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia codice"
+          }
+        }
+      }
+    },
+    "Copy Command": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia comando"
+          }
+        }
+      }
+    },
+    "Copy Link": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia link"
+          }
+        }
+      }
+    },
+    "Copy Full Message": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia messaggio completo"
+          }
+        }
+      }
+    },
+    "Copy Output": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia output"
+          }
+        }
+      }
+    },
+    "Copy Available Output": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia output disponibile"
+          }
+        }
+      }
+    },
+    "Copy Patch": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia patch"
+          }
+        }
+      }
+    },
+    "Copy Path": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia percorso"
+          }
+        }
+      }
+    },
+    "Copy Paragraph": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia questo paragrafo"
+          }
+        }
+      }
+    },
+    "Copy All Outputs": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia tutti gli output"
+          }
+        }
+      }
+    },
+    "Copied": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiato"
+          }
+        }
+      }
+    },
+    "Copy Diagnostics": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia diagnostica"
+          }
+        }
+      }
+    },
+    "Copy Previous Path": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia percorso precedente"
+          }
+        }
+      }
+    },
+    "Change the work in progress…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Correggi il lavoro in corso…"
+          }
+        }
+      }
+    },
+    "Create one-time code": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crea codice monouso"
+          }
+        }
+      }
+    },
+    "Created": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Creato"
+          }
+        }
+      }
+    },
+    "Credits": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crediti"
+          }
+        }
+      }
+    },
+    "History is available when Relay reconnects to the machine.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cronologia disponibile quando Relay si ricollega alla macchina."
+          }
+        }
+      }
+    },
+    "History unavailable.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cronologia non disponibile."
+          }
+        }
+      }
+    },
+    "History on Codex": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cronologia su Codex"
+          }
+        }
+      }
+    },
+    "Current": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiornato"
+          }
+        }
+      }
+    },
+    "Needs verification": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Da verificare"
+          }
+        }
+      }
+    },
+    "Data": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dati"
+          }
+        }
+      }
+    },
+    "Database": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Database"
+          }
+        }
+      }
+    },
+    "Denied": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Negato"
+          }
+        }
+      }
+    },
+    "Details": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dettagli"
+          }
+        }
+      }
+    },
+    "Details expanded": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dettagli aperti"
+          }
+        }
+      }
+    },
+    "Details collapsed": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dettagli chiusi"
+          }
+        }
+      }
+    },
+    "Device": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dispositivo"
+          }
+        }
+      }
+    },
+    "Diagnostics": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diagnostica"
+          }
+        }
+      }
+    },
+    "Diff": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff"
+          }
+        }
+      }
+    },
+    "Disable Relay notifications": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disattiva notifiche Relay"
+          }
+        }
+      }
+    },
+    "Disabling notifications…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disattivazione notifiche…"
+          }
+        }
+      }
+    },
+    "Dismiss": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiudi avviso"
+          }
+        }
+      }
+    },
+    "Device already paired: revoke access before adding it again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dispositivo già abbinato: revoca l’accesso prima di aggiungerlo di nuovo."
+          }
+        }
+      }
+    },
+    "Question": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Domanda"
+          }
+        }
+      }
+    },
+    "Turn duration": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durata del turno"
+          }
+        }
+      }
+    },
+    "Deleted": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminato"
+          }
+        }
+      }
+    },
+    "Error": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Errore"
+          }
+        }
+      }
+    },
+    "Hub error": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Errore del Hub"
+          }
+        }
+      }
+    },
+    "Check outcome in Codex": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esito da verificare in Codex"
+          }
+        }
+      }
+    },
+    "Unknown outcome. Check Codex before resending.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esito sconosciuto. Verifica Codex prima di reinviare."
+          }
+        }
+      }
+    },
+    "Unknown outcome. Check the Codex queue before retrying; your text is retained.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esito sconosciuto. Verifica la coda Codex prima di riprovare; il testo è conservato."
+          }
+        }
+      }
+    },
+    "Event sequence": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sequenza eventi"
+          }
+        }
+      }
+    },
+    "Expanded": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aperto"
+          }
+        }
+      }
+    },
+    "Expired": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scaduto"
+          }
+        }
+      }
+    },
+    "Expires": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scade"
+          }
+        }
+      }
+    },
+    "Expires in ": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scade tra "
+          }
+        }
+      }
+    },
+    "Failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fallito"
+          }
+        }
+      }
+    },
+    "File": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File"
+          }
+        }
+      }
+    },
+    "File changes": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifiche ai file"
+          }
+        }
+      }
+    },
+    "Filter sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtra sessioni"
+          }
+        }
+      }
+    },
+    "Finding this session in Codex history…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricerca della sessione nella cronologia Codex…"
+          }
+        }
+      }
+    },
+    "The memory window is limited. Full history remains in Codex.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finestra in memoria limitata. La cronologia completa rimane in Codex."
+          }
+        }
+      }
+    },
+    "Fleet": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fleet"
+          }
+        }
+      }
+    },
+    "Freshness": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiornamento"
+          }
+        }
+      }
+    },
+    "Creating code…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Generazione codice…"
+          }
+        }
+      }
+    },
+    "I checked Codex: resend": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ho verificato Codex: reinvia"
+          }
+        }
+      }
+    },
+    "Hot sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessioni attive"
+          }
+        }
+      }
+    },
+    "Hub APNs": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "APNs del Hub"
+          }
+        }
+      }
+    },
+    "Hub URL": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "URL del Hub"
+          }
+        }
+      }
+    },
+    "Hub connection": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collegamento Hub"
+          }
+        }
+      }
+    },
+    "Hub not connected": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hub non connesso"
+          }
+        }
+      }
+    },
+    "Hub not connected. Try again when it is online.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hub non connesso. Riprova quando torna online."
+          }
+        }
+      }
+    },
+    "Hub version": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versione Hub"
+          }
+        }
+      }
+    },
+    "Hub → iPhone": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hub → iPhone"
+          }
+        }
+      }
+    },
+    "Messages can be sent after reconnecting.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I messaggi potranno essere inviati dopo la riconnessione."
+          }
+        }
+      }
+    },
+    "Recent Codex context will appear here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il contesto recente di Codex apparirà qui."
+          }
+        }
+      }
+    },
+    "This message is no longer editable in the queue. Your text stays in the composer.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il messaggio non è più modificabile in coda. Il testo resta nel composer."
+          }
+        }
+      }
+    },
+    "The message was already dispatched. Your edited text stays here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il messaggio è già partito. Il testo modificato rimane qui."
+          }
+        }
+      }
+    },
+    "The turn changed. Your text is retained: choose Steer again or send it as a follow-up.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il turno è cambiato. Il testo è conservato: scegli di nuovo Steer o invialo come follow-up."
+          }
+        }
+      }
+    },
+    "Unable to save access securely in Keychain.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile proteggere l’accesso nel Portachiavi."
+          }
+        }
+      }
+    },
+    "Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impostazioni"
+          }
+        }
+      }
+    },
+    "Working": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In corso"
+          }
+        }
+      }
+    },
+    "Inactive": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inattiva"
+          }
+        }
+      }
+    },
+    "Included usage": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilizzo incluso"
+          }
+        }
+      }
+    },
+    "Input": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Input"
+          }
+        }
+      }
+    },
+    "Enter the Hub’s HTTPS origin.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserisci l’origine HTTPS del Hub."
+          }
+        }
+      }
+    },
+    "Enter a valid JSON response.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserisci una risposta JSON valida."
+          }
+        }
+      }
+    },
+    "Installation guide": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guida all’installazione"
+          }
+        }
+      }
+    },
+    "Interrupt the current turn?": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interrompere il turno in corso?"
+          }
+        }
+      }
+    },
+    "Interrupt": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interrompi"
+          }
+        }
+      }
+    },
+    "Interrupt Turn": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interrompi turno"
+          }
+        }
+      }
+    },
+    "Send": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia"
+          }
+        }
+      }
+    },
+    "Send Steer": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia Steer"
+          }
+        }
+      }
+    },
+    "Send follow-up": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia follow-up"
+          }
+        }
+      }
+    },
+    "Queue this message. Touch and hold to send immediately with Steer.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia in coda. Tieni premuto per inviare subito con Steer."
+          }
+        }
+      }
+    },
+    "Send Now (Steer)": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia ora (Steer)"
+          }
+        }
+      }
+    },
+    "Send MCP response": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia risposta MCP"
+          }
+        }
+      }
+    },
+    "Send a new message": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia un nuovo messaggio"
+          }
+        }
+      }
+    },
+    "Sending response…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invio della risposta…"
+          }
+        }
+      }
+    },
+    "Send failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invio fallito"
+          }
+        }
+      }
+    },
+    "Known sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessioni note"
+          }
+        }
+      }
+    },
+    "The local queue is full. Shorten your text before saving.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La coda locale è piena. Riduci il testo prima di salvare."
+          }
+        }
+      }
+    },
+    "History will load when Relay connects to the machine.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La cronologia si caricherà quando Relay sarà collegato alla macchina."
+          }
+        }
+      }
+    },
+    "The request changed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La richiesta è cambiata."
+          }
+        }
+      }
+    },
+    "The MCP response must be a JSON object.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La risposta MCP deve essere un oggetto JSON."
+          }
+        }
+      }
+    },
+    "Last checked": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ultima verifica"
+          }
+        }
+      }
+    },
+    "Last disconnect": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ultima disconnessione"
+          }
+        }
+      }
+    },
+    "Last event": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ultimo evento"
+          }
+        }
+      }
+    },
+    "Last heartbeat": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ultimo heartbeat"
+          }
+        }
+      }
+    },
+    "Last known": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ultimo stato noto"
+          }
+        }
+      }
+    },
+    "Last seen": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ultimo contatto"
+          }
+        }
+      }
+    },
+    "Last snapshot": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ultimo snapshot"
+          }
+        }
+      }
+    },
+    "Decisions and approvals from your machines will appear here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le decisioni e le approvazioni delle tue macchine appariranno qui."
+          }
+        }
+      }
+    },
+    "Limit reached": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limite raggiunto"
+          }
+        }
+      }
+    },
+    "Limit state": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stato limite"
+          }
+        }
+      }
+    },
+    "Live": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live"
+          }
+        }
+      }
+    },
+    "Machine": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Macchina"
+          }
+        }
+      }
+    },
+    "Machine Agent": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agent macchina"
+          }
+        }
+      }
+    },
+    "Machine ID": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ID macchina"
+          }
+        }
+      }
+    },
+    "Machine unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Macchina non disponibile"
+          }
+        }
+      }
+    },
+    "Machines": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Macchine"
+          }
+        }
+      }
+    },
+    "Latest messages": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Messaggi recenti"
+          }
+        }
+      }
+    },
+    "Model": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modello"
+          }
+        }
+      }
+    },
+    "Model context window": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finestra di contesto del modello"
+          }
+        }
+      }
+    },
+    "Edit": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifica"
+          }
+        }
+      }
+    },
+    "Edit queued message": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifica messaggio in coda"
+          }
+        }
+      }
+    },
+    "Edit failed. Your text is retained.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifica non riuscita. Il testo è conservato."
+          }
+        }
+      }
+    },
+    "Edit response as JSON": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifica risposta come JSON"
+          }
+        }
+      }
+    },
+    "Edit Last Queued Message": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifica ultimo messaggio in coda"
+          }
+        }
+      }
+    },
+    "Modified": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modificato"
+          }
+        }
+      }
+    },
+    "Show": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra"
+          }
+        }
+      }
+    },
+    "Name": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nome"
+          }
+        }
+      }
+    },
+    "Need to set up a Hub?": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devi configurare un Hub?"
+          }
+        }
+      }
+    },
+    "Needs You": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serve una risposta"
+          }
+        }
+      }
+    },
+    "No pending requests": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna richiesta"
+          }
+        }
+      }
+    },
+    "No": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No"
+          }
+        }
+      }
+    },
+    "No account data yet": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun dato account disponibile"
+          }
+        }
+      }
+    },
+    "No output": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun output"
+          }
+        }
+      }
+    },
+    "No samples": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun campione"
+          }
+        }
+      }
+    },
+    "No text result provided": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun risultato testuale fornito"
+          }
+        }
+      }
+    },
+    "None available": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuno disponibile"
+          }
+        }
+      }
+    },
+    "Not available": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non disponibile"
+          }
+        }
+      }
+    },
+    "Not configured": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non configurato"
+          }
+        }
+      }
+    },
+    "Not connected": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non collegato"
+          }
+        }
+      }
+    },
+    "Not obtained": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non ottenuto"
+          }
+        }
+      }
+    },
+    "Not registered": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non registrato"
+          }
+        }
+      }
+    },
+    "Not requested": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non richiesto"
+          }
+        }
+      }
+    },
+    "Not verified": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non verificato"
+          }
+        }
+      }
+    },
+    "Notifications": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notifiche"
+          }
+        }
+      }
+    },
+    "Notifications are denied. You can enable them in iOS Settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le notifiche sono disattivate. Puoi abilitarle nelle Impostazioni iOS."
+          }
+        }
+      }
+    },
+    "Notifications not enabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notifiche non abilitate"
+          }
+        }
+      }
+    },
+    "Observed latency": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Latenza osservata"
+          }
+        }
+      }
+    },
+    "Obtained": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ottenuto"
+          }
+        }
+      }
+    },
+    "Offline": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offline"
+          }
+        }
+      }
+    },
+    "Offline · reconnecting": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offline · riconnessione"
+          }
+        }
+      }
+    },
+    "One Hub": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un Hub"
+          }
+        }
+      }
+    },
+    "One-time pairing code": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codice di abbinamento monouso"
+          }
+        }
+      }
+    },
+    "Open iOS notification settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri impostazioni notifiche iOS"
+          }
+        }
+      }
+    },
+    "Origin": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Origine"
+          }
+        }
+      }
+    },
+    "Outbox full or message too long.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Outbox pieno o messaggio troppo lungo."
+          }
+        }
+      }
+    },
+    "Output": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Output"
+          }
+        }
+      }
+    },
+    "Pair another controller": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbina un altro controller"
+          }
+        }
+      }
+    },
+    "Pair controller": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbina controller"
+          }
+        }
+      }
+    },
+    "Pair this iPhone": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbina questo iPhone"
+          }
+        }
+      }
+    },
+    "Pair with your Hub": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbina al tuo Hub"
+          }
+        }
+      }
+    },
+    "Paired": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbinato"
+          }
+        }
+      }
+    },
+    "Pairing…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbinamento…"
+          }
+        }
+      }
+    },
+    "Overview": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Panoramica"
+          }
+        }
+      }
+    },
+    "Patch": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Patch"
+          }
+        }
+      }
+    },
+    "Pausing connection…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausa del collegamento…"
+          }
+        }
+      }
+    },
+    "Pause Relay Agent": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metti in pausa Relay Agent"
+          }
+        }
+      }
+    },
+    "Paused": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In pausa"
+          }
+        }
+      }
+    },
+    "Pending requests": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Richieste in attesa"
+          }
+        }
+      }
+    },
+    "Requested permissions · this turn only": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permessi richiesti · soltanto per questo turno"
+          }
+        }
+      }
+    },
+    "Plan": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Piano"
+          }
+        }
+      }
+    },
+    "Keychain unavailable.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portachiavi non disponibile."
+          }
+        }
+      }
+    },
+    "Project": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Progetto"
+          }
+        }
+      }
+    },
+    "Ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pronta"
+          }
+        }
+      }
+    },
+    "Protocol": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protocollo"
+          }
+        }
+      }
+    },
+    "Quiet delivery": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consegna silenziosa"
+          }
+        }
+      }
+    },
+    "Reachable": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raggiungibile"
+          }
+        }
+      }
+    },
+    "Reasoning output tokens": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token di ragionamento"
+          }
+        }
+      }
+    },
+    "Recent": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recenti"
+          }
+        }
+      }
+    },
+    "Reconnects": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riconnessioni"
+          }
+        }
+      }
+    },
+    "Recovery": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recupero"
+          }
+        }
+      }
+    },
+    "Redeem once. Keep this code private.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilizzabile una sola volta. Mantieni privato questo codice."
+          }
+        }
+      }
+    },
+    "Refreshing…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiornamento…"
+          }
+        }
+      }
+    },
+    "Registered": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registrato"
+          }
+        }
+      }
+    },
+    "Registered with Relay. Send a test to verify delivery on this iPhone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registrato su Relay. Invia un test per verificare la consegna su questo iPhone."
+          }
+        }
+      }
+    },
+    "Registering this iPhone with Apple…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registrazione di questo iPhone con Apple…"
+          }
+        }
+      }
+    },
+    "Registering with Relay…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registrazione su Relay…"
+          }
+        }
+      }
+    },
+    "Relay connected": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay collegato"
+          }
+        }
+      }
+    },
+    "Relay paused": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay in pausa"
+          }
+        }
+      }
+    },
+    "Relay not connected": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay non connesso"
+          }
+        }
+      }
+    },
+    "Relay protocol": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protocollo Relay"
+          }
+        }
+      }
+    },
+    "Relay registration": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registrazione Relay"
+          }
+        }
+      }
+    },
+    "Relay registration removed for this iPhone. iOS permission is unchanged.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registrazione Relay rimossa per questo iPhone. Il permesso iOS non cambia."
+          }
+        }
+      }
+    },
+    "Remaining": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimanenti"
+          }
+        }
+      }
+    },
+    "Remove controller": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuovi controller"
+          }
+        }
+      }
+    },
+    "Remove enrollment": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuovi registrazione"
+          }
+        }
+      }
+    },
+    "Remove machine enrollment": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuovi registrazione macchina"
+          }
+        }
+      }
+    },
+    "Removing controller…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimozione controller…"
+          }
+        }
+      }
+    },
+    "Reported by": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dati forniti da"
+          }
+        }
+      }
+    },
+    "Requesting permission…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Richiesta permesso…"
+          }
+        }
+      }
+    },
+    "Reset credit": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Credito di ripristino"
+          }
+        }
+      }
+    },
+    "Reset credits": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crediti di ripristino"
+          }
+        }
+      }
+    },
+    "Resets": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si ripristina"
+          }
+        }
+      }
+    },
+    "Resume Relay Agent": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riprendi Relay Agent"
+          }
+        }
+      }
+    },
+    "Revoking this access…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revoca di questo accesso…"
+          }
+        }
+      }
+    },
+    "Revoking…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revoca in corso…"
+          }
+        }
+      }
+    },
+    "Revoke access": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revoca accesso"
+          }
+        }
+      }
+    },
+    "Revoke and sign out": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revoca e disconnetti"
+          }
+        }
+      }
+    },
+    "Revoke credential": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revoca credenziale"
+          }
+        }
+      }
+    },
+    "Revoke machine credential": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revoca credenziale macchina"
+          }
+        }
+      }
+    },
+    "Revoke this iPhone’s access": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revoca accesso di questo iPhone"
+          }
+        }
+      }
+    },
+    "Revoked": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revocato"
+          }
+        }
+      }
+    },
+    "Reconnecting Relay…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riconnessione Relay…"
+          }
+        }
+      }
+    },
+    "Reconnecting…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riconnessione…"
+          }
+        }
+      }
+    },
+    "Reject": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rifiuta"
+          }
+        }
+      }
+    },
+    "Declined": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rifiutato"
+          }
+        }
+      }
+    },
+    "Reload history · ": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rileggi cronologia · "
+          }
+        }
+      }
+    },
+    "Removing…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimozione…"
+          }
+        }
+      }
+    },
+    "Renamed": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rinominato"
+          }
+        }
+      }
+    },
+    "Resume Relay on this machine": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riprendi Relay su questa macchina"
+          }
+        }
+      }
+    },
+    "Resuming connection…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ripresa del collegamento…"
+          }
+        }
+      }
+    },
+    "Retry": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riprova"
+          }
+        }
+      }
+    },
+    "Respond": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rispondi"
+          }
+        }
+      }
+    },
+    "Answer": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta"
+          }
+        }
+      }
+    },
+    "Hub response too large.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta Hub troppo grande."
+          }
+        }
+      }
+    },
+    "JSON response matching the schema": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta JSON conforme allo schema"
+          }
+        }
+      }
+    },
+    "MCP JSON response": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta MCP JSON"
+          }
+        }
+      }
+    },
+    "Response completed": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta completata"
+          }
+        }
+      }
+    },
+    "Response sent · waiting for Codex": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta inviata · attendo Codex"
+          }
+        }
+      }
+    },
+    "Custom answer": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta libera"
+          }
+        }
+      }
+    },
+    "Response failed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta non riuscita."
+          }
+        }
+      }
+    },
+    "Response too large (64 KiB maximum).": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta troppo grande (massimo 64 KiB)."
+          }
+        }
+      }
+    },
+    "Runtime": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runtime"
+          }
+        }
+      }
+    },
+    "Save queued message": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salva messaggio in coda"
+          }
+        }
+      }
+    },
+    "Samples": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Campioni"
+          }
+        }
+      }
+    },
+    "Discard": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scarta"
+          }
+        }
+      }
+    },
+    "Full MCP schema": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schema MCP completo"
+          }
+        }
+      }
+    },
+    "Schema unavailable: resolve in local Codex.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schema non disponibile: risolvi da Codex locale."
+          }
+        }
+      }
+    },
+    "Message Codex…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scrivi a Codex…"
+          }
+        }
+      }
+    },
+    "Choose…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleziona…"
+          }
+        }
+      }
+    },
+    "Self-hosted installation": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installazione self-hosted"
+          }
+        }
+      }
+    },
+    "Send test notification": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia notifica di test"
+          }
+        }
+      }
+    },
+    "Sending test…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invio test…"
+          }
+        }
+      }
+    },
+    "Codex session": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessione Codex"
+          }
+        }
+      }
+    },
+    "Session unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessione non disponibile"
+          }
+        }
+      }
+    },
+    "Session, machine or project": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessione, macchina o progetto"
+          }
+        }
+      }
+    },
+    "Sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessioni"
+          }
+        }
+      }
+    },
+    "Sign out locally": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnetti localmente"
+          }
+        }
+      }
+    },
+    "Syncing with Codex…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronizzazione Codex…"
+          }
+        }
+      }
+    },
+    "Snapshot age at check": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Età snapshot alla verifica"
+          }
+        }
+      }
+    },
+    "Snapshot state": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stato snapshot"
+          }
+        }
+      }
+    },
+    "Snapshot watermark": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Watermark snapshot"
+          }
+        }
+      }
+    },
+    "Source & documentation": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sorgenti e documentazione"
+          }
+        }
+      }
+    },
+    "Source of truth": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fonte autorevole"
+          }
+        }
+      }
+    },
+    "Spend control": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controllo spesa"
+          }
+        }
+      }
+    },
+    "Spend limit": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limite di spesa"
+          }
+        }
+      }
+    },
+    "State reducer": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reducer dello stato"
+          }
+        }
+      }
+    },
+    "Machine state unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stato macchina non disponibile"
+          }
+        }
+      }
+    },
+    "Last-known state": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stato non aggiornato"
+          }
+        }
+      }
+    },
+    "Steer Current Turn": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steer del turno corrente"
+          }
+        }
+      }
+    },
+    "Steer · send to the current turn now": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steer · invia subito al turno corrente"
+          }
+        }
+      }
+    },
+    "Yes": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sì"
+          }
+        }
+      }
+    },
+    "Temporary": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temporaneo"
+          }
+        }
+      }
+    },
+    "Terminal": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminale"
+          }
+        }
+      }
+    },
+    "The Hub owns Relay access and routing": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il Hub gestisce accessi e instradamento Relay"
+          }
+        }
+      }
+    },
+    "This controller has been removed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo controller è stato rimosso."
+          }
+        }
+      }
+    },
+    "This iPhone": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo iPhone"
+          }
+        }
+      }
+    },
+    "This machine is no longer enrolled in this Relay.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa macchina non è più registrata in questo Relay."
+          }
+        }
+      }
+    },
+    "This machine is not in the current Hub snapshot.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa macchina non è nello snapshot attuale del Hub."
+          }
+        }
+      }
+    },
+    "This notification’s machine is no longer enrolled in this Relay.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La macchina di questa notifica non è più registrata in questo Relay."
+          }
+        }
+      }
+    },
+    "This session is no longer available in the machine’s history.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa sessione non è più disponibile nella cronologia della macchina."
+          }
+        }
+      }
+    },
+    "Thread": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thread"
+          }
+        }
+      }
+    },
+    "Token usage": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilizzo token"
+          }
+        }
+      }
+    },
+    "Back to follow-up": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Torna al follow-up"
+          }
+        }
+      }
+    },
+    "Total": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Totale"
+          }
+        }
+      }
+    },
+    "Too many active requests.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Troppe richieste in corso."
+          }
+        }
+      }
+    },
+    "Too many attempts. Wait a minute.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Troppi tentativi. Attendi un minuto."
+          }
+        }
+      }
+    },
+    "All": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tutte"
+          }
+        }
+      }
+    },
+    "All sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tutte le sessioni"
+          }
+        }
+      }
+    },
+    "Latest 3 operations": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ultime 3 operazioni"
+          }
+        }
+      }
+    },
+    "Latest output": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ultimo output"
+          }
+        }
+      }
+    },
+    "Unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non disponibile"
+          }
+        }
+      }
+    },
+    "Unlimited": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Illimitato"
+          }
+        }
+      }
+    },
+    "Updated": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiornato"
+          }
+        }
+      }
+    },
+    "Usage window": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finestra di utilizzo"
+          }
+        }
+      }
+    },
+    "Used": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilizzati"
+          }
+        }
+      }
+    },
+    "Go to request": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vai alla richiesta"
+          }
+        }
+      }
+    },
+    "Version": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versione"
+          }
+        }
+      }
+    },
+    "Waiting for output…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In attesa di output…"
+          }
+        }
+      }
+    },
+    "Waiting for tool result…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In attesa del risultato del tool…"
+          }
+        }
+      }
+    },
+    "Within limit": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entro il limite"
+          }
+        }
+      }
+    },
+    "Your Relay": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il tuo Relay"
+          }
+        }
+      }
+    },
+    "Your fleet, at a glance": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua fleet, a colpo d’occhio"
+          }
+        }
+      }
+    },
+    "Your self-hosted Hub coordinates the fleet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il tuo Hub self-hosted coordina la fleet."
+          }
+        }
+      }
+    },
+    "iOS permission": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permesso iOS"
+          }
+        }
+      }
+    },
+    "invalid schema.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "schema non valido."
+          }
+        }
+      }
+    },
+    "value not allowed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "valore non consentito."
+          }
+        }
+      }
+    },
+    "unexpected value for this schema.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "valore non previsto dallo schema."
+          }
+        }
+      }
+    },
+    "response does not match any schema alternative.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "risposta non conforme alle alternative dello schema."
+          }
+        }
+      }
+    },
+    "advanced schema: resolve this request in local Codex.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "schema avanzato: risolvi questa richiesta da Codex locale."
+          }
+        }
+      }
+    },
+    "schema nested too deeply; use local Codex.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "schema troppo annidato; usa Codex locale."
+          }
+        }
+      }
+    },
+    "value excluded by the schema.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "valore escluso dallo schema."
+          }
+        }
+      }
+    },
+    "value does not match the required constant.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "valore diverso da quello richiesto."
+          }
+        }
+      }
+    },
+    "text too short.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "testo troppo corto."
+          }
+        }
+      }
+    },
+    "text too long.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "testo troppo lungo."
+          }
+        }
+      }
+    },
+    "text does not match the pattern.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "testo non conforme al pattern."
+          }
+        }
+      }
+    },
+    "unsupported pattern; use local Codex.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pattern non compatibile; usa Codex locale."
+          }
+        }
+      }
+    },
+    "value below minimum.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "valore inferiore al minimo."
+          }
+        }
+      }
+    },
+    "value at or below the exclusive limit.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "valore inferiore o uguale al limite."
+          }
+        }
+      }
+    },
+    "value above maximum.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "valore superiore al massimo."
+          }
+        }
+      }
+    },
+    "value at or above the exclusive limit.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "valore superiore o uguale al limite."
+          }
+        }
+      }
+    },
+    "value is not a multiple of the required step.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "valore non multiplo del passo richiesto."
+          }
+        }
+      }
+    },
+    "too few items.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "troppi pochi elementi."
+          }
+        }
+      }
+    },
+    "too many items.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "troppi elementi."
+          }
+        }
+      }
+    },
+    "duplicate items.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "elementi duplicati."
+          }
+        }
+      }
+    },
+    "unsupported item schema.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "schema degli elementi non compatibile."
+          }
+        }
+      }
+    },
+    "too few fields.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "troppi pochi campi."
+          }
+        }
+      }
+    },
+    "too many fields.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "troppi campi."
+          }
+        }
+      }
+    },
+    "Access is stored in this iPhone’s Keychain. Your Codex login stays on your machines. Never enter a Hub admin token here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’accesso è salvato nel Portachiavi di questo iPhone. Il login Codex rimane sulle tue macchine. Non inserire qui un token amministrativo del Hub."
+          }
+        }
+      }
+    },
+    "Accounts are reported by Codex on your machines. Sign in to Codex locally to make account data available.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gli account sono forniti da Codex sulle tue macchine. Accedi a Codex localmente per renderne disponibili i dati."
+          }
+        }
+      }
+    },
+    "An Agent connects a machine’s local Codex runtime to your Hub. Relay connectivity is separate from the work running on that machine.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un agent collega il Codex locale al tuo Hub. Il collegamento Relay è distinto dal lavoro in corso sulla macchina."
+          }
+        }
+      }
+    },
+    "APNs must be configured on the Hub. The signed iPhone app also needs the Apple Push Notifications capability, unavailable with Personal Team provisioning. Relay control works independently.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configura APNs sul Hub. L’app iPhone firmata richiede anche la funzionalità Push Notifications di Apple, non disponibile con un Personal Team. Il controllo Relay funziona indipendentemente."
+          }
+        }
+      }
+    },
+    "Apple registration unavailable. Check the signed app’s Push Notifications entitlement and provisioning profile.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registrazione Apple non disponibile. Verifica la funzionalità Push Notifications e il profilo di provisioning dell’app firmata."
+          }
+        }
+      }
+    },
+    "Conversation content is fetched from Codex and held temporarily in memory, not stored as a Relay transcript.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La conversazione viene letta da Codex e mantenuta temporaneamente in memoria. Relay non ne salva una copia permanente."
+          }
+        }
+      }
+    },
+    "Copied diagnostics omit machine names, host addresses, account identities, credentials and conversation content.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La diagnostica copiata esclude nomi delle macchine, indirizzi, identità degli account, credenziali e contenuti delle conversazioni."
+          }
+        }
+      }
+    },
+    "Create a one-time code on the Hub host or from an authorized controller. It expires after 5 minutes.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crea un codice monouso sul computer del Hub o da un controller autorizzato. Scade dopo 5 minuti."
+          }
+        }
+      }
+    },
+    "Cross-host estimates include clock offset. These values do not measure model execution or rendering.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le stime tra macchine includono lo scarto degli orologi. Non misurano l’esecuzione del modello o il rendering."
+          }
+        }
+      }
+    },
+    "Cross-host timing includes clock offset. No model execution or rendering time is inferred.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I tempi tra macchine includono lo scarto degli orologi. Non viene dedotto il tempo di esecuzione del modello o di rendering."
+          }
+        }
+      }
+    },
+    "Cumulative counters reported by Codex; totals are not a measure of current context occupancy.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contatori cumulativi forniti da Codex; i totali non misurano l’occupazione attuale del contesto."
+          }
+        }
+      }
+    },
+    "Each Agent connects to the Codex you already use.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ogni agent si collega al Codex che usi già."
+          }
+        }
+      }
+    },
+    "Enter the Hub URL and this code on the other iPhone. The code grants controller access to this Relay.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserisci l’URL del Hub e questo codice sull’altro iPhone. Il codice autorizza l’accesso come controller a questo Relay."
+          }
+        }
+      }
+    },
+    "Enter this code on the machine using codex-relay pair. The Agent connects outbound to your Hub.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserisci questo codice sulla macchina con codex-relay pair. L’agent apre una connessione verso il tuo Hub."
+          }
+        }
+      }
+    },
+    "Follow live work, answer questions and continue sessions across your machines.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segui il lavoro in tempo reale, rispondi alle domande e continua le sessioni sulle tue macchine."
+          }
+        }
+      }
+    },
+    "Grouped by the email Codex reports; an account identifier was unavailable.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raggruppato per l’email fornita da Codex; l’identificativo dell’account non era disponibile."
+          }
+        }
+      }
+    },
+    "If you lose access to every controller, create a new pairing code on the Hub host. Keep the bootstrap credential on that host.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se perdi l’accesso a tutti i controller, crea un nuovo codice sul computer del Hub. Mantieni lì la credenziale iniziale."
+          }
+        }
+      }
+    },
+    "Install Relay on an always-on host with an HTTPS address, then create your iPhone pairing code. After pairing, add machines from Settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installa Relay su un computer sempre acceso con un indirizzo HTTPS, poi crea il codice per l’iPhone. Dopo l’abbinamento, aggiungi le macchine dalle Impostazioni."
+          }
+        }
+      }
+    },
+    "Needs You, completion, failure and machines offline after a grace period. No notifications for individual commands or tokens. Lock-screen previews omit project and conversation content by default.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Richieste di risposta, completamenti, errori e macchine offline dopo un periodo di tolleranza. Nessuna notifica per singoli comandi o token. Le anteprime sulla schermata bloccata escludono progetto e conversazione."
+          }
+        }
+      }
+    },
+    "Pair once to supervise work and respond securely.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbina una volta per seguire il lavoro e rispondere in sicurezza."
+          }
+        }
+      }
+    },
+    "Pause stops Relay access only. Local Codex work continues. Unresolved requests remain last-known until the Agent reconnects.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La pausa sospende solo l’accesso Relay. Codex continua a lavorare localmente. Le richieste irrisolte rimangono come ultimo stato noto fino alla riconnessione."
+          }
+        }
+      }
+    },
+    "This chat shows temporary recent context. History remains in Codex.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa chat mostra contesto recente ed effimero. La cronologia rimane in Codex."
+          }
+        }
+      }
+    },
+    "This MCP flow requires local Codex.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo flusso MCP richiede Codex locale."
+          }
+        }
+      }
+    },
+    "Relay reads account metadata from your existing Codex runtime. OpenAI login credentials stay on each machine.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relay legge i dati dell’account dal Codex già in uso. Le credenziali di accesso OpenAI rimangono su ogni macchina."
+          }
+        }
+      }
+    },
+    "Remove this controller and its notification registration? Its credential will stop working.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuovere questo controller e la sua registrazione notifiche? La credenziale smetterà di funzionare."
+          }
+        }
+      }
+    },
+    "Remove this enrollment and its Relay routing metadata? The credential is revoked. Codex and its history remain on the machine.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuovere questa registrazione e i metadati di instradamento Relay? La credenziale viene revocata. Codex e la sua cronologia rimangono sulla macchina."
+          }
+        }
+      }
+    },
+    "Revocation disables the credential on the Hub. Local sign-out only removes this iPhone’s saved credential and does not claim server revocation.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La revoca disabilita la credenziale sul Hub. La disconnessione locale rimuove solo la credenziale salvata su questo iPhone e non la revoca sul server."
+          }
+        }
+      }
+    },
+    "Revoke this controller’s access immediately?": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revocare subito l’accesso di questo controller?"
+          }
+        }
+      }
+    },
+    "Revoke this iPhone on the Hub? You will need a new pairing code to return.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revocare questo iPhone sul Hub? Per accedere di nuovo servirà un nuovo codice di abbinamento."
+          }
+        }
+      }
+    },
+    "Revoke this machine’s Relay credential? Its last-known state remains, but reconnecting requires a new enrollment. Local Codex work continues.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revocare la credenziale Relay di questa macchina? L’ultimo stato noto rimane, ma servirà una nuova registrazione. Il lavoro Codex locale continua."
+          }
+        }
+      }
+    },
+    "Self-hosted. Open source. Independent of OpenAI.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Self-hosted. Open source. Indipendente da OpenAI."
+          }
+        }
+      }
+    },
+    "Sign out locally? The Hub credential remains valid until revoked or expired.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnettersi localmente? La credenziale sul Hub rimane valida fino alla revoca o alla scadenza."
+          }
+        }
+      }
+    },
+    "Supervise and continue Codex across your machines from iPhone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segui e continua Codex sulle tue macchine dall’iPhone."
+          }
+        }
+      }
+    },
+    "Test queued. Confirm receipt on this iPhone; queue acceptance is not delivery.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test in coda. Verifica la ricezione su questo iPhone: l’accettazione in coda non conferma la consegna."
+          }
+        }
+      }
+    },
+    "The Hub administrator owns this installation and manages recovery. All authorized controllers have the same Relay permissions.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’amministratore del Hub possiede questa installazione e ne gestisce il recupero. Tutti i controller autorizzati hanno gli stessi permessi Relay."
+          }
+        }
+      }
+    },
+    "The session will open when its machine reconnects. Its notification contains no actionable request.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La sessione si aprirà quando la macchina si ricollega. La notifica non contiene richieste su cui agire."
+          }
+        }
+      }
+    },
+    "Usage windows and balances are reported by Codex. Missing values are not estimated.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finestre di utilizzo e saldi sono forniti da Codex. I valori mancanti non vengono stimati."
+          }
+        }
+      }
+    },
+    "Your Codex fleet.\nOn iPhone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua fleet Codex.\nSu iPhone."
+          }
+        }
+      }
+    },
+    "Your Hub coordinates machines, controllers and notifications. The person administering the Hub owns this installation. There is no Relay cloud account.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il tuo Hub coordina macchine, controller e notifiche. Chi amministra il Hub possiede questa installazione. Non esiste un account cloud Relay."
+          }
+        }
+      }
+    },
+    "iOS permission and Apple registration are independent of the Hub. Configure APNs on the Hub to complete enrollment.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il permesso iOS e la registrazione Apple sono indipendenti dal Hub. Configura APNs sul Hub per completare la registrazione."
+          }
+        }
+      }
+    },
+    "1 command": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 comando"
+          }
+        }
+      }
+    },
+    "%lld commands": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld comandi"
+          }
+        }
+      }
+    },
+    "1 operation": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 operazione"
+          }
+        }
+      }
+    },
+    "%lld operations": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld operazioni"
+          }
+        }
+      }
+    },
+    "1 event": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 evento"
+          }
+        }
+      }
+    },
+    "%lld events": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld eventi"
+          }
+        }
+      }
+    },
+    "1 item": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 elemento"
+          }
+        }
+      }
+    },
+    "%lld items": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld elementi"
+          }
+        }
+      }
+    },
+    "%lld running": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld in corso"
+          }
+        }
+      }
+    },
+    "%lld failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld non riusciti"
+          }
+        }
+      }
+    },
+    "%lld lines": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld righe"
+          }
+        }
+      }
+    },
+    "%lld items loaded": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld elementi caricati"
+          }
+        }
+      }
+    },
+    "NEW TURN": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NUOVO TURNO"
+          }
+        }
+      }
+    },
+    "SENDING…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "INVIO…"
+          }
+        }
+      }
+    },
+    "QUEUED": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "IN CODA"
+          }
+        }
+      }
+    },
+    "RUNNING": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "IN ESECUZIONE"
+          }
+        }
+      }
+    },
+    "SENT": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "INVIATO"
+          }
+        }
+      }
+    },
+    "APPLIED": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "APPLICATO"
+          }
+        }
+      }
+    },
+    "VERIFY OUTCOME": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ESITO DA VERIFICARE"
+          }
+        }
+      }
+    },
+    "SEND FAILED": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "INVIO NON RIUSCITO"
+          }
+        }
+      }
+    },
+    "Send as follow-up": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia come follow-up"
+          }
+        }
+      }
+    },
+    "Send as new turn": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia come nuovo turno"
+          }
+        }
+      }
+    },
+    "Last known: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ultimo stato: %@"
+          }
+        }
+      }
+    },
+    "%lld needs you · %lld working": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld da rispondere · %lld in corso"
+          }
+        }
+      }
+    },
+    "1 session working": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 sessione in corso"
+          }
+        }
+      }
+    },
+    "%lld sessions working": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld sessioni in corso"
+          }
+        }
+      }
+    },
+    "%lld/%lld machines online": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld/%lld macchine online"
+          }
+        }
+      }
+    },
+    "Live · %lld machines": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live · %lld macchine"
+          }
+        }
+      }
+    },
+    "%lld-day window": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finestra di %lld giorni"
+          }
+        }
+      }
+    },
+    "%lld-hour window": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finestra di %lld ore"
+          }
+        }
+      }
+    },
+    "%lld-minute window": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finestra di %lld minuti"
+          }
+        }
+      }
+    },
+    "%@: choose an allowed value.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: scegli un valore previsto."
+          }
+        }
+      }
+    },
+    "%@: enter a valid value of the required type.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: inserisci un valore valido per il tipo richiesto."
+          }
+        }
+      }
+    },
+    "required type: %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tipo richiesto: %@."
+          }
+        }
+      }
+    },
+    "missing field: %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "manca il campo %@."
+          }
+        }
+      }
+    },
+    "unexpected field: %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "campo non previsto: %@."
+          }
+        }
+      }
+    },
+    "Hub unavailable (%lld).": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hub non disponibile (%lld)."
+          }
+        }
+      }
+    },
+    "1 file changed": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 file modificato"
+          }
+        }
+      }
+    },
+    "%lld files changed": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld file modificati"
+          }
+        }
+      }
+    },
+    "%lld%% used": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% utilizzato"
+          }
+        }
+      }
+    },
+    "Expires %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scade %@"
+          }
+        }
+      }
+    },
+    "Resets %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si ripristina %@"
+          }
+        }
+      }
+    },
+    "%@ ms mean": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ms medi"
+          }
+        }
+      }
+    },
+    "Exit %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uscita %lld"
+          }
+        }
+      }
+    },
+    "Pair": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbina"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

@@ -112,14 +112,14 @@ private struct MarkdownBlockView: View {
         Text(styled(spans)).textSelection(.enabled)
             .contextMenu {
                 if let completeMessage {
-                    Button("Copia messaggio completo", systemImage: "doc.on.doc") { UIPasteboard.general.string = completeMessage }
+                    Button(String(localized: "Copy Full Message", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = completeMessage }
                 }
-                Button("Copia questo paragrafo", systemImage: "text.alignleft") { UIPasteboard.general.string = spans.map(\.text).joined() }
+                Button(String(localized: "Copy Paragraph", bundle: relayLocalizationBundle), systemImage: "text.alignleft") { UIPasteboard.general.string = spans.map(\.text).joined() }
                 ForEach(Array(Set(spans.compactMap(\.link))).sorted(), id: \.self) { destination in
                     if let url = RichDocument.webURL(destination) {
                         Menu(destination) {
-                            Link("Apri link", destination: url)
-                            Button("Copia link", systemImage: "link") { UIPasteboard.general.url = url }
+                            Link(String(localized: "Open Link", bundle: relayLocalizationBundle), destination: url)
+                            Button(String(localized: "Copy Link", bundle: relayLocalizationBundle), systemImage: "link") { UIPasteboard.general.url = url }
                         }
                     }
                 }
@@ -169,10 +169,10 @@ struct CodeBlockView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text(language?.isEmpty == false ? language! : "Codice").font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                Text(language?.isEmpty == false ? language! : String(localized: "Code", bundle: relayLocalizationBundle)).font(.caption.weight(.medium)).foregroundStyle(.secondary)
                 Spacer()
                 Button { UIPasteboard.general.string = code } label: { Image(systemName: "doc.on.doc").frame(minWidth: 44, minHeight: 44) }
-                    .buttonStyle(.plain).accessibilityLabel("Copia codice")
+                    .buttonStyle(.plain).accessibilityLabel(String(localized: "Copy Code", bundle: relayLocalizationBundle))
             }.padding(.leading, RelaySpacing.row)
             Divider()
             ScrollView(.horizontal) {
@@ -182,8 +182,8 @@ struct CodeBlockView: View {
             }
         }.background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
             .contextMenu {
-                Button("Copia codice", systemImage: "doc.on.doc") { UIPasteboard.general.string = code }
-                if let completeMessage { Button("Copia messaggio completo", systemImage: "text.alignleft") { UIPasteboard.general.string = completeMessage } }
+                Button(String(localized: "Copy Code", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = code }
+                if let completeMessage { Button(String(localized: "Copy Full Message", bundle: relayLocalizationBundle), systemImage: "text.alignleft") { UIPasteboard.general.string = completeMessage } }
             }
             .task(id: code + (language ?? "")) {
                 let source = code; let syntax = language
@@ -206,10 +206,10 @@ struct PatchView: View {
                         Spacer()
                         Text("+\(file.additions) −\(file.deletions)").font(.caption.monospacedDigit())
                         Menu {
-                            Button("Copia percorso", systemImage: "doc.on.doc") { UIPasteboard.general.string = file.path }
-                            Button("Copia patch", systemImage: "doc.on.doc") { UIPasteboard.general.string = patch }
+                            Button(String(localized: "Copy Path", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = file.path }
+                            Button(String(localized: "Copy Patch", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = patch }
                         } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
-                            .accessibilityLabel("Azioni per " + file.path)
+                            .accessibilityLabel(String(localized: "Actions for ", bundle: relayLocalizationBundle) + file.path)
                     }
                     ScrollView(.horizontal) {
                         VStack(alignment: .leading, spacing: 0) {
@@ -231,7 +231,7 @@ struct PatchView: View {
             let source = patch, filename = path
             let parsed = await Task.detached { PatchDocument.parse(source, path: filename) }.value
             if !Task.isCancelled { files = parsed }
-        }.contextMenu { Button("Copia patch", systemImage: "doc.on.doc") { UIPasteboard.general.string = patch } }
+        }.contextMenu { Button(String(localized: "Copy Patch", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = patch } }
     }
     private func tint(_ kind: PatchLine.Kind) -> Color {
         switch kind {
@@ -260,7 +260,7 @@ struct TerminalOutputView: View {
                     ForEach(Array(chunks.enumerated()), id: \.offset) { _, chunk in
                         Text(chunk).font(.caption.monospaced()).textSelection(.enabled)
                             .fixedSize(horizontal: true, vertical: true)
-                            .contextMenu { Button("Copia output completo", systemImage: "doc.on.doc") { UIPasteboard.general.string = text } }
+                            .contextMenu { Button(String(localized: "Copy Available Output", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = text } }
                     }
                     Color.clear.frame(height: 1).id("output.latest")
                 }.padding(10)
@@ -279,12 +279,12 @@ struct TerminalOutputView: View {
                 .overlay(alignment: .bottomTrailing) {
                     if unseen {
                         Button { proxy.scrollTo("output.latest", anchor: .bottomLeading); following = true; unseen = false } label: {
-                            Label("Ultimo output", systemImage: "arrow.down")
+                            Label(String(localized: "Latest output", bundle: relayLocalizationBundle), systemImage: "arrow.down")
                         }.font(.caption).buttonStyle(.borderedProminent).padding(8)
                     }
                 }
         }.background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
-            .contextMenu { Button("Copia output", systemImage: "doc.on.doc") { UIPasteboard.general.string = text } }
+            .contextMenu { Button(String(localized: "Copy Output", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = text } }
     }
 }
 

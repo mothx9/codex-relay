@@ -14,10 +14,10 @@ public struct RateWindow: Codable, Sendable {
     public let usedPercent: Int
     public let windowDurationMins: Int?; public let resetsAt: Int64?
     public var label: String {
-        guard let minutes = windowDurationMins, minutes > 0 else { return "Usage window" }
-        if minutes % 1440 == 0 { return "\(minutes / 1440)-day window" }
-        if minutes % 60 == 0 { return "\(minutes / 60)-hour window" }
-        return "\(minutes)-minute window"
+        guard let minutes = windowDurationMins, minutes > 0 else { return String(localized: "Usage window", bundle: relayLocalizationBundle) }
+        if minutes % 1440 == 0 { return String(localized: "\(minutes / 1440)-day window", bundle: relayLocalizationBundle) }
+        if minutes % 60 == 0 { return String(localized: "\(minutes / 60)-hour window", bundle: relayLocalizationBundle) }
+        return String(localized: "\(minutes)-minute window", bundle: relayLocalizationBundle)
     }
     public var fraction: Double { min(1, max(0, Double(usedPercent) / 100)) }
 }
@@ -26,7 +26,16 @@ public struct AccountLimits: Codable, Sendable {
     public let primary: RateWindow?; public let secondary: RateWindow?; public let credits: AccountCredits?
     public let individualLimit: SpendControl?; public let spendControlReached: Bool?; public let rateLimitReachedType: String?
 }
-public struct AccountCredits: Codable, Sendable { public let hasCredits: Bool; public let unlimited: Bool; public let balance: String? }
+public struct AccountCredits: Codable, Sendable {
+    public let hasCredits: Bool; public let unlimited: Bool; public let balance: String?
+    public var displayBalance: String? {
+        guard let balance else { return nil }
+        let scanner = Scanner(string: balance); scanner.locale = Locale(identifier: "en_US_POSIX")
+        var decimal = Decimal()
+        guard scanner.scanDecimal(&decimal), scanner.isAtEnd else { return balance }
+        return NSDecimalString(&decimal, Locale.current)
+    }
+}
 public struct SpendControl: Codable, Sendable { public let limit: String; public let used: String; public let remainingPercent: Int; public let resetsAt: Int64 }
 public struct ResetCredits: Codable, Sendable { public let availableCount: Int; public let credits: [ResetCredit]? }
 public struct ResetCredit: Codable, Identifiable, Sendable { public let id: String; public let title: String?; public let description: String?; public let status: String; public let resetType: String; public let grantedAt: Int64; public let expiresAt: Int64? }
@@ -55,15 +64,15 @@ public struct Machine: Codable, Identifiable, Sendable {
     public let codexVersion: String?; public let adapter: String?; public let lastSeen: String
     public let account: Account?
     public func connectionLabel(hubConnected: Bool, access: String? = nil) -> String {
-        if !hubConnected { return "Hub non connesso" }
-        if access == "PAUSED" { return "Relay in pausa" }
-        if access == "REVOKED" { return "Accesso Relay revocato" }
+        if !hubConnected { return String(localized: "Hub not connected", bundle: relayLocalizationBundle) }
+        if access == "PAUSED" { return String(localized: "Relay paused", bundle: relayLocalizationBundle) }
+        if access == "REVOKED" { return String(localized: "Relay access revoked", bundle: relayLocalizationBundle) }
         switch status {
-        case "ONLINE": return "Relay collegato"
-        case "SYNCING": return "Sincronizzazione Codex…"
-        case "RECONNECTING": return "Riconnessione Relay…"
-        case "DEGRADED": return "Codex non connesso"
-        default: return "Relay non connesso"
+        case "ONLINE": return String(localized: "Relay connected", bundle: relayLocalizationBundle)
+        case "SYNCING": return String(localized: "Syncing with Codex…", bundle: relayLocalizationBundle)
+        case "RECONNECTING": return String(localized: "Reconnecting Relay…", bundle: relayLocalizationBundle)
+        case "DEGRADED": return String(localized: "Codex not connected", bundle: relayLocalizationBundle)
+        default: return String(localized: "Relay not connected", bundle: relayLocalizationBundle)
         }
     }
 }
@@ -109,7 +118,7 @@ public struct ChangedFile: Codable, Sendable, Equatable {
 public struct LiveActivity: Codable, Sendable, Equatable {
     public let itemId: String; public let kind: String; public let label: String; public let state: String; public let timestamp: String
     public var title: String {
-        switch kind { case "terminal": "Terminale"; case "tool": "MCP"; case "file": "File"; case "diff": "Diff"; case "assistant": state == "running" ? "Codex sta scrivendo" : "Risposta completata"; default: "Attività" }
+        switch kind { case "terminal": String(localized: "Terminal", bundle: relayLocalizationBundle); case "tool": "MCP"; case "file": "File"; case "diff": "Diff"; case "assistant": state == "running" ? String(localized: "Generating response…", bundle: relayLocalizationBundle) : String(localized: "Response completed", bundle: relayLocalizationBundle); default: String(localized: "Activity", bundle: relayLocalizationBundle) }
     }
     public var detail: String { label.isEmpty ? title : title + " · " + label }
 }
@@ -228,12 +237,12 @@ public struct RequestPayload: Codable, Sendable {
 }
 public enum MCPResponse {
     public static func parse(_ text: String, schema: JSONValue) throws -> JSONValue {
-        guard text.utf8.count <= 65_536 else { throw HubFailure.message("Risposta troppo grande (massimo 64 KiB).") }
+        guard text.utf8.count <= 65_536 else { throw HubFailure.message(String(localized: "Response too large (64 KiB maximum).", bundle: relayLocalizationBundle)) }
         let value: JSONValue
         do { value = try JSONDecoder().decode(JSONValue.self, from: Data(text.utf8)) }
-        catch { throw HubFailure.message("Inserisci una risposta JSON valida.") }
-        guard value.object != nil else { throw HubFailure.message("La risposta MCP deve essere un oggetto JSON.") }
-        try validate(value, schema: schema, path: "Risposta", depth: 0)
+        catch { throw HubFailure.message(String(localized: "Enter a valid JSON response.", bundle: relayLocalizationBundle)) }
+        guard value.object != nil else { throw HubFailure.message(String(localized: "The MCP response must be a JSON object.", bundle: relayLocalizationBundle)) }
+        try validate(value, schema: schema, path: String(localized: "Answer", bundle: relayLocalizationBundle), depth: 0)
         return value
     }
     public static func fields(_ values: [String: String], schema: JSONValue) throws -> JSONValue {
@@ -242,75 +251,75 @@ public enum MCPResponse {
         for (key, property) in properties {
             guard let text = values[key], !text.isEmpty else { continue }
             if let choices = property.object?["enum"]?.array {
-                guard let choice = choices.first(where: { ($0.string ?? $0.pretty) == text }) else { throw HubFailure.message("\(key): scegli un valore previsto.") }
+                guard let choice = choices.first(where: { ($0.string ?? $0.pretty) == text }) else { throw HubFailure.message(String(localized: "\(key): choose an allowed value.", bundle: relayLocalizationBundle)) }
                 content[key] = choice
             } else if property.object?["type"]?.string == "string" { content[key] = .string(text) }
             else {
                 do { content[key] = try JSONDecoder().decode(JSONValue.self, from: Data(text.utf8)) }
-                catch { throw HubFailure.message("\(key): inserisci un valore valido per il tipo richiesto.") }
+                catch { throw HubFailure.message(String(localized: "\(key): enter a valid value of the required type.", bundle: relayLocalizationBundle)) }
             }
         }
         return try parse(JSONValue.object(content).pretty, schema: schema)
     }
     private static func validate(_ value: JSONValue, schema: JSONValue, path: String, depth: Int) throws {
         func fail(_ reason: String) throws { throw HubFailure.message("\(path): \(reason)") }
-        guard depth < 20 else { try fail("schema troppo annidato; usa Codex locale."); return }
+        guard depth < 20 else { try fail(String(localized: "schema nested too deeply; use local Codex.", bundle: relayLocalizationBundle)); return }
         if schema == .bool(true) { return }
-        if schema == .bool(false) { try fail("valore non consentito."); return }
-        guard let s = schema.object else { try fail("schema non valido."); return }
+        if schema == .bool(false) { try fail(String(localized: "value not allowed.", bundle: relayLocalizationBundle)); return }
+        guard let s = schema.object else { try fail(String(localized: "invalid schema.", bundle: relayLocalizationBundle)); return }
         let unsupported = ["$ref", "$dynamicRef", "patternProperties", "dependentSchemas", "dependentRequired", "if", "then", "else", "prefixItems", "contains", "unevaluatedProperties", "unevaluatedItems"]
-        if unsupported.contains(where: { s[$0] != nil }) { try fail("schema avanzato: risolvi questa richiesta da Codex locale.") }
-        if let choices = s["enum"]?.array, !choices.contains(value) { try fail("valore non previsto dallo schema.") }
-        if let constant = s["const"], constant != value { try fail("valore diverso da quello richiesto.") }
+        if unsupported.contains(where: { s[$0] != nil }) { try fail(String(localized: "advanced schema: resolve this request in local Codex.", bundle: relayLocalizationBundle)) }
+        if let choices = s["enum"]?.array, !choices.contains(value) { try fail(String(localized: "unexpected value for this schema.", bundle: relayLocalizationBundle)) }
+        if let constant = s["const"], constant != value { try fail(String(localized: "value does not match the required constant.", bundle: relayLocalizationBundle)) }
         if let types = s["type"] {
             let allowed = types.array?.compactMap(\.string) ?? types.string.map { [$0] } ?? []
             let type: String
             switch value { case .object: type = "object"; case .array: type = "array"; case .string: type = "string"; case .number: type = "number"; case .bool: type = "boolean"; case .null: type = "null" }
             let integer = value.number.map { $0.isFinite && $0.rounded() == $0 } ?? false
-            if !allowed.contains(type) && !(integer && allowed.contains("integer")) { try fail("tipo richiesto: \(allowed.joined(separator: ", ")).") }
+            if !allowed.contains(type) && !(integer && allowed.contains("integer")) { try fail(String(localized: "required type: \(allowed.joined(separator: ", ")).", bundle: relayLocalizationBundle)) }
         }
         for sub in s["allOf"]?.array ?? [] { try validate(value, schema: sub, path: path, depth: depth+1) }
         for key in ["anyOf", "oneOf"] {
             if let alternatives = s[key]?.array {
                 let matches = alternatives.filter { (try? validate(value, schema: $0, path: path, depth: depth+1)) != nil }.count
-                if matches == 0 || (key == "oneOf" && matches != 1) { try fail("risposta non conforme alle alternative dello schema.") }
+                if matches == 0 || (key == "oneOf" && matches != 1) { try fail(String(localized: "response does not match any schema alternative.", bundle: relayLocalizationBundle)) }
             }
         }
-        if let negation = s["not"], (try? validate(value, schema: negation, path: path, depth: depth+1)) != nil { try fail("valore escluso dallo schema.") }
+        if let negation = s["not"], (try? validate(value, schema: negation, path: path, depth: depth+1)) != nil { try fail(String(localized: "value excluded by the schema.", bundle: relayLocalizationBundle)) }
         if let object = value.object {
-            for key in s["required"]?.array?.compactMap(\.string) ?? [] where object[key] == nil { try fail("manca il campo \(key).") }
+            for key in s["required"]?.array?.compactMap(\.string) ?? [] where object[key] == nil { try fail(String(localized: "missing field: \(key).", bundle: relayLocalizationBundle)) }
             let properties = s["properties"]?.object ?? [:]
             for (key, field) in object {
                 if let property = properties[key] { try validate(field, schema: property, path: path+"."+key, depth: depth+1) }
-                else if s["additionalProperties"] == .bool(false) { try fail("campo non previsto: \(key).") }
+                else if s["additionalProperties"] == .bool(false) { try fail(String(localized: "unexpected field: \(key).", bundle: relayLocalizationBundle)) }
                 else if let extra = s["additionalProperties"], extra.object != nil { try validate(field, schema: extra, path: path+"."+key, depth: depth+1) }
             }
-            if let min = s["minProperties"]?.number, Double(object.count) < min { try fail("troppi pochi campi.") }
-            if let max = s["maxProperties"]?.number, Double(object.count) > max { try fail("troppi campi.") }
+            if let min = s["minProperties"]?.number, Double(object.count) < min { try fail(String(localized: "too few fields.", bundle: relayLocalizationBundle)) }
+            if let max = s["maxProperties"]?.number, Double(object.count) > max { try fail(String(localized: "too many fields.", bundle: relayLocalizationBundle)) }
         }
         if let text = value.string {
-            if let min = s["minLength"]?.number, Double(text.unicodeScalars.count) < min { try fail("testo troppo corto.") }
-            if let max = s["maxLength"]?.number, Double(text.unicodeScalars.count) > max { try fail("testo troppo lungo.") }
+            if let min = s["minLength"]?.number, Double(text.unicodeScalars.count) < min { try fail(String(localized: "text too short.", bundle: relayLocalizationBundle)) }
+            if let max = s["maxLength"]?.number, Double(text.unicodeScalars.count) > max { try fail(String(localized: "text too long.", bundle: relayLocalizationBundle)) }
             if let pattern = s["pattern"]?.string {
-                guard let regex = try? NSRegularExpression(pattern: pattern) else { try fail("pattern non compatibile; usa Codex locale."); return }
-                if regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) == nil { try fail("testo non conforme al pattern.") }
+                guard let regex = try? NSRegularExpression(pattern: pattern) else { try fail(String(localized: "unsupported pattern; use local Codex.", bundle: relayLocalizationBundle)); return }
+                if regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) == nil { try fail(String(localized: "text does not match the pattern.", bundle: relayLocalizationBundle)) }
             }
         }
         if let number = value.number {
-            if let min = s["minimum"]?.number, number < min { try fail("valore inferiore al minimo.") }
-            if let max = s["maximum"]?.number, number > max { try fail("valore superiore al massimo.") }
-            if let min = s["exclusiveMinimum"]?.number, number <= min { try fail("valore inferiore o uguale al limite.") }
-            if let max = s["exclusiveMaximum"]?.number, number >= max { try fail("valore superiore o uguale al limite.") }
+            if let min = s["minimum"]?.number, number < min { try fail(String(localized: "value below minimum.", bundle: relayLocalizationBundle)) }
+            if let max = s["maximum"]?.number, number > max { try fail(String(localized: "value above maximum.", bundle: relayLocalizationBundle)) }
+            if let min = s["exclusiveMinimum"]?.number, number <= min { try fail(String(localized: "value at or below the exclusive limit.", bundle: relayLocalizationBundle)) }
+            if let max = s["exclusiveMaximum"]?.number, number >= max { try fail(String(localized: "value at or above the exclusive limit.", bundle: relayLocalizationBundle)) }
             if let step = s["multipleOf"]?.number {
-                if step <= 0 || abs(number/step - (number/step).rounded()) > 1e-9 { try fail("valore non multiplo del passo richiesto.") }
+                if step <= 0 || abs(number/step - (number/step).rounded()) > 1e-9 { try fail(String(localized: "value is not a multiple of the required step.", bundle: relayLocalizationBundle)) }
             }
         }
         if let array = value.array {
-            if let min = s["minItems"]?.number, Double(array.count) < min { try fail("troppi pochi elementi.") }
-            if let max = s["maxItems"]?.number, Double(array.count) > max { try fail("troppi elementi.") }
-            if s["uniqueItems"] == .bool(true), Set(array.map(\.pretty)).count != array.count { try fail("elementi duplicati.") }
+            if let min = s["minItems"]?.number, Double(array.count) < min { try fail(String(localized: "too few items.", bundle: relayLocalizationBundle)) }
+            if let max = s["maxItems"]?.number, Double(array.count) > max { try fail(String(localized: "too many items.", bundle: relayLocalizationBundle)) }
+            if s["uniqueItems"] == .bool(true), Set(array.map(\.pretty)).count != array.count { try fail(String(localized: "duplicate items.", bundle: relayLocalizationBundle)) }
             if let items = s["items"] {
-                guard items.object != nil || items == .bool(true) || items == .bool(false) else { try fail("schema degli elementi non compatibile."); return }
+                guard items.object != nil || items == .bool(true) || items == .bool(false) else { try fail(String(localized: "unsupported item schema.", bundle: relayLocalizationBundle)); return }
                 for (i,item) in array.enumerated() { try validate(item, schema: items, path: path+"[\(i)]", depth: depth+1) }
             }
         }

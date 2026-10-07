@@ -8,8 +8,8 @@ public enum CredentialVault {
         let update = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
         if update == errSecItemNotFound {
             var insert = query; insert[kSecValueData as String] = data; insert[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-            guard SecItemAdd(insert as CFDictionary, nil) == errSecSuccess else { throw HubFailure.message("Impossibile proteggere l’accesso nel Portachiavi.") }
-        } else if update != errSecSuccess { throw HubFailure.message("Portachiavi non disponibile.") }
+            guard SecItemAdd(insert as CFDictionary, nil) == errSecSuccess else { throw HubFailure.message(String(localized: "Unable to save access securely in Keychain.", bundle: relayLocalizationBundle)) }
+        } else if update != errSecSuccess { throw HubFailure.message(String(localized: "Keychain unavailable.", bundle: relayLocalizationBundle)) }
     }
     public static func load() -> Credential? {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: "hub", kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]

@@ -11,7 +11,7 @@ public struct Outbox: Sendable {
     public mutating func add(id: String = UUID().uuidString, session: String, kind: String, text: String, expectedTurn: String? = nil, now: Date = Date()) throws -> String {
         if items.contains(where: { $0.id == id }) { return id }
         let pending = items.filter { $0.phase != .materialized }
-        guard text.utf8.count <= 16384, pending.count < 32, pending.reduce(text.utf8.count, { $0 + $1.text.utf8.count }) <= 131072 else { throw HubFailure.message("Outbox pieno o messaggio troppo lungo.") }
+        guard text.utf8.count <= 16384, pending.count < 32, pending.reduce(text.utf8.count, { $0 + $1.text.utf8.count }) <= 131072 else { throw HubFailure.message(String(localized: "Outbox full or message too long.", bundle: relayLocalizationBundle)) }
         items.append(Outgoing(id: id, sessionId: session, kind: kind, text: text, expectedTurn: expectedTurn, created: now))
         while items.count > 128, let i = items.firstIndex(where: { $0.phase == .materialized }) { items.remove(at: i) }
         return id
@@ -27,7 +27,7 @@ public struct Outbox: Sendable {
     public mutating func fail(_ id: String, code: String, message: String) { update(id) { $0.phase = .failed; $0.errorCode = code; $0.error = message } }
     public mutating func disconnected() {
         for index in items.indices where [.sending, .steering].contains(items[index].phase) {
-            items[index].phase = .failed; items[index].errorCode = "UNKNOWN_OUTCOME"; items[index].error = "Esito sconosciuto. Verifica Codex prima di reinviare."
+            items[index].phase = .failed; items[index].errorCode = "UNKNOWN_OUTCOME"; items[index].error = String(localized: "Unknown outcome. Check Codex before resending.", bundle: relayLocalizationBundle)
         }
     }
     public mutating func dispatched(session: String, clientId: String) { update(clientId) { if $0.sessionId == session && $0.phase != .materialized { $0.phase = .dispatched } } }

@@ -61,6 +61,9 @@ public enum PatchDocument {
 
 /// Prefer the latest canonical turn patch over overlapping per-item patches.
 public enum ChangeOverview {
+    private static func fileCount(_ count: Int) -> String {
+        count == 1 ? String(localized: "1 file changed", bundle: relayLocalizationBundle) : String(localized: "\(count) files changed", bundle: relayLocalizationBundle)
+    }
     public static func describe(_ items: [Activity]) -> String {
         let files: [PatchFile]
         if let patch = items.last(where: { $0.kind == "diff" }) {
@@ -69,12 +72,12 @@ public enum ChangeOverview {
             var latest: [String: ChangedFile] = [:]
             for item in items { for file in item.files ?? [] { latest[file.path] = file } }
             guard !latest.isEmpty else { return "" }
-            let count = "\(latest.count) file \(latest.count == 1 ? "modificato" : "modificati")"
+            let count = fileCount(latest.count)
             guard latest.values.allSatisfy({ $0.patch?.contains("@@ ") == true }) else { return count }
             files = latest.values.flatMap { PatchDocument.parse($0.patch ?? "", path: $0.path) }
         }
         let count = Set(files.map(\.path)).count
         guard count > 0 else { return "" }
-        return "\(count) file \(count == 1 ? "modificato" : "modificati") · +\(files.reduce(0) { $0 + $1.additions }) −\(files.reduce(0) { $0 + $1.deletions })"
+        return fileCount(count) + " · +\(files.reduce(0) { $0 + $1.additions }) −\(files.reduce(0) { $0 + $1.deletions })"
     }
 }

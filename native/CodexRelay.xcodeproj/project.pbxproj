@@ -35,6 +35,8 @@
 0000000000000000000000E8 = {isa = PBXBuildFile; fileRef = 000000000000000000000087; };
 0000000000000000000000E9 = {isa = PBXBuildFile; fileRef = 000000000000000000000088; };
 0000000000000000000000EA = {isa = PBXBuildFile; fileRef = 000000000000000000000089; };
+000000000000000000000400 = {isa = PBXBuildFile; fileRef = 000000000000000000000401; };
+000000000000000000000402 = {isa = PBXBuildFile; fileRef = 000000000000000000000403; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -62,6 +64,8 @@
 000000000000000000000087 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/SettingsViews.swift; sourceTree = SOURCE_ROOT; };
 000000000000000000000088 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCore/NotificationRouting.swift; sourceTree = SOURCE_ROOT; };
 000000000000000000000089 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCore/Diagnostics.swift; sourceTree = SOURCE_ROOT; };
+000000000000000000000401 = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = RelayCore/Resources/Localizable.xcstrings; sourceTree = SOURCE_ROOT; };
+000000000000000000000403 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCore/Localization.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +83,8 @@
 		000000000000000000000003 = {
 			isa = PBXGroup;
 			children = (
+000000000000000000000401,
+000000000000000000000403,
 000000000000000000000087,
 000000000000000000000088,
 000000000000000000000089,
@@ -164,6 +170,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+                it,
 				Base,
 			);
 			mainGroup = 000000000000000000000003;
@@ -182,7 +189,7 @@
 		00000000000000000000000A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (
+			files = (000000000000000000000400,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -193,7 +200,7 @@
 		000000000000000000000008 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (
+			files = (000000000000000000000402,
 				0000000000000000000000E2,
                 0000000000000000000000E6,
 0000000000000000000000E8,

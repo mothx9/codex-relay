@@ -20,7 +20,7 @@ import Foundation
         if let onToken { onToken(value) } else { pendingToken = value }
     }
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: any Error) {
-        let message = "Apple registration unavailable. Check the signed app’s Push Notifications entitlement and provisioning profile."
+        let message = String(localized: "Apple registration unavailable. Check the signed app’s Push Notifications entitlement and provisioning profile.", bundle: relayLocalizationBundle)
         if let onError { onError(message) } else { pendingError = message }
     }
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
@@ -40,12 +40,12 @@ extension RelayController {
         guard !previewOnly else { return }
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         switch settings.authorizationStatus {
-        case .authorized: notificationPermission = "Allowed"
-        case .denied: notificationPermission = "Denied"
-        case .notDetermined: notificationPermission = "Not requested"
-        case .provisional: notificationPermission = "Quiet delivery"
-        case .ephemeral: notificationPermission = "Temporary"
-        @unknown default: notificationPermission = "Unavailable"
+        case .authorized: notificationPermission = String(localized: "Allowed", bundle: relayLocalizationBundle)
+        case .denied: notificationPermission = String(localized: "Denied", bundle: relayLocalizationBundle)
+        case .notDetermined: notificationPermission = String(localized: "Not requested", bundle: relayLocalizationBundle)
+        case .provisional: notificationPermission = String(localized: "Quiet delivery", bundle: relayLocalizationBundle)
+        case .ephemeral: notificationPermission = String(localized: "Temporary", bundle: relayLocalizationBundle)
+        @unknown default: notificationPermission = String(localized: "Unavailable", bundle: relayLocalizationBundle)
         }
     }
     func refreshNativePush() async {
@@ -67,22 +67,22 @@ extension RelayController {
     }
     func enableNativePush() async {
         guard !previewOnly, settingsProgress["notifications"] == nil else { return }
-        settingsProgress["notifications"] = "Requesting permission…"; settingsErrors["notifications"] = nil
+        settingsProgress["notifications"] = String(localized: "Requesting permission…", bundle: relayLocalizationBundle); settingsErrors["notifications"] = nil
         defer { settingsProgress["notifications"] = nil }
         do {
             let accepted = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
             await refreshNotificationPermission()
-            guard accepted else { notificationStatus = "Notifications are denied. You can enable them in iOS Settings."; return }
+            guard accepted else { notificationStatus = String(localized: "Notifications are denied. You can enable them in iOS Settings.", bundle: relayLocalizationBundle); return }
             if let key = pushPreference { UserDefaults.standard.set(true, forKey: key) }
-            notificationStatus = "Registering this iPhone with Apple…"
+            notificationStatus = String(localized: "Registering this iPhone with Apple…", bundle: relayLocalizationBundle)
             UIApplication.shared.registerForRemoteNotifications()
         } catch { settingsErrors["notifications"] = error.localizedDescription }
     }
     func registerNativePush() async {
         guard let api, let apnsToken, wantsPush, let identity = credential?.id else { return }
-        guard nativePushAvailable else { notificationStatus = "iOS permission and Apple registration are independent of the Hub. Configure APNs on the Hub to complete enrollment."; return }
+        guard nativePushAvailable else { notificationStatus = String(localized: "iOS permission and Apple registration are independent of the Hub. Configure APNs on the Hub to complete enrollment.", bundle: relayLocalizationBundle); return }
         guard settingsProgress["pushRegistration"] == nil else { return }
-        settingsProgress["pushRegistration"] = "Registering with Relay…"
+        settingsProgress["pushRegistration"] = String(localized: "Registering with Relay…", bundle: relayLocalizationBundle)
         defer { settingsProgress["pushRegistration"] = nil }
         struct Registration: Encodable, Sendable { let token: String; let environment: String; let privacy: Bool }
         let environment = Bundle.main.object(forInfoDictionaryKey: "RelayAPNSEnvironment") as? String ?? "sandbox"
@@ -91,28 +91,28 @@ extension RelayController {
             let _: Ack = try await api.post("api/native-push/subscribe", body: Registration(token: apnsToken, environment: environment, privacy: privacy))
             guard credential?.id == identity else { return }
             pushRegistered = true; pushRegistrationVerifiedAt = Date(); settingsErrors["notifications"] = nil
-            notificationStatus = "Registered with Relay. Send a test to verify delivery on this iPhone."
+            notificationStatus = String(localized: "Registered with Relay. Send a test to verify delivery on this iPhone.", bundle: relayLocalizationBundle)
         } catch { if credential?.id == identity { settingsErrors["notifications"] = error.localizedDescription } }
     }
     func disableNativePush() async {
         guard let api, settingsProgress["notifications"] == nil, settingsProgress["pushRegistration"] == nil else { return }
         let identity = credential?.id
-        settingsProgress["notifications"] = "Disabling notifications…"; settingsErrors["notifications"] = nil
+        settingsProgress["notifications"] = String(localized: "Disabling notifications…", bundle: relayLocalizationBundle); settingsErrors["notifications"] = nil
         defer { settingsProgress["notifications"] = nil }
         do {
             let _: Ack = try await api.fetch("api/native-push/unsubscribe", body: [:])
             guard credential?.id == identity else { return }
             if let key = pushPreference { UserDefaults.standard.set(false, forKey: key) }
-            pushRegistered = false; pushRegistrationVerifiedAt = Date(); notificationStatus = "Relay registration removed for this iPhone. iOS permission is unchanged."
+            pushRegistered = false; pushRegistrationVerifiedAt = Date(); notificationStatus = String(localized: "Relay registration removed for this iPhone. iOS permission is unchanged.", bundle: relayLocalizationBundle)
             UIApplication.shared.unregisterForRemoteNotifications()
         } catch { settingsErrors["notifications"] = error.localizedDescription }
     }
     func testNativePush() async {
         guard let api, pushRegistered, settingsProgress["notifications"] == nil else { return }
-        settingsProgress["notifications"] = "Sending test…"; settingsErrors["notifications"] = nil
+        settingsProgress["notifications"] = String(localized: "Sending test…", bundle: relayLocalizationBundle); settingsErrors["notifications"] = nil
         defer { settingsProgress["notifications"] = nil }
         struct Queued: Decodable, Sendable { let queued: Bool }
-        do { let _: Queued = try await api.fetch("api/push/test", body: ["session_id": selected]); notificationStatus = "Test queued. Confirm receipt on this iPhone; queue acceptance is not delivery." }
+        do { let _: Queued = try await api.fetch("api/push/test", body: ["session_id": selected]); notificationStatus = String(localized: "Test queued. Confirm receipt on this iPhone; queue acceptance is not delivery.", bundle: relayLocalizationBundle) }
         catch { settingsErrors["notifications"] = error.localizedDescription }
     }
     func updateNotificationBadge() {

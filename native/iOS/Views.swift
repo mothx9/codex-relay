@@ -20,30 +20,30 @@ struct RootView: View {
                 NavigationStack {
                     TabView(selection: $destination) {
                         FleetView(filter: $fleetFilter, machine: $fleetMachine, search: $fleetSearch).tabItem { Label("Fleet", systemImage: "square.grid.2x2") }.tag(0)
-                        NeedsYouView().tabItem { Label("Needs You", systemImage: "bubble.left.and.exclamationmark.bubble.right") }
+                        NeedsYouView().tabItem { Label(String(localized: "Needs You", bundle: relayLocalizationBundle), systemImage: "bubble.left.and.exclamationmark.bubble.right") }
                             .badge(relay.requests.count).tag(1)
-                        DevicesView().tabItem { Label("Impostazioni", systemImage: "gearshape") }.tag(2)
+                        DevicesView().tabItem { Label(String(localized: "Settings", bundle: relayLocalizationBundle), systemImage: "gearshape") }.tag(2)
                     }
                     .toolbar {
-                        ToolbarItem(placement: .principal) { Text(destination == 0 ? "Codex Relay" : destination == 1 ? "Needs You" : "Impostazioni").font(.headline) }
+                        ToolbarItem(placement: .principal) { Text(destination == 0 ? "Codex Relay" : destination == 1 ? String(localized: "Needs You", bundle: relayLocalizationBundle) : String(localized: "Settings", bundle: relayLocalizationBundle)).font(.headline) }
                         if destination == 0 {
                             ToolbarItem(placement: .topBarTrailing) {
                                 Menu {
-                                    Picker("Mostra", selection: $fleetFilter) {
-                                        Text("Panoramica").tag("ALL")
-                                        Text("Tutte le sessioni").tag("HISTORY")
+                                    Picker(String(localized: "Show", bundle: relayLocalizationBundle), selection: $fleetFilter) {
+                                        Text(String(localized: "Overview", bundle: relayLocalizationBundle)).tag("ALL")
+                                        Text(String(localized: "All sessions", bundle: relayLocalizationBundle)).tag("HISTORY")
                                         ForEach(["NEEDS_YOU", "WORKING", "READY", "FAILED", "OFFLINE"], id: \.self) { Text(statusLabel($0)).tag($0) }
                                     }
-                                    Picker("Machine", selection: $fleetMachine) {
-                                        Text("All machines").tag("")
+                                    Picker(String(localized: "Machine", bundle: relayLocalizationBundle), selection: $fleetMachine) {
+                                        Text(String(localized: "All machines", bundle: relayLocalizationBundle)).tag("")
                                         ForEach(relay.machines.values.sorted { $0.name < $1.name }) { Text($0.name).tag($0.id) }
                                     }
                                 } label: { Image(systemName: "line.3.horizontal.decrease").frame(minWidth: 44, minHeight: 44) }
-                                    .accessibilityLabel("Filtra sessioni")
+                                    .accessibilityLabel(String(localized: "Filter sessions", bundle: relayLocalizationBundle))
                             }
                         }
                     }
-                    .navigationTitle(destination == 0 ? "Codex Relay" : destination == 1 ? "Needs You" : "Impostazioni")
+                    .navigationTitle(destination == 0 ? "Codex Relay" : destination == 1 ? String(localized: "Needs You", bundle: relayLocalizationBundle) : String(localized: "Settings", bundle: relayLocalizationBundle))
                     .navigationBarTitleDisplayMode(.inline)
                     .navigationDestination(isPresented: Binding(get: { !relay.selected.isEmpty }, set: { if !$0 { relay.closeDetail() } })) {
                         SessionView()
@@ -57,14 +57,14 @@ struct RootView: View {
                 HStack {
                     Text(message).font(.caption)
                     Spacer()
-                    Button("Dismiss", systemImage: "xmark") { relay.navigationStatus = nil; relay.pendingNavigation = PendingNavigation() }.labelStyle(.iconOnly).frame(minWidth: 44, minHeight: 44)
+                    Button(String(localized: "Dismiss", bundle: relayLocalizationBundle), systemImage: "xmark") { relay.navigationStatus = nil; relay.pendingNavigation = PendingNavigation() }.labelStyle(.iconOnly).frame(minWidth: 44, minHeight: 44)
                 }.padding(.horizontal, RelaySpacing.page).background(.regularMaterial)
             }
         }
         .sheet(isPresented: Binding(get: { relay.routedMachine != nil && relay.credential != nil }, set: { if !$0 { relay.routedMachine = nil } })) {
             NavigationStack {
                 MachineSettingsView(id: relay.routedMachine ?? "")
-                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Close") { relay.routedMachine = nil } } }
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button(String(localized: "Close", bundle: relayLocalizationBundle)) { relay.routedMachine = nil } } }
             }
         }
         .alert("Codex Relay", isPresented: Binding(get: { relay.error != nil }, set: { if !$0 { relay.error = nil } })) { Button("OK") { relay.error = nil } } message: { Text(relay.error ?? "") }
@@ -72,6 +72,7 @@ struct RootView: View {
 
 }
 struct PairingView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(RelayController.self) private var relay
     @State private var url = ""
     @State private var code = ""
@@ -80,35 +81,35 @@ struct PairingView: View {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: RelaySpacing.row) {
                     Image(systemName: "point.3.connected.trianglepath.dotted").font(.largeTitle).foregroundStyle(.secondary)
-                    Text("Your Codex fleet.\nOn iPhone.").font(.title.weight(.semibold))
-                    Text("Follow live work, answer questions and continue sessions across your machines.").foregroundStyle(.secondary)
+                    Text(String(localized: "Your Codex fleet.\nOn iPhone.", bundle: relayLocalizationBundle)).font(.title.weight(.semibold))
+                    Text(String(localized: "Follow live work, answer questions and continue sessions across your machines.", bundle: relayLocalizationBundle)).foregroundStyle(.secondary)
                 }
                 VStack(alignment: .leading, spacing: RelaySpacing.page) {
-                    onboardingStep(title: "One Hub", detail: "Your self-hosted Hub coordinates the fleet.", icon: "network")
-                    onboardingStep(title: "Agents on your machines", detail: "Each Agent connects to the Codex you already use.", icon: "desktopcomputer")
-                    onboardingStep(title: "This iPhone", detail: "Pair once to supervise work and respond securely.", icon: "iphone")
+                    onboardingStep(title: String(localized: "One Hub", bundle: relayLocalizationBundle), detail: String(localized: "Your self-hosted Hub coordinates the fleet.", bundle: relayLocalizationBundle), icon: "network")
+                    onboardingStep(title: String(localized: "Agents on your machines", bundle: relayLocalizationBundle), detail: String(localized: "Each Agent connects to the Codex you already use.", bundle: relayLocalizationBundle), icon: "desktopcomputer")
+                    onboardingStep(title: String(localized: "This iPhone", bundle: relayLocalizationBundle), detail: String(localized: "Pair once to supervise work and respond securely.", bundle: relayLocalizationBundle), icon: "iphone")
                 }
                 VStack(alignment: .leading, spacing: RelaySpacing.row) {
-                    Text("Pair with your Hub").font(.headline)
+                    Text(String(localized: "Pair with your Hub", bundle: relayLocalizationBundle)).font(.headline)
                     TextField("https://your-hub", text: $url)
                         .textContentType(.URL).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                         .padding(RelaySpacing.row).background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
-                        .accessibilityLabel("Hub URL").accessibilityIdentifier("pairing.url")
-                    TextField("8-digit pairing code", text: $code)
+                        .accessibilityLabel(String(localized: "Hub URL", bundle: relayLocalizationBundle)).accessibilityIdentifier("pairing.url")
+                    TextField(String(localized: "8-digit pairing code", bundle: relayLocalizationBundle), text: $code)
                         .textContentType(.oneTimeCode).keyboardType(.numberPad).font(.body.monospacedDigit())
                         .padding(RelaySpacing.row).background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
                         .accessibilityIdentifier("pairing.code")
                         .onChange(of: code) { _, value in code = String(value.filter(\.isNumber).prefix(8)) }
-                    Text("Create a one-time code on the Hub host or from an authorized controller. It expires after 5 minutes.").font(.footnote).foregroundStyle(.secondary)
+                    Text(String(localized: "Create a one-time code on the Hub host or from an authorized controller. It expires after 5 minutes.", bundle: relayLocalizationBundle)).font(.footnote).foregroundStyle(.secondary)
                     if let error = relay.pairingError { Text(error).font(.footnote).foregroundStyle(RelayPalette.attention).accessibilityIdentifier("pairing.error") }
                 }
-                DisclosureGroup("Need to set up a Hub?") {
+                DisclosureGroup(String(localized: "Need to set up a Hub?", bundle: relayLocalizationBundle)) {
                     VStack(alignment: .leading, spacing: RelaySpacing.row) {
-                        Text("Install Relay on an always-on host with an HTTPS address, then create your iPhone pairing code. After pairing, add machines from Settings.").font(.footnote)
-                        Link("Installation guide", destination: URL(string: "https://github.com/mothx9/codex-relay#quick-start")!)
+                        Text(String(localized: "Install Relay on an always-on host with an HTTPS address, then create your iPhone pairing code. After pairing, add machines from Settings.", bundle: relayLocalizationBundle)).font(.footnote)
+                        Link(String(localized: "Installation guide", bundle: relayLocalizationBundle), destination: URL(string: "https://github.com/mothx9/codex-relay#quick-start")!)
                     }.padding(.vertical, RelaySpacing.small)
                 }
-                Text("Access is stored in this iPhone’s Keychain. Your Codex login stays on your machines. Never enter a Hub admin token here.").font(.footnote).foregroundStyle(.secondary)
+                Text(String(localized: "Access is stored in this iPhone’s Keychain. Your Codex login stays on your machines. Never enter a Hub admin token here.", bundle: relayLocalizationBundle)).font(.footnote).foregroundStyle(.secondary)
             }.padding(RelaySpacing.page)
         }.scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom) {
@@ -117,7 +118,7 @@ struct PairingView: View {
                 } label: {
                     HStack {
                         if relay.busy { ProgressView() }
-                        Text(relay.busy ? "Pairing…" : "Pair this iPhone").font(.body.weight(.semibold))
+                        Text(relay.busy ? String(localized: "Pairing…", bundle: relayLocalizationBundle) : (dynamicTypeSize.isAccessibilitySize ? String(localized: "Pair", bundle: relayLocalizationBundle) : String(localized: "Pair this iPhone", bundle: relayLocalizationBundle))).font(.body.weight(.semibold)).foregroundStyle(.primary)
                     }.frame(maxWidth: .infinity, minHeight: 48)
                 }.buttonStyle(.borderedProminent)
                     .disabled(relay.busy || code.count != 8 || url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -161,7 +162,7 @@ struct SessionStatusMark: View {
             }
         }.frame(width: 16, height: 16)
             .transaction { if reduceMotion { $0.animation = nil; $0.disablesAnimations = true } }
-            .accessibilityLabel(status == "OFFLINE" ? "Stato non aggiornato" : statusLabel(status))
+            .accessibilityLabel(status == "OFFLINE" ? String(localized: "Last-known state", bundle: relayLocalizationBundle) : statusLabel(status))
     }
 }
 
@@ -185,7 +186,7 @@ struct ElapsedLabel: View {
     var body: some View {
         if let date, date.timeIntervalSince1970 > 0 {
             Text(date, style: .timer).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                .multilineTextAlignment(.trailing).fixedSize().accessibilityLabel("Durata del turno").accessibilityValue(Text(date, style: .timer))
+                .multilineTextAlignment(.trailing).fixedSize().accessibilityLabel(String(localized: "Turn duration", bundle: relayLocalizationBundle)).accessibilityValue(Text(date, style: .timer))
         }
     }
 }
@@ -196,15 +197,15 @@ struct NeedsYouView: View {
     var body: some View {
         List {
             if requests.isEmpty {
-                ContentUnavailableView("Nessuna richiesta", systemImage: "checkmark.bubble", description: Text("Le decisioni e le approvazioni delle tue macchine appariranno qui."))
+                ContentUnavailableView(String(localized: "No pending requests", bundle: relayLocalizationBundle), systemImage: "checkmark.bubble", description: Text(String(localized: "Decisions and approvals from your machines will appear here.", bundle: relayLocalizationBundle)))
                     .listRowBackground(Color.clear)
             } else {
                 ForEach(requests) { request in
                     Button { relay.open(request.sessionId) } label: {
                         VStack(alignment: .leading, spacing: RelaySpacing.compact) {
                             Text(relay.machines[request.machineId]?.name ?? request.machineId).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                            Text(relay.sessions[request.sessionId]?.title ?? "Sessione Codex").font(.body.weight(.semibold))
-                            Label(request.kind == "user_input" ? "Codex ha una domanda" : "Approvazione richiesta", systemImage: "exclamationmark.bubble")
+                            Text(relay.sessions[request.sessionId]?.title ?? String(localized: "Codex session", bundle: relayLocalizationBundle)).font(.body.weight(.semibold))
+                            Label(request.kind == "user_input" ? String(localized: "Codex has a question", bundle: relayLocalizationBundle) : String(localized: "Approval requested", bundle: relayLocalizationBundle), systemImage: "exclamationmark.bubble")
                                 .font(.subheadline).foregroundStyle(.orange)
                             if !relay.online || relay.machines[request.machineId]?.status != "ONLINE" { Text(relay.machineConnectionLabel(request.machineId)).font(.caption).foregroundStyle(.secondary) }
                         }.padding(.vertical, RelaySpacing.compact)
@@ -220,7 +221,7 @@ struct PendingView: View {
     @State private var answers: [String: String] = [:]
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(request.kind == "user_input" ? "Codex ha bisogno del tuo input" : request.kind == "command_approval" ? "Codex vuole eseguire" : request.kind == "file_approval" ? "Codex vuole modificare dei file" : request.kind == "permissions_approval" ? "Codex richiede un permesso" : "Codex richiede una decisione").font(.headline)
+            Text(request.kind == "user_input" ? String(localized: "Codex needs your input", bundle: relayLocalizationBundle) : request.kind == "command_approval" ? String(localized: "Codex wants to run", bundle: relayLocalizationBundle) : request.kind == "file_approval" ? String(localized: "Codex wants to change files", bundle: relayLocalizationBundle) : request.kind == "permissions_approval" ? String(localized: "Codex requests permission", bundle: relayLocalizationBundle) : String(localized: "Codex needs a decision", bundle: relayLocalizationBundle)).font(.headline)
             Text("\(relay.machines[request.machineId]?.name ?? request.machineId) · \(relay.current?.project ?? "")").font(.caption).foregroundStyle(.secondary)
             Text(request.description).textSelection(.enabled)
             if let operation = request.operation { Text(operation).font(.body.monospaced()).textSelection(.enabled) }
@@ -229,24 +230,24 @@ struct PendingView: View {
                     Text(question.question)
                     if let options = question.options { ForEach(options, id: \.label) { option in Button { answers[question.id] = option.label } label: { VStack(alignment: .leading) { Text((answers[question.id] == option.label ? "✓ " : "") + option.label); Text(option.description).font(.caption).foregroundStyle(.secondary) } } } }
                     let binding = Binding(get: { answers[question.id] ?? "" }, set: { answers[question.id] = $0 })
-                    if question.secret == true { SecureField("Risposta", text: binding) } else { TextField("Risposta libera", text: binding) }
+                    if question.secret == true { SecureField(String(localized: "Answer", bundle: relayLocalizationBundle), text: binding) } else { TextField(String(localized: "Custom answer", bundle: relayLocalizationBundle), text: binding) }
                 }
             }
             if request.kind == "permissions_approval" {
-                Text("Permessi richiesti · soltanto per questo turno").font(.subheadline.bold())
+                Text(String(localized: "Requested permissions · this turn only", bundle: relayLocalizationBundle)).font(.subheadline.bold())
                 if let permissions = request.payload?.permissions {
                     Text(permissions.pretty).font(.caption.monospaced()).textSelection(.enabled)
                     if request.canApprove {
-                        Button("Concedi i permessi per questo turno") { Task { await relay.answer(request, decision: "approve") } }.buttonStyle(.bordered)
+                        Button(String(localized: "Grant permissions for this turn", bundle: relayLocalizationBundle)) { Task { await relay.answer(request, decision: "approve") } }.buttonStyle(.bordered)
                             .disabled(!relay.online || relay.machines[request.machineId]?.status != "ONLINE" || relay.current?.capabilities.canAnswer != true)
                     }
-                } else { Text("Contesto dei permessi non disponibile: risolvi da Codex locale.").font(.caption) }
+                } else { Text(String(localized: "Permission context unavailable: resolve in local Codex.", bundle: relayLocalizationBundle)).font(.caption) }
             }
             if request.kind == "mcp_elicitation" { MCPRequestForm(request: request) }
             if request.canApprove && ["user_input", "command_approval", "file_approval"].contains(request.kind) {
-                Button(request.kind == "user_input" ? "Rispondi" : "Approva una volta") { Task { await relay.answer(request, decision: "approve", answers: answers.mapValues { [$0] }) } }.buttonStyle(.bordered).disabled(!relay.online || relay.current?.capabilities.canAnswer != true || (request.kind == "user_input" && (request.questions ?? []).contains { (answers[$0.id] ?? "").isEmpty }))
+                Button(request.kind == "user_input" ? String(localized: "Respond", bundle: relayLocalizationBundle) : String(localized: "Approve Once", bundle: relayLocalizationBundle)) { Task { await relay.answer(request, decision: "approve", answers: answers.mapValues { [$0] }) } }.buttonStyle(.bordered).disabled(!relay.online || relay.current?.capabilities.canAnswer != true || (request.kind == "user_input" && (request.questions ?? []).contains { (answers[$0.id] ?? "").isEmpty }))
             }
-            if request.kind != "unsupported" { Button("Rifiuta", role: .destructive) { Task { await relay.answer(request, decision: "reject") } }.disabled(!relay.online || relay.machines[request.machineId]?.status != "ONLINE" || relay.current?.capabilities.canAnswer != true) }
+            if request.kind != "unsupported" { Button(String(localized: "Reject", bundle: relayLocalizationBundle), role: .destructive) { Task { await relay.answer(request, decision: "reject") } }.disabled(!relay.online || relay.machines[request.machineId]?.status != "ONLINE" || relay.current?.capabilities.canAnswer != true) }
             if let progress = relay.requestProgress[request.presentationID] {
                 Text(progress).font(.caption).foregroundStyle(.secondary)
             }
@@ -275,14 +276,14 @@ struct MCPRequestForm: View {
         return try? editJSON || !simple ? MCPResponse.parse(raw, schema: schema) : MCPResponse.fields(fields, schema: schema)
     }
     private var validation: String? {
-        guard let schema else { return "Schema non disponibile: risolvi da Codex locale." }
+        guard let schema else { return String(localized: "Schema unavailable: resolve in local Codex.", bundle: relayLocalizationBundle) }
         do { _ = try editJSON || !simple ? MCPResponse.parse(raw, schema: schema) : MCPResponse.fields(fields, schema: schema); return nil }
         catch { return error.localizedDescription }
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let schema {
-                DisclosureGroup("Schema MCP completo") { Text(schema.pretty).font(.caption.monospaced()).textSelection(.enabled) }
+                DisclosureGroup(String(localized: "Full MCP schema", bundle: relayLocalizationBundle)) { Text(schema.pretty).font(.caption.monospaced()).textSelection(.enabled) }
                 if request.canApprove {
                     if simple && !editJSON {
                         ForEach(properties.keys.sorted(), id: \.self) { key in
@@ -294,30 +295,30 @@ struct MCPRequestForm: View {
                                 if let description = property["description"]?.string { Text(description).font(.caption).foregroundStyle(.secondary) }
                                 if let options = property["enum"]?.array {
                                     Picker(key, selection: binding) {
-                                        Text("Seleziona…").tag("")
+                                        Text(String(localized: "Choose…", bundle: relayLocalizationBundle)).tag("")
                                         ForEach(options.map { $0.string ?? $0.pretty }, id: \.self) { Text($0).tag($0) }
                                     }.pickerStyle(.menu)
                                 } else if property["type"]?.string == "boolean" {
-                                    Picker(key, selection: binding) { Text("Seleziona…").tag(""); Text("Sì").tag("true"); Text("No").tag("false") }.pickerStyle(.segmented)
+                                    Picker(key, selection: binding) { Text(String(localized: "Choose…", bundle: relayLocalizationBundle)).tag(""); Text(String(localized: "Yes", bundle: relayLocalizationBundle)).tag("true"); Text("No").tag("false") }.pickerStyle(.segmented)
                                 } else if property["writeOnly"] == .bool(true) || property["format"] == .string("password") {
                                     SecureField(key, text: binding)
                                 } else { TextField(key, text: binding).textInputAutocapitalization(.never).autocorrectionDisabled() }
                             }
                         }
-                        Button("Modifica risposta come JSON") { raw = (try? MCPResponse.fields(fields, schema: schema))?.pretty ?? "{}"; editJSON = true }
+                        Button(String(localized: "Edit response as JSON", bundle: relayLocalizationBundle)) { raw = (try? MCPResponse.fields(fields, schema: schema))?.pretty ?? "{}"; editJSON = true }
                     } else {
-                        Text("Risposta JSON conforme allo schema").font(.caption)
-                        TextEditor(text: $raw).font(.body.monospaced()).frame(minHeight: 120).accessibilityLabel("Risposta MCP JSON")
+                        Text(String(localized: "JSON response matching the schema", bundle: relayLocalizationBundle)).font(.caption)
+                        TextEditor(text: $raw).font(.body.monospaced()).frame(minHeight: 120).accessibilityLabel(String(localized: "MCP JSON response", bundle: relayLocalizationBundle))
                     }
                     if let validation { Text(validation).font(.caption).foregroundStyle(.orange) }
-                    Button("Invia risposta MCP") { if let response { Task { await relay.answer(request, decision: "approve", content: response) } } }.buttonStyle(.bordered)
+                    Button(String(localized: "Send MCP response", bundle: relayLocalizationBundle)) { if let response { Task { await relay.answer(request, decision: "approve", content: response) } } }.buttonStyle(.bordered)
                         .disabled(response == nil || !relay.online || relay.machines[request.machineId]?.status != "ONLINE" || relay.current?.capabilities.canAnswer != true)
-                } else { Text("Questo flusso MCP richiede Codex locale.").font(.caption) }
-            } else { Text("Schema non disponibile: risolvi da Codex locale.").font(.caption) }
+                } else { Text(String(localized: "This MCP flow requires local Codex.", bundle: relayLocalizationBundle)).font(.caption) }
+            } else { Text(String(localized: "Schema unavailable: resolve in local Codex.", bundle: relayLocalizationBundle)).font(.caption) }
         }
     }
 }
-func statusLabel(_ status: String) -> String { ["SYNCING": "Sincronizzazione Codex…", "RECONNECTING": "Riconnessione…", "DEGRADED": "Codex non connesso", "OFFLINE": "Relay non connesso", "ALL": "Tutte", "NEEDS_YOU": "Serve una risposta", "WORKING": "In corso", "READY": "Pronta", "INACTIVE": "Inattiva", "FAILED": "Errore"][status] ?? status }
+func statusLabel(_ status: String) -> String { ["SYNCING": String(localized: "Syncing with Codex…", bundle: relayLocalizationBundle), "RECONNECTING": String(localized: "Reconnecting…", bundle: relayLocalizationBundle), "DEGRADED": String(localized: "Codex not connected", bundle: relayLocalizationBundle), "OFFLINE": String(localized: "Relay not connected", bundle: relayLocalizationBundle), "ALL": String(localized: "All", bundle: relayLocalizationBundle), "NEEDS_YOU": String(localized: "Needs You", bundle: relayLocalizationBundle), "WORKING": String(localized: "Working", bundle: relayLocalizationBundle), "READY": String(localized: "Ready", bundle: relayLocalizationBundle), "INACTIVE": String(localized: "Inactive", bundle: relayLocalizationBundle), "FAILED": String(localized: "Error", bundle: relayLocalizationBundle)][status] ?? status }
 func statusColor(_ status: String) -> Color { RelayPalette.status(status) }
 
 #if DEBUG
@@ -376,7 +377,7 @@ func statusColor(_ status: String) -> Color { RelayPalette.status(status) }
         _relay = State(initialValue: PreviewData.controller(status: status, paired: paired))
         self.content = content()
     }
-    var body: some View { NavigationStack { content }.environment(relay).preferredColorScheme(.dark).tint(.white) }
+    var body: some View { NavigationStack { content }.environment(relay).preferredColorScheme(.dark) }
 }
 #Preview("Abbinamento · isolato") { RelayPreview(paired: false) { PairingView() } }
 #Preview("Fleet · isolata") { RelayPreview { FleetView(filter: .constant("ALL"), machine: .constant(""), search: .constant("")) } }
@@ -386,7 +387,7 @@ func statusColor(_ status: String) -> Color { RelayPalette.status(status) }
 #Preview("Dispositivi · isolati") { RelayPreview { DevicesView() } }
 @MainActor private struct ConversationPreview: View {
     @State private var relay = PreviewData.conversation()
-    var body: some View { NavigationStack { SessionView() }.environment(relay).preferredColorScheme(.dark).tint(.white) }
+    var body: some View { NavigationStack { SessionView() }.environment(relay).preferredColorScheme(.dark) }
 }
 #Preview("Chat · riferimento iPhone") { ConversationPreview() }
 #endif
@@ -396,9 +397,9 @@ struct LastKnownSession: View {
     let machine: Machine?
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("Ultimo stato: " + statusLabel(session.status))
+            Text(String(localized: "Last known: \(statusLabel(session.status))", bundle: relayLocalizationBundle))
             if let value = machine?.lastSeen, let date = ISO8601DateFormatter().date(from: value) ?? Self.fractional.date(from: value) {
-                Text("Ultimo contatto: \(date, style: .relative) fa")
+                HStack(spacing: 4) { Text(String(localized: "Last seen", bundle: relayLocalizationBundle)); Text(date, style: .relative) }
             }
         }.font(.caption).foregroundStyle(.secondary)
     }

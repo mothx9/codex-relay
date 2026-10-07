@@ -8,7 +8,7 @@ final class FreshnessTests: XCTestCase {
             let machine: Machine = try decode("{\"id\":\"m\",\"name\":\"Machine\",\"status\":\"\(state)\",\"last_seen\":\"2026-10-07T00:00:00Z\"}")
             XCTAssertEqual(session.displayStatus(machine: machine, connected: true), state)
             XCTAssertEqual(session.status, "WORKING")
-            XCTAssertNotEqual(machine.connectionLabel(hubConnected: true), "Relay collegato")
+            XCTAssertNotEqual(machine.connectionLabel(hubConnected: true), "Relay connected")
         }
     }
     func testEpochSequenceAndSnapshotWatermark() throws {

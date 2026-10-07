@@ -9,7 +9,7 @@ public enum HubFailure: LocalizedError, Sendable {
 public struct HubAPI: Sendable {
     public let origin: URL; public let token: String?
     public init(url: String, token: String? = nil) throws {
-        guard let components = URLComponents(string: url.trimmingCharacters(in: .whitespacesAndNewlines)), components.scheme == "https", let host = components.host, !host.isEmpty, components.user == nil, components.password == nil, components.query == nil, components.fragment == nil, ["", "/"].contains(components.path), let origin = components.url else { throw HubFailure.message("Inserisci l’origine HTTPS del Hub.") }
+        guard let components = URLComponents(string: url.trimmingCharacters(in: .whitespacesAndNewlines)), components.scheme == "https", let host = components.host, !host.isEmpty, components.user == nil, components.password == nil, components.query == nil, components.fragment == nil, ["", "/"].contains(components.path), let origin = components.url else { throw HubFailure.message(String(localized: "Enter the Hub’s HTTPS origin.", bundle: relayLocalizationBundle)) }
         self.origin = origin; self.token = token
     }
     public func request(path: String, body: Data? = nil) -> URLRequest {
@@ -37,10 +37,10 @@ public struct HubAPI: Sendable {
         let (result,response) = try await session.data(for: request)
         guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-            let message = code == 401 ? "Codice scaduto, accesso revocato o non valido." : code == 429 ? "Troppi tentativi. Attendi un minuto." : code == 409 ? "Dispositivo già abbinato: revoca l’accesso prima di aggiungerlo di nuovo." : "Hub non disponibile (\(code))."
+            let message = code == 401 ? String(localized: "Code expired or access revoked or invalid.", bundle: relayLocalizationBundle) : code == 429 ? String(localized: "Too many attempts. Wait a minute.", bundle: relayLocalizationBundle) : code == 409 ? String(localized: "Device already paired: revoke access before adding it again.", bundle: relayLocalizationBundle) : String(localized: "Hub unavailable (\(code)).", bundle: relayLocalizationBundle)
             throw HubFailure.http(code, message)
         }
-        guard result.count <= 1_048_576 else { throw HubFailure.message("Risposta Hub troppo grande.") }
+        guard result.count <= 1_048_576 else { throw HubFailure.message(String(localized: "Hub response too large.", bundle: relayLocalizationBundle)) }
         return try RelayJSON.decoder().decode(T.self, from: result)
     }
 }
