@@ -18,7 +18,7 @@ def main():
     if not shutil.which("rsvg-convert"):
         raise SystemExit("Install librsvg (macOS: brew install librsvg), then rerun.")
     ICON.mkdir(parents=True, exist_ok=True)
-    render(SOURCE, ICON / "AppIcon.png", 1024, 1024)
+    render(ROOT / "docs/assets/app/codex-app-icon.svg", ICON / "AppIcon.png", 1024, 1024)
     for size in (192, 512):
         render(SOURCE, ROOT / f"web/icon-{size}.png", size, size)
     shutil.copyfile(SOURCE, ROOT / "web/icon.svg")

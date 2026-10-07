@@ -11,10 +11,11 @@ controlling and continuing Codex sessions across multiple machines.
 </p>
 
 - **Know what is happening now:** live responses, commands, tools, files and diffs.
-- **Respond when needed:** one cross-machine Needs You inbox and inline decisions.
+- **Respond when needed:** canonical decisions and clearly separate transient live questions.
 - **Continue work:** New Turn when ready, queued Follow-up while working, separate Steer.
 - **Trust the state:** explicit Online, Syncing, Degraded and Offline; last-known work stays visibly stale.
 - **Understand your fleet:** machines, runtime account usage, controllers and redacted diagnostics.
+- **Stay informed:** native local alerts while connected; remote APNs with your Apple setup.
 - **Keep control:** your Hub, your machines, local Codex login, no Relay cloud account.
 
 ## How it works
@@ -140,5 +141,6 @@ embedded PWA remains a fallback/debug client.
 
 ## License
 
-[Apache-2.0](LICENSE). Codex Relay is an independent project and does not use OpenAI's
-logo or imply official affiliation.
+[Apache-2.0](LICENSE) for Relay source. Codex Relay is an independent project, not
+an official OpenAI application. The native Codex icon is attributed separately in
+[product assets](docs/assets/app/README.md).
