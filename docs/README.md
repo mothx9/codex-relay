@@ -18,6 +18,7 @@ Start with the [product overview](../README.md), then follow the guide for each 
 | Prepare a release | [Release engineering](development/releases.md) |
 
 Evidence is versioned: [M1 validation](m1-validation.md) records the completed
-reliability baseline; [live event audit](live-event-audit.md) distinguishes
+reliability baseline; [M2 product validation](m2-validation.md) records product
+acceptance and the remaining physical/Apple gates. The [live event audit](live-event-audit.md) distinguishes
 supported protocol events from observed acceptance. [Historical records](development/history/README.md)
 are preserved for investigation, not as the normal setup path.

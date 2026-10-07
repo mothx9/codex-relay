@@ -14,6 +14,7 @@ required physical notification delivery, is complete.
 - One-time machine installer flow, iPhone onboarding, English/Italian resources,
   shared product mark and isolated public screenshot tooling.
 
+[M2 validation](docs/m2-validation.md) records the live acceptance evidence.
 Physical APNs delivery is a separate acceptance requirement; implementation and
 provider tests are not a delivery claim.
 
