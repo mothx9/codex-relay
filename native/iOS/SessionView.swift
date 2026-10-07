@@ -234,16 +234,9 @@ struct SessionView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     ForEach(currentQuestions(session)) { record in
                         ForEach(Array((record.activity.questions ?? []).enumerated()), id: \.offset) { index, question in
-                            VStack(alignment: .leading, spacing: 10) {
-                                ChatMarkdown(text: question.title, identifier: "liveQuestion.title.\(index)")
-                                ForEach(question.options ?? [], id: \.self) { option in
-                                    Button { prepareReply(question.title + "\n" + option, record: record, session: session) } label: {
-                                        HStack { Text(option).multilineTextAlignment(.leading); Spacer(); Image(systemName: "arrow.down.to.line") }.frame(minHeight: 44)
-                                    }.buttonStyle(.bordered).disabled(!machineOnline(session) || !session.allows("steer") || editingQueue != nil || submitting)
-                                }
-                                Button(String(localized: "Write a reply", bundle: relayLocalizationBundle), systemImage: "square.and.pencil") {
-                                    prepareReply(question.title + "\n", record: record, session: session)
-                                }.frame(minHeight: 44).disabled(!machineOnline(session) || !session.allows("steer") || editingQueue != nil || submitting)
+                            LiveQuestionChoices(question: question, index: index,
+                                disabled: !machineOnline(session) || !session.allows("steer") || editingQueue != nil || submitting) { answer in
+                                prepareReply(answer, record: record, session: session)
                             }
                         }
                     }
@@ -393,6 +386,30 @@ struct SessionView: View {
 }
 
 // Owns high-frequency transcript observation and scroll state. The composer,
+private struct LiveQuestionChoices: View {
+    let question: AsyncQuestion
+    let index: Int
+    let disabled: Bool
+    let prepare: (String) -> Void
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ChatMarkdown(text: question.title, identifier: "liveQuestion.title.\(index)")
+            ForEach(question.options ?? [], id: \.self) { option in
+                Button { prepare(question.title + "\n" + option) } label: {
+                    HStack {
+                        Text(option).multilineTextAlignment(.leading)
+                        Spacer()
+                        Image(systemName: "arrow.down.to.line")
+                    }.frame(minHeight: 44)
+                }.buttonStyle(.bordered).disabled(disabled)
+            }
+            Button(String(localized: "Write a reply", bundle: relayLocalizationBundle), systemImage: "square.and.pencil") {
+                prepare(question.title + "\n")
+            }.frame(minHeight: 44).disabled(disabled)
+        }
+    }
+}
+
 // header and heartbeat observe only their own canonical metadata.
 private struct SessionTranscript: View {
     @Environment(RelayController.self) private var relay
