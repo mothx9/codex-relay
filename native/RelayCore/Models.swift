@@ -124,6 +124,18 @@ public struct LiveActivity: Codable, Sendable, Equatable {
         switch kind { case "context_compaction": state == "running" ? String(localized: "Compacting context", bundle: relayLocalizationBundle) : String(localized: "Context compacted", bundle: relayLocalizationBundle); case "terminal": String(localized: "Terminal", bundle: relayLocalizationBundle); case "tool": "MCP"; case "file": "File"; case "diff": "Diff"; case "assistant": state == "running" ? String(localized: "Generating response…", bundle: relayLocalizationBundle) : String(localized: "Response completed", bundle: relayLocalizationBundle); default: String(localized: "Activity", bundle: relayLocalizationBundle) }
     }
     public var detail: String { label.isEmpty ? title : title + " · " + label }
+    /// Fleet shows the current operation category, never a shell body or stale completion.
+    public var fleetSummary: String {
+        guard state == "running" else { return String(localized: "Working", bundle: relayLocalizationBundle) }
+        switch kind {
+        case "terminal": return String(localized: "Terminal", bundle: relayLocalizationBundle)
+        case "tool": return String(localized: "Tools", bundle: relayLocalizationBundle)
+        case "file", "diff": return String(localized: "Changes", bundle: relayLocalizationBundle)
+        case "assistant": return String(localized: "Response", bundle: relayLocalizationBundle)
+        case "context_compaction": return String(localized: "Compacting context", bundle: relayLocalizationBundle)
+        default: return String(localized: "Working", bundle: relayLocalizationBundle)
+        }
+    }
 }
 public struct QuestionReply: Codable, Sendable, Equatable {
     public let question: String

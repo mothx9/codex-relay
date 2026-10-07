@@ -6193,6 +6193,28 @@
           }
         }
       }
+    },
+    "Tools": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strumenti"
+          }
+        }
+      }
+    },
+    "Response": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -162,6 +162,18 @@ import XCTest
         XCTAssertFalse(app.buttons.containing(.staticText, identifier: "Full suite").firstMatch.exists)
         XCTAssertFalse(app.buttons["Respond"].exists)
     }
+    func testFleetWorkingUsesOneCategoryLineWithoutCommandBody() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--product-screenshot", "fleet", "-AppleLanguages", "(en)"]
+        app.launch()
+        let row = app.buttons["session.workstation~build"]
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        XCTAssertTrue(row.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Terminal")).firstMatch.exists)
+        XCTAssertFalse(row.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "cargo test")).firstMatch.exists)
+        row.tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "cargo test")).firstMatch.waitForExistence(timeout: 10))
+    }
+
     func testAdministrativeHomesDoNotDuplicateSettings() {
         let app = XCUIApplication()
         app.launchArguments = ["--product-screenshot", "fleet", "-AppleLanguages", "(en)"]

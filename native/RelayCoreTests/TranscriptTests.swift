@@ -2,6 +2,18 @@ import XCTest
 @testable import RelayCore
 
 final class TranscriptTests: XCTestCase {
+    func testFleetActivityIsBoundedAndDoesNotClaimStaleCompletion() throws {
+        func activity(_ kind: String, _ state: String) throws -> LiveActivity {
+            let value: [String: String] = ["item_id": "operation", "kind": kind, "label": String(repeating: "private-command ", count: 200), "state": state, "timestamp": ""]
+            return try RelayJSON.decoder().decode(LiveActivity.self, from: JSONSerialization.data(withJSONObject: value))
+        }
+        for kind in ["terminal", "tool", "diff", "assistant", "context_compaction", "unknown"] {
+            XCTAssertLessThan(try activity(kind, "running").fleetSummary.count, 40)
+            XCTAssertFalse(try activity(kind, "running").fleetSummary.contains("private-command"))
+            XCTAssertEqual(try activity(kind, "completed").fleetSummary, try activity("unknown", "running").fleetSummary)
+        }
+    }
+
     func testSmallScrollAndDecelerationDoNotResumeFollowing() {
         var policy = TranscriptScrollPolicy()
         XCTAssertTrue(policy.shouldFollow)

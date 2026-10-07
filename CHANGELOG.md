@@ -6,6 +6,9 @@ required physical notification delivery, is complete.
 
 ## Unreleased — M2 productization
 
+- Three-line Working rows combine a bounded activity category and elapsed time;
+  current live questions have one composer-side reply home without transcript copies.
+
 - Bounded photo/screenshot input through the native picker and image drops,
   gated by Agent capability and forwarded through the official Codex input API.
 - Separate Next up queue, canonical queue-edit results and independent read/control

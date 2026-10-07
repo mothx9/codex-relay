@@ -482,6 +482,9 @@ and the Xcode 26.6 compatibility correction `2c1e830`.
 - Local foreground alerts request both banner and Notification Center list
   presentation. Completed/failed notices are retained; obsolete attention notices
   can be retired. Badge changes do not clear delivered completion notices.
+- Fleet Working rows combine operation category and elapsed time in one line;
+  shell bodies and a repeated Working line are absent. A focused UI check confirms
+  that the command remains available after opening the session.
 - Native chrome, app icon, PWA icons and public branding now share Codex geometry;
   the obsolete R mark is removed. Twenty sanitized product surfaces were captured.
   The refreshed 17.83-second walkthrough was reviewed across its full duration.
@@ -490,7 +493,7 @@ and the Xcode 26.6 compatibility correction `2c1e830`.
 ### Qualification
 
 Go formatting/vet, ordinary and race tests, 9 web checks, 8 installer checks,
-localization and repository-link checks passed. All 66 Swift tests passed. Simulator
+localization and repository-link checks passed. All 67 Swift tests passed. Simulator
 build and generic build-for-testing passed. Eight focused UI checks passed,
 including four actual local OS banner kinds, semantic dedupe, disabled delivery,
 Notification Center retention, image picking, individual activity navigation and

@@ -401,6 +401,7 @@
 "Resets" = "Resets";
 "Resets %@" = "Resets %@";
 "Respond" = "Respond";
+"Response" = "Response";
 "Response completed" = "Response completed";
 "Response failed." = "Response failed.";
 "Response sent · waiting for Codex" = "Response sent · waiting for Codex";
@@ -498,6 +499,7 @@
 "Too many active requests." = "Too many active requests.";
 "Too many attempts. Wait a minute." = "Too many attempts. Wait a minute.";
 "Tool" = "Tool";
+"Tools" = "Tools";
 "Total" = "Total";
 "Turn" = "Turn";
 "Turn duration" = "Turn duration";

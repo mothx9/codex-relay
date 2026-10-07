@@ -748,7 +748,7 @@ private struct SessionHeartbeat: View {
 }
 
 /// Only this small text mask redraws; transcript and composer do not animate.
-private struct WorkingText: View {
+struct WorkingText: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let text: String
     private var label: Text { Text(text) }

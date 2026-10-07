@@ -157,22 +157,20 @@ struct FleetSessionRow: View {
                         Spacer(minLength: 0)
                         Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
                     }.font(.caption).foregroundStyle(.secondary)
-                    Text(session.title).font(active ? .headline : .subheadline.weight(.medium)).lineLimit(2).foregroundStyle(.primary)
-                    if status == "WORKING", let activity = relay.liveActivities[session.id] {
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Image(systemName: activity.kind == "terminal" ? "terminal" : activity.kind == "tool" ? "wrench.and.screwdriver" : activity.kind == "file" || activity.kind == "diff" ? "doc.text" : "text.bubble")
-                                .foregroundStyle(.secondary)
-                            Text(activity.detail).lineLimit(2)
-                        }.font(.caption).foregroundStyle(.secondary)
-                            .contentTransition(.opacity)
-                            .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: activity.itemId)
-                    }
+                    Text(session.title).font(active ? .headline : .subheadline.weight(.medium)).lineLimit(status == "WORKING" ? 1 : 2).foregroundStyle(.primary)
                     HStack(spacing: 6) {
-                        SessionStatusMark(status: status)
-                        Text(status == "OFFLINE" ? relay.machineConnectionLabel(session.machineId) : statusLabel(status))
-                            .foregroundStyle(active ? RelayPalette.status(status) : .secondary)
-                        Spacer(minLength: 4)
-                        if status == "WORKING" { ElapsedLabel(start: session.turnStarted).monospacedDigit() }
+                        if status == "WORKING" {
+                            WorkingText(text: relay.liveActivities[session.id]?.fleetSummary ?? statusLabel(status))
+                                .lineLimit(1)
+                                .accessibilityLabel(statusLabel(status) + ", " + (relay.liveActivities[session.id]?.fleetSummary ?? ""))
+                            Spacer(minLength: 4)
+                            ElapsedLabel(start: session.turnStarted).monospacedDigit().foregroundStyle(.secondary)
+                        } else {
+                            SessionStatusMark(status: status)
+                            Text(status == "OFFLINE" ? relay.machineConnectionLabel(session.machineId) : statusLabel(status))
+                                .foregroundStyle(active ? RelayPalette.status(status) : .secondary)
+                            Spacer(minLength: 4)
+                        }
                     }.font(.caption)
                     if ["OFFLINE", "SYNCING", "RECONNECTING", "DEGRADED"].contains(status) {
                         LastKnownSession(session: session, machine: relay.machines[session.machineId])

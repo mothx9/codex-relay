@@ -32,8 +32,11 @@ Diagnostics links to Machines, while per-machine measurements live in its detail
 ## Quiet normal state
 
 A healthy Fleet has no permanent connected/count banner. Connection exceptions
-produce one actionable warning leading to Machines. Current work retains its
-semantic green indicator; healthy infrastructure is neutral. Needs You uses a
+produce one actionable warning leading to Machines. A Working row has three
+compact lines: machine/project, title, then operation category and elapsed time.
+Terminal, Changes, Tools or Response shares the neutral activity sweep; full shell
+bodies stay in the session. Completed activity does not masquerade as a running
+operation. Healthy infrastructure is neutral. Needs You uses a
 restrained warning treatment. Status labels accompany color.
 
 Consecutive command/tool/file activity in the same turn shares one stable inline
