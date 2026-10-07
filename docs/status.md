@@ -31,21 +31,27 @@ have canonical identity and resolution through the Hub, including reconnect.
 the app-server exposes no shared authoritative pending lifecycle for it.
 Relay never infers pending state from history or from a missing visible reply.
 
-In an open, connected session, a question observed during the current live turn
-can prepare a message in the composer. The user reviews and sends it using the
-normal New Turn/Follow-up or explicit Steer controls. This does not submit an
-Answer RPC, dismiss another client's question, or create a Needs You badge.
-After disconnect, navigation away or turn change, the live hint expires;
-transcript content remains readable. Cross-client async-question parity is not
-claimed. See the [protocol](architecture/protocol.md) and
+A live question observed on the current connection appears in a separate
+**Live Questions** section of Needs You and contributes to the connected app's
+attention badge. It is an ephemeral hint, not a pending RPC. It can prepare a
+composer draft; the user chooses Follow-up or explicit Steer. It cannot dismiss
+another client's question. Turn boundaries, user input, local submission,
+disconnect or epoch changes retire the hint. Navigation alone does not.
+History and reconnect never reconstruct it. Cross-client async-question parity
+is not claimed. See the [protocol](architecture/protocol.md) and
 [event audit](development/validation/live-event-audit.md).
 
 ## Native notifications
 
-Routing, registration, deduplication, privacy, expired-token cleanup and deep links
-are implemented and covered by tests. Notification permission, Apple device-token
-registration, Hub APNs configuration and controller registration are separate.
-Physical APNs delivery is **not yet accepted** in the reference deployment.
+The native app provides **local alerts while connected**, separately from
+**remote APNs push**. Local foreground banners for completion, supported pending
+RPCs, live questions and failure pass simulator OS-notification acceptance.
+Local alerts cannot reach a force-quit or arbitrarily suspended app. Permission
+alone does not mean remote delivery is operational. The notification screen
+summarizes both paths and discloses registration details.
+
+Routing, semantic deduplication, privacy, expired-token cleanup and deep links
+remain covered by tests. Physical APNs delivery is **not yet accepted**.
 
 Current external gates: an Apple team/profile with Push Notifications and
 `aps-environment`, an authorized APNs provider key on the Hub, then physical

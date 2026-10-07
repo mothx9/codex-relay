@@ -30,6 +30,7 @@
 "1 operation" = "1 operation";
 "1 session working" = "1 session working";
 "8-digit pairing code" = "8-digit pairing code";
+"A machine went offline" = "A machine went offline";
 "APNs must be configured on the Hub. The signed iPhone app also needs the Apple Push Notifications capability, unavailable with Personal Team provisioning. Relay control works independently." = "APNs must be configured on the Hub. The signed iPhone app also needs the Apple Push Notifications capability, unavailable with Personal Team provisioning. Relay control works independently.";
 "APPLIED" = "APPLIED";
 "About" = "About";
@@ -39,6 +40,7 @@
 "Access not revoked. " = "Access not revoked. ";
 "Account no longer reported" = "Account no longer reported";
 "Accounts are reported by Codex on your machines. Sign in to Codex locally to make account data available." = "Accounts are reported by Codex on your machines. Sign in to Codex locally to make account data available.";
+"Action required" = "Action required";
 "Actions for " = "Actions for ";
 "Activity" = "Activity";
 "Add a follow-up…" = "Add a follow-up…";
@@ -88,8 +90,11 @@
 "Codex Account" = "Codex Account";
 "Codex Accounts" = "Codex Accounts";
 "Codex account" = "Codex account";
+"Codex asked a live question" = "Codex asked a live question";
+"Codex finished" = "Codex finished";
 "Codex has a question" = "Codex has a question";
 "Codex needs a decision" = "Codex needs a decision";
+"Codex needs attention" = "Codex needs attention";
 "Codex needs your input" = "Codex needs your input";
 "Codex not connected" = "Codex not connected";
 "Codex owns conversations and queued work" = "Codex owns conversations and queued work";
@@ -105,6 +110,7 @@
 "Configured" = "Configured";
 "Connect this thread to Codex to send messages." = "Connect this thread to Codex to send messages.";
 "Connect thread" = "Connect thread";
+"Connect to Relay" = "Connect to Relay";
 "Connected" = "Connected";
 "Connected to your Hub" = "Connected to your Hub";
 "Connecting to Hub…" = "Connecting to Hub…";
@@ -152,6 +158,7 @@
 "Decisions and approvals from your machines will appear here." = "Decisions and approvals from your machines will appear here.";
 "Declined" = "Declined";
 "Deleted" = "Deleted";
+"Delivery details" = "Delivery details";
 "Denied" = "Denied";
 "Details" = "Details";
 "Details collapsed" = "Details collapsed";
@@ -240,10 +247,16 @@
 "Limit reached" = "Limit reached";
 "Limit state" = "Limit state";
 "Live" = "Live";
+"Live question" = "Live question";
+"Live questions" = "Live questions";
 "Live · %lld machines" = "Live · %lld machines";
 "Load earlier messages" = "Load earlier messages";
 "Load more sessions · " = "Load more sessions · ";
 "Loading history…" = "Loading history…";
+"Local alert test" = "Local alert test";
+"Local alerts" = "Local alerts";
+"Local alerts enabled while Relay is connected. Remote push setup is separate." = "Local alerts enabled while Relay is connected. Remote push setup is separate.";
+"Local alerts work while this app is connected. Remote push uses APNs to reach you when the app is suspended or closed." = "Local alerts work while this app is connected. Remote push uses APNs to reach you when the app is suspended or closed.";
 "MCP JSON response" = "MCP JSON response";
 "Machine" = "Machine";
 "Machine Agent" = "Machine Agent";
@@ -264,6 +277,7 @@
 "Need to set up a Hub?" = "Need to set up a Hub?";
 "Needs You" = "Needs You";
 "Needs You, completion, failure and machines offline after a grace period. No notifications for individual commands or tokens. Lock-screen previews omit project and conversation content by default." = "Needs You, completion, failure and machines offline after a grace period. No notifications for individual commands or tokens. Lock-screen previews omit project and conversation content by default.";
+"Needs You, live questions, completion, failure and machines offline after a grace period. Previews omit conversation content. Completion is quiet in the session you are reading." = "Needs You, live questions, completion, failure and machines offline after a grace period. Previews omit conversation content. Completion is quiet in the session you are reading.";
 "Needs verification" = "Needs verification";
 "No" = "No";
 "No account data yet" = "No account data yet";
@@ -282,6 +296,7 @@
 "Notifications" = "Notifications";
 "Notifications are denied. You can enable them in iOS Settings." = "Notifications are denied. You can enable them in iOS Settings.";
 "Notifications not enabled" = "Notifications not enabled";
+"Observed during the current connection. These hints clear when work moves on or the connection is lost." = "Observed during the current connection. These hints clear when work moves on or the connection is lost.";
 "Observed latency" = "Observed latency";
 "Obtained" = "Obtained";
 "Offline" = "Offline";
@@ -289,6 +304,7 @@
 "One Hub" = "One Hub";
 "One-time pairing code" = "One-time pairing code";
 "Open Link" = "Open Link";
+"Open Relay to see the current state." = "Open Relay to see the current state.";
 "Open details and output" = "Open details and output";
 "Open iOS notification settings" = "Open iOS notification settings";
 "Origin" = "Origin";
@@ -348,6 +364,7 @@
 "Relay registration removed for this iPhone. iOS permission is unchanged." = "Relay registration removed for this iPhone. iOS permission is unchanged.";
 "Reload history · " = "Reload history · ";
 "Remaining" = "Remaining";
+"Remote push" = "Remote push";
 "Remove controller" = "Remove controller";
 "Remove enrollment" = "Remove enrollment";
 "Remove machine enrollment" = "Remove machine enrollment";
@@ -413,6 +430,7 @@
 "Sessions" = "Sessions";
 "Set up Hub notifications" = "Set up Hub notifications";
 "Settings" = "Settings";
+"Setup required" = "Setup required";
 "Share" = "Share";
 "Show" = "Show";
 "Sign out locally" = "Sign out locally";
@@ -433,7 +451,9 @@
 "System health" = "System health";
 "Temporary" = "Temporary";
 "Terminal" = "Terminal";
+"Test local alert" = "Test local alert";
 "Test queued. Confirm receipt on this iPhone; queue acceptance is not delivery." = "Test queued. Confirm receipt on this iPhone; queue acceptance is not delivery.";
+"Test remote push" = "Test remote push";
 "The Hub administrator owns this installation and manages recovery. All authorized controllers have the same Relay permissions." = "The Hub administrator owns this installation and manages recovery. All authorized controllers have the same Relay permissions.";
 "The Hub owns Relay access and routing" = "The Hub owns Relay access and routing";
 "The MCP response must be a JSON object." = "The MCP response must be a JSON object.";

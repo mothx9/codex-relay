@@ -248,7 +248,7 @@ private struct SessionTranscript: View {
                         }
                         ForEach(TranscriptGroup.make(relay.chat.items)) { group in
                             if group.kind == .message, let activity = group.items.first {
-                                ChatMessageView(activity: activity, liveQuestion: relay.liveQuestions.itemIDs.contains(activity.id), onQuestionReply: onQuestionReply).equatable()
+                                ChatMessageView(activity: activity, liveQuestion: relay.liveQuestions.records.contains { $0.sessionID == relay.selected && $0.activity.id == activity.id }, onQuestionReply: onQuestionReply).equatable()
                             } else {
                                 ToolSummaryView(group: group) { tools = group }
                             }

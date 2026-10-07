@@ -154,6 +154,7 @@ public struct PendingRequest: Codable, Identifiable, Sendable {
     public var id: String { requestId }; public let requestId: String; public let sessionId: String; public let machineId: String
     public let kind: String; public let description: String; public let operation: String?; public let cwd: String?
     public let questions: [Question]?; public let expiresAt: String; public let canApprove: Bool
+    public var notifyKey: String? = nil
     public var payload: RequestPayload?
     public let turnId: String?; public let createdAt: String?
     /// A request RPC ID can be reused after a daemon restart. Form state belongs
@@ -169,6 +170,7 @@ public struct Snapshot: Decodable, Sendable { public let machines: [Machine]; pu
 public struct RelayEvent: Decodable, Sendable {
     public var machineId: String? = nil; public var epoch: String? = nil; public var sequence: UInt64? = nil
     public var hubObservedAt: String? = nil
+    public var notifyKey: String? = nil
     public let liveActivity: LiveActivity?
     public let eventId: String?; public let kind: String; public let sessionId: String; public let session: RelaySession?
     public let request: PendingRequest?; public let requestId: String?; public let activity: Activity?

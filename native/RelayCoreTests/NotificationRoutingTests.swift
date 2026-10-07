@@ -25,3 +25,36 @@ final class NotificationRoutingTests: XCTestCase {
         XCTAssertEqual(RelayDestination.link(URL(string: "codex-relay://machine/laptop")!), .machine("laptop"))
     }
 }
+
+extension NotificationRoutingTests {
+    func testPermissionIsNotRemoteReadinessAndRegisteredRemoteSuppressesLocal() {
+        var state = NotificationReadiness(); state.enabled = true; state.permission = true; state.connected = true
+        XCTAssertTrue(state.localReady); XCTAssertFalse(state.remoteReady)
+        state.hubConfigured = true; state.relayRegistered = true; state.registrationVerified = true
+        XCTAssertTrue(state.remoteOwnsDelivery); XCTAssertFalse(state.remoteReady)
+        state.appleRegistered = true; XCTAssertTrue(state.remoteReady)
+        var policy = LocalNoticePolicy()
+        XCTAssertFalse(policy.admit(SemanticNotice(key: "rpc", kind: .request), readiness: state, selectedSession: ""))
+    }
+    func testLocalSemanticDedupeCompletionSuppressionDisabledAndBounded() {
+        var state = NotificationReadiness(); state.enabled = true; state.permission = true; state.connected = true
+        var policy = LocalNoticePolicy()
+        let done = SemanticNotice(key: "turn", kind: .completed, sessionID: "m~t")
+        XCTAssertFalse(policy.admit(done, readiness: state, selectedSession: "m~t"))
+        XCTAssertFalse(policy.admit(done, readiness: state, selectedSession: "other"))
+        XCTAssertTrue(policy.admit(SemanticNotice(key: "rpc", kind: .request), readiness: state, selectedSession: "m~t"))
+        XCTAssertFalse(policy.admit(SemanticNotice(key: "rpc", kind: .request), readiness: state, selectedSession: "m~t"))
+        state.enabled = false
+        XCTAssertFalse(policy.admit(SemanticNotice(key: "disabled", kind: .failed), readiness: state, selectedSession: ""))
+        for n in 0..<1000 { _ = policy.admit(SemanticNotice(key: "\(n)", kind: .test), readiness: state, selectedSession: "") }
+        XCTAssertEqual(policy.seen.count, 512)
+    }
+    func testOnlySemanticTurnCompletionNotItemCompletionProducesNotice() throws {
+        func event(_ kind: String) throws -> RelayEvent {
+            try RelayJSON.decoder().decode(RelayEvent.self, from: Data("{\"kind\":\"\(kind)\",\"session_id\":\"m~t\",\"turn_id\":\"turn\",\"notify_key\":\"canonical\"}".utf8))
+        }
+        XCTAssertNil(SemanticNotice.event(try event("activity")))
+        XCTAssertEqual(SemanticNotice.event(try event("turn_completed"))?.key, "canonical")
+        XCTAssertEqual(SemanticNotice.event(try event("failed"))?.kind, .failed)
+    }
+}

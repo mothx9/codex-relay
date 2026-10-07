@@ -45,6 +45,12 @@ import UIKit
     var diagnosticsUpdatedAt: Date?
     var settingsProgress: [String: String] = [:]
     var settingsErrors: [String: String] = [:]
+    var notificationAllowed = false
+    var notificationsEnabled = false
+    var appleRegistrationFailed = false
+    var localNoticePolicy = LocalNoticePolicy()
+    var presentedNotices: [String] = []
+    var offlineNoticeTasks: [String: Task<Void, Never>] = [:]
     var notificationPermission = String(localized: "Needs verification", bundle: relayLocalizationBundle)
     var pushRegistered = false
     var pushRegistrationVerifiedAt: Date?
@@ -60,6 +66,7 @@ import UIKit
     private var generation = UUID()
     private var seen: [String] = []
     private var eventFreshness = EventFreshness()
+    private var attentionFreshness = EventFreshness()
     var receiptTiming = ReceiptTiming()
     var liveQuestions = LiveQuestions()
     private var paused = false
@@ -107,6 +114,7 @@ import UIKit
                 } catch {
                     guard self.generation == generation, !Task.isCancelled else { return }
                     self.liveQuestions.reset(); self.online = false; self.restoredWatch = false; self.historyLoading = false; self.historyRequestID = nil; self.outbox.disconnected(); for id in Array(self.queueWaiters.keys) { self.finishQueueEditUnknown(id) }; self.commands.removeAll(); self.catalogueCommands.removeAll(); self.catalogueLoading.removeAll(); self.socket?.cancel(with: .goingAway, reason: nil); self.transport?.invalidateAndCancel()
+                    self.updateNotificationBadge(); self.cancelOfflineNotices()
                     self.connection = String(localized: "Offline · reconnecting", bundle: relayLocalizationBundle)
                     if let hubError = error as? HubFailure {
                         if hubError.authenticationRequired { self.forget(preserveNavigation: true); self.error = hubError.localizedDescription; return }
@@ -124,10 +132,13 @@ import UIKit
             guard let snapshot = message.snapshot else { return }
             let reconnecting = !online
             eventFreshness.snapshot(snapshot.machines)
+            attentionFreshness.snapshot(snapshot.machines)
+            let previousMachines = machines
             liveActivities = snapshot.liveActivities ?? [:]
             machines = Dictionary(uniqueKeysWithValues: snapshot.machines.map { ($0.id, $0) }); sessions = Dictionary(uniqueKeysWithValues: snapshot.sessions.map { ($0.id, $0) })
             requests = Dictionary(uniqueKeysWithValues: snapshot.requests.map { ($0.id, $0.retainingContext(from: requests[$0.id])) }); online = true; connection = String(localized: "Live · \(machines.values.filter { $0.status == "ONLINE" }.count) machines", bundle: relayLocalizationBundle)
             reconcileLiveQuestions()
+            observeOfflineMachines(previous: previousMachines)
             let activeRequests = Set(requests.values.map(\.presentationID))
             requestProgress = requestProgress.filter { activeRequests.contains($0.key) }
             requestErrors = requestErrors.filter { activeRequests.contains($0.key) }
@@ -135,6 +146,11 @@ import UIKit
             updateNotificationBadge()
             resolveNavigation()
             Task { await loadDevices(); if reconnecting { await refreshNativePush() } }
+        case "attention":
+            guard let event = message.event, attentionFreshness.accept(event) else { return }
+            observeLiveQuestion(event)
+            if let notice = SemanticNotice.event(event), liveQuestions.records.contains(where: { $0.id == notice.key }) { deliverLocalNotice(notice) }
+            updateNotificationBadge()
         case "devices_changed": Task { await loadDevices() }
         case "event", "pending":
             guard let event = message.event else { return }
@@ -159,11 +175,13 @@ import UIKit
             if event.kind == "request_resolved", let id = event.requestId { requests.removeValue(forKey: id) }
             if event.request != nil || event.kind == "request_resolved" { updateNotificationBadge() }
             reconcileLiveQuestions()
+            observeLiveQuestion(event)
+            if let notice = SemanticNotice.event(event) { deliverLocalNotice(notice) }
+            updateNotificationBadge()
             if event.sessionId == selected {
                 if event.kind == "follow_up_queue" { outbox.queue(session: selected, entries: event.followUps ?? []) }
                 if ["turn_started", "message_dispatched"].contains(event.kind), let id = event.clientId { outbox.dispatched(session: selected, clientId: id) }
                 if let activity = event.activity { outbox.materialize(session: selected, activity: activity) }
-                liveQuestions.observe(event, activeTurn: current?.turnId, current: liveQuestionStreamCurrent)
                 chat.apply(event)
             }
         case "result":
@@ -294,11 +312,11 @@ import UIKit
     }
     func open(_ id: String) {
         guard id != selected else { return }
-        liveQuestions.reset(); selected = id; chat = RecentChat(); historyCursor = nil; historyError = nil; historyLoading = false
+        selected = id; chat = RecentChat(); historyCursor = nil; historyError = nil; historyLoading = false
         restoredWatch = false; outbox.prune(active: id); Task { await watchSelected() }
     }
     func closeDetail() {
-        liveQuestions.reset(); selected = ""; chat = RecentChat(); historyCursor = nil; historyRequestID = nil; historyLoading = false; restoredWatch = false
+        selected = ""; chat = RecentChat(); historyCursor = nil; historyRequestID = nil; historyLoading = false; restoredWatch = false
         Task { await send(["type": "watch", "session_id": ""]) }
     }
     @discardableResult func submit(_ text: String, kind: String? = nil, expectedTurn: String? = nil) async -> Bool {
@@ -314,6 +332,7 @@ import UIKit
             var command: [String: Any] = ["id": id, "kind": kind, "session_id": selected, "text": text]
             if kind == "steer" { command["turn_id"] = targetTurn }
             if !(await sendCommand(command)) { outbox.fail(id, code: "UNKNOWN_OUTCOME", message: String(localized: "Unknown outcome. Check Codex before resending.", bundle: relayLocalizationBundle)) }
+            liveQuestions.clear(session: session.id); updateNotificationBadge()
             return true
         } catch { self.error = error.localizedDescription; return false }
     }
@@ -447,11 +466,14 @@ import UIKit
     func forget(preserveNavigation: Bool = false) { guard !previewOnly else { return }; stop(); if !preserveNavigation { pendingNavigation = PendingNavigation() }; navigationTask?.cancel(); routedMachine = nil; CredentialVault.clear(); credential = nil; pushRegistered = false; pushRegistrationVerifiedAt = nil; settingsErrors = [:]; machines = [:]; sessions = [:]; catalogue = SessionCatalogue(); catalogueErrors = [:]; liveActivities = [:]; requests = [:]; registry = nil; accounts = []; diagnostics = nil; diagnosticsUpdatedAt = nil; pairCode = nil; selected = ""; chat = RecentChat(); outbox = Outbox(); connection = String(localized: "Sign-in required", bundle: relayLocalizationBundle); updateNotificationBadge() }
     func background() { guard !previewOnly else { return }; paused = true; lastBackground = Date(); stop() }
     func foreground() { guard !previewOnly else { return }; paused = false; outbox.prune(active: ""); if let lastBackground, Date().timeIntervalSince(lastBackground) > 300 { outbox = Outbox(); chat = RecentChat(); historyCursor = nil }; connect() }
-    private var liveQuestionStreamCurrent: Bool {
-        guard let current else { return false }
-        return online && current.fresh != false && current.status == "WORKING" && machines[current.machineId]?.status == "ONLINE"
+    var attentionCount: Int { requests.count + liveQuestions.records.count }
+    private func observeLiveQuestion(_ event: RelayEvent) {
+        let session = sessions[event.sessionId]
+        liveQuestions.observe(event, activeTurn: session?.turnId, current: online && session?.fresh != false && session?.status == "WORKING" && machines[session?.machineId ?? ""]?.status == "ONLINE")
     }
-    private func reconcileLiveQuestions() { liveQuestions.reconcile(activeTurn: current?.turnId, current: liveQuestionStreamCurrent) }
-    private func stop() { liveQuestions.reset(); for id in Array(queueWaiters.keys) { finishQueueEditUnknown(id) }; chat.endHistory(); restoredWatch = false; historyLoading = false; historyRequestID = nil; generation = UUID(); loop?.cancel(); loop = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; transport?.invalidateAndCancel(); transport = nil; online = false; commands.removeAll(); catalogueCommands.removeAll(); catalogueLoading.removeAll(); outbox.disconnected() }
+    private func reconcileLiveQuestions() {
+        liveQuestions.reconcile(sessions: sessions, machines: machines, connected: online)
+    }
+    private func stop() { liveQuestions.reset(); cancelOfflineNotices(); updateNotificationBadge(); for id in Array(queueWaiters.keys) { finishQueueEditUnknown(id) }; chat.endHistory(); restoredWatch = false; historyLoading = false; historyRequestID = nil; generation = UUID(); loop?.cancel(); loop = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; transport?.invalidateAndCancel(); transport = nil; online = false; commands.removeAll(); catalogueCommands.removeAll(); catalogueLoading.removeAll(); outbox.disconnected() }
 }
 private struct AckBootstrap: Decodable, Sendable { let version: Int; let secure: Bool; let nativePush: Bool? }

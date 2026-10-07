@@ -26,6 +26,8 @@ type Keys struct {
 func Generate() (Keys, error) { priv, pub, e := webpush.GenerateVAPIDKeys(); return Keys{pub, priv}, e }
 
 type Notice struct {
+	// Optional ephemeral currentness check; never serialized or persisted.
+	Current                                                                       func() bool
 	Key, Kind, SessionID, MachineID, Machine, Project, Title, RequestID, DeviceID string
 	Badge                                                                         int
 }
@@ -88,6 +90,9 @@ func (w *Worker) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case n := <-w.queue:
+			if n.Current != nil && !n.Current() {
+				continue
+			}
 			// Compute the badge at delivery time. Do not alert a request that was
 			// resolved while queued; clients still rehydrate before showing a form.
 			count, pending, err := w.store.NotificationState(n.RequestID)
@@ -112,6 +117,9 @@ func (w *Worker) Run(ctx context.Context) {
 					if ctx.Err() != nil {
 						return
 					}
+					if n.Current != nil && !n.Current() {
+						break
+					}
 					gone, err := w.APNS.Send(ctx, n, sub)
 					if gone {
 						_ = w.store.UnsubscribeAPNS(sub.DeviceID)
@@ -128,12 +136,19 @@ func (w *Worker) Run(ctx context.Context) {
 				if ctx.Err() != nil {
 					return
 				}
+				if n.Current != nil && !n.Current() {
+					break
+				}
 				var v webpush.Subscription
 				if json.Unmarshal(sub.JSON, &v) != nil {
 					continue
 				}
 				payload, _ := json.Marshal(Payload(n, sub.Privacy))
-				resp, e := webpush.SendNotificationWithContext(ctx, payload, &v, &webpush.Options{Subscriber: w.subject, VAPIDPublicKey: w.keys.Public, VAPIDPrivateKey: w.keys.Private, TTL: 300, Urgency: webpush.UrgencyHigh, HTTPClient: w.client})
+				ttl := 300
+				if n.Kind == "live_question" {
+					ttl = 0
+				}
+				resp, e := webpush.SendNotificationWithContext(ctx, payload, &v, &webpush.Options{Subscriber: w.subject, VAPIDPublicKey: w.keys.Public, VAPIDPrivateKey: w.keys.Private, TTL: ttl, Urgency: webpush.UrgencyHigh, HTTPClient: w.client})
 				if e != nil {
 					slog.Warn("push delivery failed")
 					continue
@@ -159,6 +174,8 @@ func Payload(n Notice, privacy bool) map[string]string {
 		body = "A session needs your input."
 	}
 	switch n.Kind {
+	case "live_question":
+		body = "Codex asked a question during live work."
 	case "turn_completed":
 		body = "Codex completed a turn."
 	case "failed":

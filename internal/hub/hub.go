@@ -45,30 +45,31 @@ type flight struct {
 	created                         time.Time
 }
 type Hub struct {
-	mu             sync.Mutex
-	wg             sync.WaitGroup
-	closing        bool
-	store          *store.Store
-	config         Config
-	origin         string
-	secure         bool
-	machines       map[string]protocol.Machine
-	sessions       map[string]protocol.Session
-	requests       map[string]protocol.PendingRequest
-	agents         map[string]*agentPeer
-	operators      map[*operator]bool
-	flights        map[string]flight
-	answering      map[string]string
-	buffers        map[string]*Recent
-	liveActivities map[string]protocol.LiveActivity
-	push           *push.Worker
-	loginMu        sync.Mutex
-	loginWindow    time.Time
-	loginAttempts  int
-	pairMu         sync.Mutex
-	pairings       map[string]pairing
-	pairWindow     time.Time
-	pairAttempts   int
+	mu                  sync.Mutex
+	wg                  sync.WaitGroup
+	closing             bool
+	store               *store.Store
+	config              Config
+	origin              string
+	secure              bool
+	machines            map[string]protocol.Machine
+	sessions            map[string]protocol.Session
+	requests            map[string]protocol.PendingRequest
+	agents              map[string]*agentPeer
+	operators           map[*operator]bool
+	flights             map[string]flight
+	answering           map[string]string
+	buffers             map[string]*Recent
+	liveActivities      map[string]protocol.LiveActivity
+	liveQuestionNotices map[string]liveQuestionNotice
+	push                *push.Worker
+	loginMu             sync.Mutex
+	loginWindow         time.Time
+	loginAttempts       int
+	pairMu              sync.Mutex
+	pairings            map[string]pairing
+	pairWindow          time.Time
+	pairAttempts        int
 }
 
 func New(s *store.Store, c Config) (*Hub, error) {
@@ -462,6 +463,7 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 		e.Session = &visible
 	}
 	h.updateLiveActivity(e)
+	h.attention(e)
 	if b := h.buffers[e.SessionID]; b != nil {
 		b.Apply(e)
 	}

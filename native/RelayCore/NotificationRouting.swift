@@ -60,3 +60,69 @@ public struct NativePushState: Decodable, Sendable {
     public let environment: String?
     public let privacy: Bool?
 }
+
+/// Delivery capability is independent from OS authorization and observed delivery.
+public struct NotificationReadiness: Equatable, Sendable {
+    public var enabled = false
+    public var permission = false
+    public var connected = false
+    public var appleRegistered = false
+    public var hubConfigured = false
+    public var relayRegistered = false
+    public var registrationVerified = false
+    public init() {}
+    public var localReady: Bool { enabled && permission && connected }
+    public var remoteReady: Bool { enabled && permission && appleRegistered && hubConfigured && relayRegistered && registrationVerified }
+    // A prior confirmed subscription can receive push even before a new token callback.
+    public var remoteOwnsDelivery: Bool { hubConfigured && relayRegistered && registrationVerified }
+}
+
+public struct SemanticNotice: Equatable, Sendable {
+    public enum Kind: String, Sendable { case request, liveQuestion = "live_question", completed = "turn_completed", failed, offline = "machine_offline", test }
+    public let key: String
+    public let kind: Kind
+    public let sessionID: String
+    public let machineID: String
+    public let requestID: String?
+    public init(key: String, kind: Kind, sessionID: String = "", machineID: String = "", requestID: String? = nil) {
+        self.key = key; self.kind = kind; self.sessionID = sessionID; self.machineID = machineID; self.requestID = requestID
+    }
+    public static func event(_ event: RelayEvent) -> Self? {
+        if let request = event.request {
+            return Self(key: request.notifyKey ?? request.sessionId + "/request/" + (request.turnId ?? "") + "/" + request.kind + "/" + request.id, kind: .request, sessionID: request.sessionId, machineID: request.machineId, requestID: request.id)
+        }
+        if ["activity", "live_question"].contains(event.kind), let activity = event.activity, !(activity.questions ?? []).isEmpty, let turn = event.turnId, !turn.isEmpty {
+            return Self(key: event.sessionId + "/live_question/" + turn + "/" + activity.id, kind: .liveQuestion, sessionID: event.sessionId, machineID: event.machineId ?? "")
+        }
+        if ["turn_completed", "failed"].contains(event.kind), let turn = event.turnId, !turn.isEmpty {
+            return Self(key: event.notifyKey ?? event.sessionId + "/turn/" + turn, kind: event.kind == "failed" ? .failed : .completed, sessionID: event.sessionId, machineID: event.machineId ?? "")
+        }
+        return nil
+    }
+    public var title: String {
+        switch kind {
+        case .request: String(localized: "Codex needs your input", bundle: relayLocalizationBundle)
+        case .liveQuestion: String(localized: "Codex asked a live question", bundle: relayLocalizationBundle)
+        case .completed: String(localized: "Codex finished", bundle: relayLocalizationBundle)
+        case .failed: String(localized: "Codex needs attention", bundle: relayLocalizationBundle)
+        case .offline: String(localized: "A machine went offline", bundle: relayLocalizationBundle)
+        case .test: String(localized: "Local alert test", bundle: relayLocalizationBundle)
+        }
+    }
+    public var body: String {
+        String(localized: "Open Relay to see the current state.", bundle: relayLocalizationBundle)
+    }
+}
+
+/// Bounded semantic dedupe, independent from transport event IDs. No transcript.
+public struct LocalNoticePolicy: Sendable {
+    public private(set) var seen: [String] = []
+    public init() {}
+    public mutating func admit(_ notice: SemanticNotice, readiness: NotificationReadiness, selectedSession: String) -> Bool {
+        guard !seen.contains(notice.key) else { return false }
+        seen.append(notice.key); if seen.count > 512 { seen.removeFirst(seen.count - 512) }
+        guard readiness.localReady, !readiness.remoteOwnsDelivery else { return false }
+        // Attention still interrupts; completion already visible in the open chat is quiet.
+        return notice.kind != .completed || selectedSession != notice.sessionID
+    }
+}

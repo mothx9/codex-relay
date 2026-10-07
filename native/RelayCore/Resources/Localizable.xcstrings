@@ -5599,6 +5599,226 @@
           }
         }
       }
+    },
+    "Local alerts": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvisi locali"
+          }
+        }
+      }
+    },
+    "Remote push": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Push remoto"
+          }
+        }
+      }
+    },
+    "Setup required": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configurazione richiesta"
+          }
+        }
+      }
+    },
+    "Connect to Relay": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collega Relay"
+          }
+        }
+      }
+    },
+    "Test local alert": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prova avviso locale"
+          }
+        }
+      }
+    },
+    "Test remote push": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prova push remoto"
+          }
+        }
+      }
+    },
+    "Delivery details": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dettagli di consegna"
+          }
+        }
+      }
+    },
+    "Action required": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Richiede una risposta"
+          }
+        }
+      }
+    },
+    "Live question": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Domanda live"
+          }
+        }
+      }
+    },
+    "Live questions": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Domande live"
+          }
+        }
+      }
+    },
+    "Codex asked a live question": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex ha fatto una domanda live"
+          }
+        }
+      }
+    },
+    "Codex finished": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex ha terminato"
+          }
+        }
+      }
+    },
+    "Codex needs attention": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex richiede attenzione"
+          }
+        }
+      }
+    },
+    "A machine went offline": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una macchina si è disconnessa"
+          }
+        }
+      }
+    },
+    "Local alert test": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prova avviso locale"
+          }
+        }
+      }
+    },
+    "Open Relay to see the current state.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri Relay per vedere lo stato attuale."
+          }
+        }
+      }
+    },
+    "Local alerts enabled while Relay is connected. Remote push setup is separate.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvisi locali attivi mentre Relay è connesso. Il push remoto richiede una configurazione separata."
+          }
+        }
+      }
+    },
+    "Local alerts work while this app is connected. Remote push uses APNs to reach you when the app is suspended or closed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gli avvisi locali funzionano mentre l’app è connessa. Il push remoto usa APNs per raggiungerti quando l’app è sospesa o chiusa."
+          }
+        }
+      }
+    },
+    "Needs You, live questions, completion, failure and machines offline after a grace period. Previews omit conversation content. Completion is quiet in the session you are reading.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Richieste, domande live, completamento, errori e macchine offline dopo un periodo di attesa. Le anteprime non includono la conversazione. Nessun avviso di completamento nella sessione che stai leggendo."
+          }
+        }
+      }
+    },
+    "Observed during the current connection. These hints clear when work moves on or the connection is lost.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Osservate durante la connessione attuale. Questi avvisi scompaiono quando il lavoro prosegue o la connessione si interrompe."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

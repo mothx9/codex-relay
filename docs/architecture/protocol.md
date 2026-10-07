@@ -94,3 +94,12 @@ no shared authoritative pending list/resolution lifecycle is exposed. Replaying
 history cannot add Needs You entries. Native live hints are bounded presentation
 state and expire with stream/turn/navigation changes, without claiming resolution.
 See [current compatibility](../status.md) for the supported response behavior.
+
+### Ephemeral attention (additive v1 message)
+
+`type: attention` carries an accepted live event with `kind: live_question` or
+`live_question_cleared`. It reaches all connected controllers, including those
+not watching the transcript. Identity, epoch and sequence remain unchanged.
+It is neither pending state nor a replay stream. Clients discard hints after
+connection loss and apply an independent freshness gate. Old clients may ignore
+this message. See [notifications](notifications.md#transient-live-question-channel).

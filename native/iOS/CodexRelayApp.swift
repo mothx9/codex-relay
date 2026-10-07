@@ -12,7 +12,7 @@ import UserNotifications
     #endif
     init() {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--preview-onboarding") || ProcessInfo.processInfo.arguments.contains("--product-screenshot") {
+        if ProcessInfo.processInfo.arguments.contains("--notification-acceptance") || ProcessInfo.processInfo.arguments.contains("--preview-onboarding") || ProcessInfo.processInfo.arguments.contains("--product-screenshot") {
             _relay = State(initialValue: RelayController(preview: true))
             return
         }
@@ -27,7 +27,8 @@ import UserNotifications
         WindowGroup {
             Group {
                 #if DEBUG
-                if let index = ProcessInfo.processInfo.arguments.firstIndex(of: "--product-screenshot"), index + 1 < ProcessInfo.processInfo.arguments.count {
+                if ProcessInfo.processInfo.arguments.contains("--notification-acceptance") { NotificationAcceptanceView().environment(relay) }
+                else if let index = ProcessInfo.processInfo.arguments.firstIndex(of: "--product-screenshot"), index + 1 < ProcessInfo.processInfo.arguments.count {
                     ProductPreviewScreen(surface: ProcessInfo.processInfo.arguments[index + 1])
                 } else { RootView().environment(relay) }
                 #else
@@ -36,9 +37,10 @@ import UserNotifications
             }
                 #if canImport(UIKit)
                 .onAppear {
-                    notifications.onToken = { token in relay.apnsToken = token; Task { await relay.registerNativePush() } }
+                    notifications.onToken = { token in relay.apnsToken = token; relay.appleRegistrationFailed = false; Task { await relay.registerNativePush() } }
                     notifications.onOpen = { target in relay.navigate(target) }
-                    notifications.onError = { message in relay.notificationStatus = message }
+                    notifications.onError = { message in relay.appleRegistrationFailed = true; relay.notificationStatus = message }
+                    notifications.onPresent = { key, kind, session in relay.presentNotification(key: key, kind: kind, session: session) }
                 }
                 #endif
                 .onChange(of: phase) { _, value in if value == .background { relay.background() } else if value == .active { relay.foreground() } }

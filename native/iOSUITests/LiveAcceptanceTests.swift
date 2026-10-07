@@ -143,6 +143,33 @@ import XCTest
         XCTAssertTrue(app.buttons["Notifications"].exists)
         for label in ["Machines", "Codex Accounts", "Controllers & Access", "Diagnostics"] { XCTAssertFalse(app.buttons[label].exists) }
     }
+    func testLocalForegroundNotificationKindsAndDedupe() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--notification-acceptance", "-AppleLanguages", "(en)"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Allow notifications"].waitForExistence(timeout: 10))
+        app.buttons["Allow notifications"].tap()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let allow = springboard.buttons["Allow"]
+        if allow.waitForExistence(timeout: 3) { allow.tap() }
+        XCTAssertTrue(app.staticTexts["Local alerts ready"].waitForExistence(timeout: 5))
+        for (kind, title) in [("turn_completed", "Codex finished"), ("request", "Codex needs your input"), ("live_question", "Codex asked a live question"), ("failed", "Codex needs attention")] {
+            app.buttons["notice." + kind].tap()
+            let banner = springboard.staticTexts[title].firstMatch
+            XCTAssertTrue(banner.waitForExistence(timeout: 5), "Missing native banner: " + title)
+            let capture = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); capture.name = "local-banner-" + kind; capture.lifetime = .keepAlways; add(capture)
+            banner.swipeUp()
+            wait(10) { !banner.exists }
+            app.buttons["notice." + kind].tap()
+            XCTAssertFalse(banner.waitForExistence(timeout: 2), "Duplicate semantic alert")
+        }
+        XCTAssertTrue(app.staticTexts["Attention: 2"].exists)
+        app.buttons["Clear attention"].tap()
+        XCTAssertTrue(app.staticTexts["Attention: 0"].exists)
+        app.buttons["Disable alerts"].tap()
+        XCTAssertTrue(app.staticTexts["Local alerts off"].exists)
+    }
     func testPublicProductScreenshots() {
         continueAfterFailure = false
         let app = XCUIApplication()

@@ -1,6 +1,7 @@
 # Notifications
 
-Notifications are an optional delivery channel from the canonical Hub. They do
+Notifications use remote APNs from the canonical Hub or best-effort local alerts
+from a connected native controller. They do
 not carry approval forms, authorize commands, or replace the current snapshot.
 The iPhone remains usable without APNs.
 
@@ -19,8 +20,8 @@ Origin/CSRF and controller authorization checks.
 
 The app refreshes permission and server registration after reconnect. When the
 user has enabled delivery, it re-registers with Apple to obtain the current token
-and upserts that token on the Hub. Disabling notifications removes the Hub
-registration before reporting success; it does not revoke iOS permission.
+and upserts that token on the Hub. Disabling alerts stops local delivery immediately and removes Hub
+registration before reporting remote unsubscription success; it does not revoke iOS permission.
 
 ## Delivery and privacy
 
@@ -77,3 +78,37 @@ ES256 provider authentication, APNs endpoint selection, expired-token cleanup,
 canonical badge counts, resolved-request filtering, navigation validation and
 cold-start intent retention. Simulator URL routing tests use the already-paired
 controller and read-only real sessions; they do not create test enrollments.
+
+## Connected-client local alerts
+
+The native controller derives semantic notices only from accepted live events:
+`request`, `live_question`, `turn_completed`, `failed` and a machine remaining
+offline for 60 seconds after an observed transition. Initial snapshots/history
+do not alert. Completion in the open session is quiet. Permission UI finishes
+independently of Apple/Hub registration. Local notices contain no transcript or
+question text and use `UNUserNotificationCenter` plus the normal safe navigation
+path. They are not a background service and do not replace APNs.
+
+A confirmed current Hub subscription owns delivery, suppressing local duplicates.
+Both transports use `notice_key`; a bounded foreground ledger suppresses duplicate
+presentation. The local policy retains at most 512 identities. The badge is
+canonical pending RPCs plus currently observed live questions; completion and
+offline state never increment it. Losing the stream clears live hints. Remote
+badges use canonical pending RPC counts; foreground reconciliation adds live
+hints actually observed by this controller.
+
+## Transient live-question channel
+
+The Hub forwards an additive `attention` envelope to connected controllers,
+independent of transcript watches. `live_question` carries only question content
+and real machine/session/turn/item identity with the accepted epoch/sequence.
+`live_question_cleared` retires session hints on turn boundaries or user input.
+This uses an independent native freshness gate so the same original event may
+still update a watched transcript. It never inserts a pending RPC or snapshot
+entry. Hub notification identity metadata is bounded to 128 entries; the native
+hint model is bounded to 64 entries and 256 KiB, with 256 retired identities.
+
+Only initial live observation may notify. Queued notifications check currentness
+before dispatch; APNs/Web Push expiry is zero for transient questions. Already
+delivered remote alerts can outlive upstream work; a tap always rehydrates state
+and never opens an approval form from the notification payload.

@@ -276,23 +276,41 @@ private struct NotificationSettingsView: View {
     @Environment(\.openURL) private var openURL
     var body: some View {
         List {
-            Section(String(localized: "Availability", bundle: relayLocalizationBundle)) {
-                LabeledContent(String(localized: "iOS permission", bundle: relayLocalizationBundle), value: relay.notificationPermission)
-                LabeledContent(String(localized: "Hub APNs", bundle: relayLocalizationBundle), value: relay.nativePushAvailable ? String(localized: "Configured", bundle: relayLocalizationBundle) : String(localized: "Not configured", bundle: relayLocalizationBundle))
-                LabeledContent(String(localized: "Apple device token", bundle: relayLocalizationBundle), value: relay.apnsToken == nil ? String(localized: "Not obtained", bundle: relayLocalizationBundle) : String(localized: "Obtained", bundle: relayLocalizationBundle))
-                LabeledContent(String(localized: "Relay registration", bundle: relayLocalizationBundle), value: relay.pushRegistrationVerifiedAt == nil ? String(localized: "Not verified", bundle: relayLocalizationBundle) : relay.pushRegistered ? String(localized: "Registered", bundle: relayLocalizationBundle) : String(localized: "Not registered", bundle: relayLocalizationBundle))
-                if let verified = relay.pushRegistrationVerifiedAt { LabeledContent(String(localized: "Last checked", bundle: relayLocalizationBundle)) { Text(verified, style: .relative) } }
+            Section {
+                LabeledContent(String(localized: "Local alerts", bundle: relayLocalizationBundle), value: relay.notificationReadiness.localReady ? String(localized: "Ready", bundle: relayLocalizationBundle) : !relay.notificationsEnabled ? String(localized: "Off", bundle: relayLocalizationBundle) : !relay.notificationAllowed ? relay.notificationPermission : String(localized: "Connect to Relay", bundle: relayLocalizationBundle))
+                LabeledContent(String(localized: "Remote push", bundle: relayLocalizationBundle), value: relay.notificationReadiness.remoteReady ? String(localized: "Registered", bundle: relayLocalizationBundle) : String(localized: "Setup required", bundle: relayLocalizationBundle))
+            } footer: {
+                Text(String(localized: "Local alerts work while this app is connected. Remote push uses APNs to reach you when the app is suspended or closed.", bundle: relayLocalizationBundle))
             }
             Section {
-                Button(String(localized: "Allow notifications", bundle: relayLocalizationBundle)) { Task { await relay.enableNativePush() } }
-                Button(String(localized: "Send test notification", bundle: relayLocalizationBundle)) { Task { await relay.testNativePush() } }.disabled(!relay.nativePushAvailable || !relay.pushRegistered)
-                Button(String(localized: "Disable Relay notifications", bundle: relayLocalizationBundle)) { Task { await relay.disableNativePush() } }
+                if !relay.notificationsEnabled || !relay.notificationAllowed {
+                    Button(String(localized: "Allow notifications", bundle: relayLocalizationBundle)) { Task { await relay.enableNativePush() } }
+                        .disabled(relay.settingsProgress["notifications"] != nil)
+                }
+                Button(String(localized: "Test local alert", bundle: relayLocalizationBundle)) { relay.testLocalNotification() }
+                    .disabled(!relay.notificationReadiness.localReady).accessibilityIdentifier("notifications.testLocal")
+                Button(String(localized: "Test remote push", bundle: relayLocalizationBundle)) { Task { await relay.testNativePush() } }
+                    .disabled(!relay.notificationReadiness.remoteReady || relay.settingsProgress["notifications"] != nil)
+                if relay.notificationsEnabled {
+                    Button(String(localized: "Disable Relay notifications", bundle: relayLocalizationBundle)) { Task { await relay.disableNativePush() } }
+                        .disabled(relay.settingsProgress["notifications"] != nil)
+                }
                 Button(String(localized: "Open iOS notification settings", bundle: relayLocalizationBundle)) { if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) } }
-                Text(relay.notificationStatus).font(.caption).foregroundStyle(.secondary)
-                SettingsFeedback(id: "notifications"); SettingsFeedback(id: "pushRegistration")
+                SettingsFeedback(id: "notifications"); SettingsFeedback(id: "localAlerts")
             } footer: {
-                Text(String(localized: "Needs You, completion, failure and machines offline after a grace period. No notifications for individual commands or tokens. Lock-screen previews omit project and conversation content by default.", bundle: relayLocalizationBundle))
-            }.disabled(relay.settingsProgress["notifications"] != nil || relay.settingsProgress["pushRegistration"] != nil)
+                Text(String(localized: "Needs You, live questions, completion, failure and machines offline after a grace period. Previews omit conversation content. Completion is quiet in the session you are reading.", bundle: relayLocalizationBundle))
+            }
+            Section {
+                DisclosureGroup(String(localized: "Delivery details", bundle: relayLocalizationBundle)) {
+                    LabeledContent(String(localized: "iOS permission", bundle: relayLocalizationBundle), value: relay.notificationPermission)
+                    LabeledContent(String(localized: "Hub APNs", bundle: relayLocalizationBundle), value: relay.nativePushAvailable ? String(localized: "Configured", bundle: relayLocalizationBundle) : String(localized: "Not configured", bundle: relayLocalizationBundle))
+                    LabeledContent(String(localized: "Apple device token", bundle: relayLocalizationBundle), value: relay.apnsToken == nil ? String(localized: "Not obtained", bundle: relayLocalizationBundle) : String(localized: "Obtained", bundle: relayLocalizationBundle))
+                    LabeledContent(String(localized: "Relay registration", bundle: relayLocalizationBundle), value: relay.pushRegistrationVerifiedAt == nil ? String(localized: "Not verified", bundle: relayLocalizationBundle) : relay.pushRegistered ? String(localized: "Registered", bundle: relayLocalizationBundle) : String(localized: "Not registered", bundle: relayLocalizationBundle))
+                    if let verified = relay.pushRegistrationVerifiedAt { LabeledContent(String(localized: "Last checked", bundle: relayLocalizationBundle)) { Text(verified, style: .relative) } }
+                    Text(relay.notificationStatus).font(.caption).foregroundStyle(.secondary)
+                    SettingsFeedback(id: "pushRegistration")
+                }
+            }
             if !relay.nativePushAvailable {
                 Section { Text(String(localized: "APNs must be configured on the Hub. The signed iPhone app also needs the Apple Push Notifications capability, unavailable with Personal Team provisioning. Relay control works independently.", bundle: relayLocalizationBundle)).font(.footnote).foregroundStyle(.secondary)
                     Link(String(localized: "Set up Hub notifications", bundle: relayLocalizationBundle), destination: URL(string: "https://github.com/mothx9/codex-relay/blob/main/docs/setup/notifications.md")!)

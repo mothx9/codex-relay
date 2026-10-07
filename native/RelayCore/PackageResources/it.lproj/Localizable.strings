@@ -30,6 +30,7 @@
 "1 operation" = "1 operazione";
 "1 session working" = "1 sessione in corso";
 "8-digit pairing code" = "Codice di abbinamento a 8 cifre";
+"A machine went offline" = "Una macchina si è disconnessa";
 "APNs must be configured on the Hub. The signed iPhone app also needs the Apple Push Notifications capability, unavailable with Personal Team provisioning. Relay control works independently." = "Configura APNs sul Hub. L’app iPhone firmata richiede anche la funzionalità Push Notifications di Apple, non disponibile con un Personal Team. Il controllo Relay funziona indipendentemente.";
 "APPLIED" = "APPLICATO";
 "About" = "Informazioni";
@@ -39,6 +40,7 @@
 "Access not revoked. " = "Accesso non revocato. ";
 "Account no longer reported" = "Account non più disponibile";
 "Accounts are reported by Codex on your machines. Sign in to Codex locally to make account data available." = "Gli account sono forniti da Codex sulle tue macchine. Accedi a Codex localmente per renderne disponibili i dati.";
+"Action required" = "Richiede una risposta";
 "Actions for " = "Azioni per ";
 "Activity" = "Attività";
 "Add a follow-up…" = "Aggiungi un follow-up…";
@@ -88,8 +90,11 @@
 "Codex Account" = "Account Codex";
 "Codex Accounts" = "Account Codex";
 "Codex account" = "Account Codex";
+"Codex asked a live question" = "Codex ha fatto una domanda live";
+"Codex finished" = "Codex ha terminato";
 "Codex has a question" = "Codex ha una domanda";
 "Codex needs a decision" = "Codex richiede una decisione";
+"Codex needs attention" = "Codex richiede attenzione";
 "Codex needs your input" = "Codex ha bisogno del tuo input";
 "Codex not connected" = "Codex non connesso";
 "Codex owns conversations and queued work" = "Conversazioni e coda rimangono in Codex";
@@ -105,6 +110,7 @@
 "Configured" = "Configurato";
 "Connect this thread to Codex to send messages." = "Collega questo thread a Codex per inviare messaggi.";
 "Connect thread" = "Collega thread";
+"Connect to Relay" = "Collega Relay";
 "Connected" = "Collegato";
 "Connected to your Hub" = "Collegato al tuo Hub";
 "Connecting to Hub…" = "Connessione al Hub…";
@@ -152,6 +158,7 @@
 "Decisions and approvals from your machines will appear here." = "Le decisioni e le approvazioni delle tue macchine appariranno qui.";
 "Declined" = "Rifiutato";
 "Deleted" = "Eliminato";
+"Delivery details" = "Dettagli di consegna";
 "Denied" = "Negato";
 "Details" = "Dettagli";
 "Details collapsed" = "Dettagli chiusi";
@@ -240,10 +247,16 @@
 "Limit reached" = "Limite raggiunto";
 "Limit state" = "Stato limite";
 "Live" = "Live";
+"Live question" = "Domanda live";
+"Live questions" = "Domande live";
 "Live · %lld machines" = "Live · %lld macchine";
 "Load earlier messages" = "Carica messaggi precedenti";
 "Load more sessions · " = "Carica altre sessioni · ";
 "Loading history…" = "Caricamento cronologia…";
+"Local alert test" = "Prova avviso locale";
+"Local alerts" = "Avvisi locali";
+"Local alerts enabled while Relay is connected. Remote push setup is separate." = "Avvisi locali attivi mentre Relay è connesso. Il push remoto richiede una configurazione separata.";
+"Local alerts work while this app is connected. Remote push uses APNs to reach you when the app is suspended or closed." = "Gli avvisi locali funzionano mentre l’app è connessa. Il push remoto usa APNs per raggiungerti quando l’app è sospesa o chiusa.";
 "MCP JSON response" = "Risposta MCP JSON";
 "Machine" = "Macchina";
 "Machine Agent" = "Agent macchina";
@@ -264,6 +277,7 @@
 "Need to set up a Hub?" = "Devi configurare un Hub?";
 "Needs You" = "Serve una risposta";
 "Needs You, completion, failure and machines offline after a grace period. No notifications for individual commands or tokens. Lock-screen previews omit project and conversation content by default." = "Richieste di risposta, completamenti, errori e macchine offline dopo un periodo di tolleranza. Nessuna notifica per singoli comandi o token. Le anteprime sulla schermata bloccata escludono progetto e conversazione.";
+"Needs You, live questions, completion, failure and machines offline after a grace period. Previews omit conversation content. Completion is quiet in the session you are reading." = "Richieste, domande live, completamento, errori e macchine offline dopo un periodo di attesa. Le anteprime non includono la conversazione. Nessun avviso di completamento nella sessione che stai leggendo.";
 "Needs verification" = "Da verificare";
 "No" = "No";
 "No account data yet" = "Nessun dato account disponibile";
@@ -282,6 +296,7 @@
 "Notifications" = "Notifiche";
 "Notifications are denied. You can enable them in iOS Settings." = "Le notifiche sono disattivate. Puoi abilitarle nelle Impostazioni iOS.";
 "Notifications not enabled" = "Notifiche non abilitate";
+"Observed during the current connection. These hints clear when work moves on or the connection is lost." = "Osservate durante la connessione attuale. Questi avvisi scompaiono quando il lavoro prosegue o la connessione si interrompe.";
 "Observed latency" = "Latenza osservata";
 "Obtained" = "Ottenuto";
 "Offline" = "Offline";
@@ -289,6 +304,7 @@
 "One Hub" = "Un Hub";
 "One-time pairing code" = "Codice di abbinamento monouso";
 "Open Link" = "Apri link";
+"Open Relay to see the current state." = "Apri Relay per vedere lo stato attuale.";
 "Open details and output" = "Apri dettagli e output";
 "Open iOS notification settings" = "Apri impostazioni notifiche iOS";
 "Origin" = "Origine";
@@ -348,6 +364,7 @@
 "Relay registration removed for this iPhone. iOS permission is unchanged." = "Registrazione Relay rimossa per questo iPhone. Il permesso iOS non cambia.";
 "Reload history · " = "Rileggi cronologia · ";
 "Remaining" = "Rimanenti";
+"Remote push" = "Push remoto";
 "Remove controller" = "Rimuovi controller";
 "Remove enrollment" = "Rimuovi registrazione";
 "Remove machine enrollment" = "Rimuovi registrazione macchina";
@@ -413,6 +430,7 @@
 "Sessions" = "Sessioni";
 "Set up Hub notifications" = "Configura le notifiche del Hub";
 "Settings" = "Impostazioni";
+"Setup required" = "Configurazione richiesta";
 "Share" = "Condividi";
 "Show" = "Mostra";
 "Sign out locally" = "Disconnetti localmente";
@@ -433,7 +451,9 @@
 "System health" = "Stato del sistema";
 "Temporary" = "Temporaneo";
 "Terminal" = "Terminale";
+"Test local alert" = "Prova avviso locale";
 "Test queued. Confirm receipt on this iPhone; queue acceptance is not delivery." = "Test in coda. Verifica la ricezione su questo iPhone: l’accettazione in coda non conferma la consegna.";
+"Test remote push" = "Prova push remoto";
 "The Hub administrator owns this installation and manages recovery. All authorized controllers have the same Relay permissions." = "L’amministratore del Hub possiede questa installazione e ne gestisce il recupero. Tutti i controller autorizzati hanno gli stessi permessi Relay.";
 "The Hub owns Relay access and routing" = "Il Hub gestisce accessi e instradamento Relay";
 "The MCP response must be a JSON object." = "La risposta MCP deve essere un oggetto JSON.";

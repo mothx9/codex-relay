@@ -217,3 +217,20 @@ extension TranscriptTests {
         XCTAssertEqual(groups.flatMap(\.items).map(\.id), ["c", "f", "next"])
     }
 }
+
+extension TranscriptTests {
+    func testLiveQuestionsAcrossSessionsClearIndependentlyAndNeverReplayAfterLoss() throws {
+        func event(_ session: String, _ kind: String = "live_question") throws -> RelayEvent {
+            try RelayJSON.decoder().decode(RelayEvent.self, from: JSONSerialization.data(withJSONObject: ["kind":kind,"session_id":session,"machine_id":"m","turn_id":"turn","activity":["id":"item","kind":"agentMessage","text":"Scope?","questions":[["title":"Scope?"]]]]))
+        }
+        var hints = LiveQuestions()
+        hints.observe(try event("m~a"), activeTurn: "turn", current: true)
+        hints.observe(try event("m~b"), activeTurn: "turn", current: true)
+        XCTAssertEqual(hints.records.count, 2, "Same item ID in different threads is not a duplicate")
+        hints.observe(try event("m~a", "live_question_cleared"), activeTurn: "turn", current: true)
+        XCTAssertEqual(hints.records.map(\.sessionID), ["m~b"])
+        hints.reset()
+        hints.observe(try event("m~b"), activeTurn: "turn", current: true)
+        XCTAssertTrue(hints.records.isEmpty, "A replay cannot resurrect a retired hint")
+    }
+}

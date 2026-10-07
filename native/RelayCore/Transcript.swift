@@ -53,22 +53,48 @@ public struct TranscriptScrollPolicy: Equatable, Sendable {
 
 /// A live-stream presentation hint, never a pending request or persisted state.
 /// History results do not enter this reducer. Losing the stream loses the hint.
+public struct LiveQuestion: Identifiable, Equatable, Sendable {
+    public let sessionID: String
+    public let machineID: String
+    public let turnID: String
+    public let epoch: String?
+    public let activity: Activity
+    public let observedAt: Date
+    public var id: String { sessionID + "/live_question/" + turnID + "/" + activity.id }
+}
 public struct LiveQuestions: Equatable, Sendable {
-    public private(set) var itemIDs: [String] = []
-    private var turn: String?
+    public private(set) var records: [LiveQuestion] = []
+    private var retired: [String] = []
+    public var itemIDs: [String] { records.map { $0.activity.id } }
     public init() {}
-    public mutating func reset() { itemIDs.removeAll(); turn = nil }
+    private mutating func retire(_ removed: [LiveQuestion]) {
+        retired.append(contentsOf: removed.map(\.id)); if retired.count > 256 { retired.removeFirst(retired.count - 256) }
+    }
+    public mutating func reset() { retire(records); records.removeAll() }
+    public mutating func clear(session: String) {
+        retire(records.filter { $0.sessionID == session }); records.removeAll { $0.sessionID == session }
+    }
     public mutating func reconcile(activeTurn: String?, current: Bool) {
-        if !current || activeTurn != turn { reset() }
+        if !current || records.contains(where: { $0.turnID != activeTurn }) { reset() }
+    }
+    public mutating func reconcile(sessions: [String: RelaySession], machines: [String: Machine], connected: Bool) {
+        let obsolete = records.filter { question in
+            guard connected, let session = sessions[question.sessionID], let machine = machines[question.machineID] else { return true }
+            return machine.status != "ONLINE" || session.fresh == false || !["WORKING", "NEEDS_YOU"].contains(session.status) || session.turnId != question.turnID || (question.epoch != nil && machine.freshness?.epoch != question.epoch)
+        }
+        retire(obsolete); let ids = Set(obsolete.map(\.id)); records.removeAll { ids.contains($0.id) }
     }
     public mutating func observe(_ event: RelayEvent, activeTurn: String?, current: Bool) {
-        reconcile(activeTurn: activeTurn, current: current)
-        guard current, let activeTurn, !activeTurn.isEmpty else { return }
-        if ["turn_completed", "failed"].contains(event.kind) || event.activity?.kind == "userMessage" { reset(); return }
-        guard event.kind == "activity", event.turnId == activeTurn,
-              let item = event.activity, item.kind == "agentMessage", !(item.questions ?? []).isEmpty else { return }
-        turn = activeTurn
-        if !itemIDs.contains(item.id) { itemIDs.append(item.id) }
-        if itemIDs.count > 64 { itemIDs.removeFirst(itemIDs.count - 64) }
+        if ["turn_started", "turn_completed", "failed", "live_question_cleared"].contains(event.kind) || event.activity?.kind == "userMessage" { clear(session: event.sessionId); return }
+        guard current, let activeTurn, !activeTurn.isEmpty, event.turnId == activeTurn,
+              ["activity", "live_question"].contains(event.kind), let item = event.activity,
+              !item.id.isEmpty, item.kind == "agentMessage", !(item.questions ?? []).isEmpty else { return }
+        let value = LiveQuestion(sessionID: event.sessionId, machineID: event.machineId ?? String(event.sessionId.split(separator: "~").first ?? ""), turnID: activeTurn, epoch: event.epoch, activity: item, observedAt: Date())
+        guard !retired.contains(value.id) else { return }
+        if let index = records.firstIndex(where: { $0.id == value.id }) { records[index] = value }
+        else { records.append(value) }
+        while records.count > 64 || records.reduce(0, { $0 + $1.activity.contextBytes }) > 256 * 1024 {
+            retire([records.removeFirst()])
+        }
     }
 }

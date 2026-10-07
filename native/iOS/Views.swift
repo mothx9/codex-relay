@@ -22,7 +22,7 @@ struct RootView: View {
                     TabView(selection: $destination) {
                         FleetView(filter: $fleetFilter, machine: $fleetMachine, search: $fleetSearch).tabItem { Label("Fleet", systemImage: "square.grid.2x2") }.tag(0)
                         NeedsYouView().tabItem { Label(String(localized: "Needs You", bundle: relayLocalizationBundle), systemImage: "bubble.left.and.exclamationmark.bubble.right") }
-                            .badge(relay.requests.count).tag(1)
+                            .badge(relay.attentionCount).tag(1)
                     }
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
@@ -207,10 +207,12 @@ struct NeedsYouView: View {
     private var requests: [PendingRequest] { relay.requests.values.sorted { $0.id < $1.id } }
     var body: some View {
         List {
-            if requests.isEmpty {
+            if requests.isEmpty && relay.liveQuestions.records.isEmpty {
                 ContentUnavailableView(String(localized: "No pending requests", bundle: relayLocalizationBundle), systemImage: "checkmark.bubble", description: Text(String(localized: "Decisions and approvals from your machines will appear here.", bundle: relayLocalizationBundle)))
                     .listRowBackground(Color.clear)
-            } else {
+            }
+            if !requests.isEmpty {
+                Section(String(localized: "Action required", bundle: relayLocalizationBundle)) {
                 ForEach(requests) { request in
                     Button { relay.open(request.sessionId) } label: {
                         VStack(alignment: .leading, spacing: RelaySpacing.compact) {
@@ -222,6 +224,25 @@ struct NeedsYouView: View {
                         }.padding(.vertical, RelaySpacing.compact)
                     }.buttonStyle(.plain).accessibilityIdentifier("request." + request.id)
                 }
+                }
+            }
+            if !relay.liveQuestions.records.isEmpty {
+                Section {
+                    ForEach(relay.liveQuestions.records) { question in
+                        Button { relay.open(question.sessionID) } label: {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(relay.sessions[question.sessionID]?.title ?? String(localized: "Codex session", bundle: relayLocalizationBundle)).font(.subheadline.weight(.semibold))
+                                Text(question.activity.questions?.first?.title ?? "").font(.subheadline).lineLimit(3)
+                                HStack {
+                                    Label(String(localized: "Live question", bundle: relayLocalizationBundle), systemImage: "bubble.left")
+                                    Spacer()
+                                    Text(question.observedAt, style: .relative)
+                                }.font(.caption).foregroundStyle(.secondary)
+                            }.padding(.vertical, 4)
+                        }.buttonStyle(.plain).accessibilityIdentifier("live-question." + question.activity.id)
+                    }
+                } header: { Text(String(localized: "Live questions", bundle: relayLocalizationBundle)) }
+                footer: { Text(String(localized: "Observed during the current connection. These hints clear when work moves on or the connection is lost.", bundle: relayLocalizationBundle)) }
             }
         }.listStyle(.insetGrouped)
     }
