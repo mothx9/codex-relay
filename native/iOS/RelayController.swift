@@ -48,6 +48,7 @@ import UIKit
     var notificationPermission = "Da verificare"
     var pushRegistered = false
     var pushRegistrationVerifiedAt: Date?
+    var pairingError: String?
     var pairCode: PairCode?
     var busy = false
     var nativePushAvailable = false
@@ -73,13 +74,13 @@ import UIKit
     var current: RelaySession? { sessions[selected] ?? catalogue.sessions[selected] }
     func pair(url: String, code: String) async {
         guard !previewOnly else { return }
-        guard !busy else { return }; busy = true; defer { busy = false }
+        guard !busy else { return }; busy = true; pairingError = nil; defer { busy = false }
         do {
             let api = try HubAPI(url: url)
             let credential: Credential = try await api.fetch("api/pairing/exchange", body: ["kind": "operator", "code": code])
             guard credential.kind == "operator", credential.token.count >= 32 else { throw HubFailure.message("Abbinamento non valido.") }
-            try CredentialVault.save(credential); self.credential = credential; error = nil; connect()
-        } catch { self.error = error.localizedDescription }
+            try CredentialVault.save(credential); self.credential = credential; pairingError = nil; connect()
+        } catch { self.pairingError = error.localizedDescription }
     }
     func connect() {
         guard !previewOnly else { return }
@@ -381,8 +382,9 @@ import UIKit
     }
     func loadDevices() async {
         guard let api else { return }
-        do { registry = try await api.fetch("api/devices"); settingsErrors["devices"] = nil }
-        catch { settingsErrors["devices"] = error.localizedDescription }
+        let identity = credential?.id
+        do { let value: DeviceRegistry = try await api.fetch("api/devices"); guard credential?.id == identity else { return }; registry = value; settingsErrors["devices"] = nil }
+        catch { if credential?.id == identity { settingsErrors["devices"] = error.localizedDescription } }
     }
     func loadDiagnostics() async {
         guard let api, settingsProgress["diagnostics"] == nil else { return }
@@ -406,15 +408,17 @@ import UIKit
     }
     func loadAccounts() async {
         guard let api else { return }
-        do { let registry: AccountRegistry = try await api.fetch("api/accounts"); accounts = registry.accounts; settingsErrors["accounts"] = nil }
-        catch { settingsErrors["accounts"] = error.localizedDescription }
+        let identity = credential?.id
+        do { let registry: AccountRegistry = try await api.fetch("api/accounts"); guard credential?.id == identity else { return }; accounts = registry.accounts; settingsErrors["accounts"] = nil }
+        catch { if credential?.id == identity { settingsErrors["accounts"] = error.localizedDescription } }
     }
     func createCode(kind: String, name: String, machine: String = "") async {
         guard let api, settingsProgress["pairing"] == nil else { return }
         settingsProgress["pairing"] = "Generazione codice…"; settingsErrors["pairing"] = nil
         defer { settingsProgress["pairing"] = nil }
-        do { pairCode = try await api.fetch("api/pairing/code", body: ["kind": kind, "name": name, "machine": machine]) }
-        catch { settingsErrors["pairing"] = error.localizedDescription }
+        let identity = credential?.id
+        do { let value: PairCode = try await api.fetch("api/pairing/code", body: ["kind": kind, "name": name, "machine": machine]); guard credential?.id == identity else { return }; pairCode = value }
+        catch { if credential?.id == identity { settingsErrors["pairing"] = error.localizedDescription } }
     }
     func manageMachine(_ id: String, action: String) async {
         guard let api, settingsProgress[id] == nil else { return }

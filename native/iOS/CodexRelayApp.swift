@@ -12,6 +12,10 @@ import UserNotifications
     #endif
     init() {
         #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--preview-onboarding") {
+            _relay = State(initialValue: RelayController(preview: true))
+            return
+        }
         if ProcessInfo.processInfo.arguments.contains("--preview-chat") {
             _relay = State(initialValue: PreviewData.conversation(long: ProcessInfo.processInfo.arguments.contains("--long-transcript")))
             return

@@ -84,6 +84,23 @@ import XCTest
         // Menu inspection only; no mutation of this real workload.
         app.terminate()
     }
+    func testIsolatedOnboardingDoesNotTouchEnrollment() {
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launchArguments = ["--preview-onboarding"]; app.launch()
+        XCTAssertTrue(app.staticTexts["One Hub"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Agents on your machines"].exists)
+        let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = "M2 sanitized first-run onboarding"; screenshot.lifetime = .keepAlways; add(screenshot)
+        let submit = app.buttons["pairing.submit"]
+        XCTAssertFalse(submit.isEnabled)
+        let url = app.textFields["pairing.url"]
+        reveal(url, in: app); url.tap(); url.typeText("https://relay.invalid")
+        let code = app.textFields["pairing.code"]
+        reveal(code, in: app); code.tap(); code.typeText("12345678")
+        XCTAssertTrue(submit.isEnabled); XCTAssertTrue(submit.isHittable)
+        XCTAssertFalse(app.buttons["composer.dismissKeyboard"].exists)
+        // No pairing request is submitted; the existing Keychain is never read or erased.
+        app.terminate()
+    }
     func testLiveSettingsAndRedactedDiagnostics() throws {
         guard Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") != nil else { throw XCTSkip("Uses the existing paired controller without enrollment or mutations.") }
         continueAfterFailure = false

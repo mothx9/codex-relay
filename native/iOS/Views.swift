@@ -15,7 +15,7 @@ struct RootView: View {
     @State private var fleetMachine = ""
     var body: some View {
         Group {
-            if relay.credential == nil { NavigationStack { PairingView().navigationTitle("Codex Relay") } }
+            if relay.credential == nil { NavigationStack { PairingView().navigationTitle("Codex Relay").navigationBarTitleDisplayMode(.inline) } }
             else {
                 NavigationStack {
                     TabView(selection: $destination) {
@@ -76,15 +76,63 @@ struct PairingView: View {
     @State private var url = ""
     @State private var code = ""
     var body: some View {
-        Form {
-            Section("Collega questo iPhone") {
-                Text("Sul computer genera un codice dal Hub, oppure da Dispositivi su un client già abbinato. È valido per 5 minuti.").foregroundStyle(.secondary)
-                TextField("https://tuo-hub", text: $url).textContentType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled().accessibilityIdentifier("pairing.url")
-                TextField("Codice di 8 cifre", text: $code).textContentType(.oneTimeCode).accessibilityIdentifier("pairing.code")
-                Button(relay.busy ? "Abbinamento…" : "Abbina") { Task { await relay.pair(url: url, code: code); code = "" } }.disabled(relay.busy || code.filter(\.isNumber).count != 8).accessibilityIdentifier("pairing.submit")
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: RelaySpacing.row) {
+                    Image(systemName: "point.3.connected.trianglepath.dotted").font(.largeTitle).foregroundStyle(.secondary)
+                    Text("Your Codex fleet.\nOn iPhone.").font(.title.weight(.semibold))
+                    Text("Follow live work, answer questions and continue sessions across your machines.").foregroundStyle(.secondary)
+                }
+                VStack(alignment: .leading, spacing: RelaySpacing.page) {
+                    onboardingStep(title: "One Hub", detail: "Your self-hosted Hub coordinates the fleet.", icon: "network")
+                    onboardingStep(title: "Agents on your machines", detail: "Each Agent connects to the Codex you already use.", icon: "desktopcomputer")
+                    onboardingStep(title: "This iPhone", detail: "Pair once to supervise work and respond securely.", icon: "iphone")
+                }
+                VStack(alignment: .leading, spacing: RelaySpacing.row) {
+                    Text("Pair with your Hub").font(.headline)
+                    TextField("https://your-hub", text: $url)
+                        .textContentType(.URL).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .padding(RelaySpacing.row).background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+                        .accessibilityLabel("Hub URL").accessibilityIdentifier("pairing.url")
+                    TextField("8-digit pairing code", text: $code)
+                        .textContentType(.oneTimeCode).keyboardType(.numberPad).font(.body.monospacedDigit())
+                        .padding(RelaySpacing.row).background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+                        .accessibilityIdentifier("pairing.code")
+                        .onChange(of: code) { _, value in code = String(value.filter(\.isNumber).prefix(8)) }
+                    Text("Create a one-time code on the Hub host or from an authorized controller. It expires after 5 minutes.").font(.footnote).foregroundStyle(.secondary)
+                    if let error = relay.pairingError { Text(error).font(.footnote).foregroundStyle(RelayPalette.attention).accessibilityIdentifier("pairing.error") }
+                }
+                DisclosureGroup("Need to set up a Hub?") {
+                    VStack(alignment: .leading, spacing: RelaySpacing.row) {
+                        Text("Install Relay on an always-on host with an HTTPS address, then create your iPhone pairing code. After pairing, add machines from Settings.").font(.footnote)
+                        Link("Installation guide", destination: URL(string: "https://github.com/mothx9/codex-relay#quick-start")!)
+                    }.padding(.vertical, RelaySpacing.small)
+                }
+                Text("Access is stored in this iPhone’s Keychain. Your Codex login stays on your machines. Never enter a Hub admin token here.").font(.footnote).foregroundStyle(.secondary)
+            }.padding(RelaySpacing.page)
+        }.scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .bottom) {
+                Button {
+                    Task { await relay.pair(url: url, code: code); if relay.credential != nil { code = "" } }
+                } label: {
+                    HStack {
+                        if relay.busy { ProgressView() }
+                        Text(relay.busy ? "Pairing…" : "Pair this iPhone").font(.body.weight(.semibold))
+                    }.frame(maxWidth: .infinity, minHeight: 48)
+                }.buttonStyle(.borderedProminent)
+                    .disabled(relay.busy || code.count != 8 || url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier("pairing.submit")
+                    .padding(RelaySpacing.page).background(.bar)
             }
-            Section { Text("L’accesso di questo dispositivo è protetto nel Portachiavi iOS. Il token amministratore rimane sul Hub.").font(.footnote).foregroundStyle(.secondary) }
-        }
+    }
+    private func onboardingStep(title: String, detail: String, icon: String) -> some View {
+        HStack(alignment: .top, spacing: RelaySpacing.row) {
+            Image(systemName: icon).frame(width: 28, height: 28).foregroundStyle(.secondary).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: RelaySpacing.small) {
+                Text(title).font(.subheadline.weight(.semibold))
+                Text(detail).font(.footnote).foregroundStyle(.secondary)
+            }
+        }.accessibilityElement(children: .combine)
     }
 }
 /// Animate semantic state changes only; deltas keep their existing view identity.

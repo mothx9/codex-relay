@@ -57,7 +57,20 @@ func run(ctx context.Context, args []string) error {
 	case "pair":
 		return pairingCommand(ctx, args[1:])
 	case "help", "--help", "-h":
-		fmt.Println("codex-relay hub|agent|doctor|version|token|pair\nUse <command> --help for options.")
+		fmt.Println(`Codex Relay — self-hosted control for your Codex fleet
+
+  hub      Run the Hub (fleet state, enrollment and notifications)
+  agent    Connect this machine to an existing Hub and local Codex
+  pair     Create a one-time controller code or enroll an Agent
+  doctor   Check runtime, connection and local installation state
+  version  Show the exact build and platform
+  token    Advanced/manual machine credential provisioning
+
+First installation: scripts/install.sh hub --public-url HTTPS_ORIGIN
+Pair iPhone:        codex-relay pair --hub-url HTTPS_ORIGIN --data-dir HUB_DATA
+Enroll a machine:  scripts/install.sh agent --hub-url HTTPS_ORIGIN --machine ID --pair
+
+Use <command> --help for options. Keep bootstrap credentials on the Hub host.`)
 		return nil
 	default:
 		return errors.New("unknown command")

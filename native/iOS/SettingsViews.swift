@@ -254,21 +254,30 @@ private struct EnrollmentView: View {
     var body: some View {
         Form {
             Section {
-                Picker("Device", selection: $kind) { Text("Controller").tag("operator"); Text("Machine Agent").tag("agent") }
-                TextField("Name", text: $name)
-                if kind == "agent" { TextField("Machine ID", text: $machine).textInputAutocapitalization(.never).autocorrectionDisabled() }
+                Picker("Device", selection: $kind) { Text("Controller").tag("operator"); Text("Machine Agent").tag("agent") }.disabled(relay.settingsProgress["pairing"] != nil)
+                TextField("Name", text: $name).disabled(relay.settingsProgress["pairing"] != nil)
+                if kind == "agent" { TextField("Machine ID", text: $machine).disabled(relay.settingsProgress["pairing"] != nil).textInputAutocapitalization(.never).autocorrectionDisabled() }
                 Button("Create one-time code") { Task { await relay.createCode(kind: kind, name: name, machine: machine) } }
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (kind == "agent" && machine.isEmpty) || relay.settingsProgress["pairing"] != nil)
                 SettingsFeedback(id: "pairing")
             } footer: { Text(kind == "agent" ? "Enter this code on the machine using codex-relay pair. The Agent connects outbound to your Hub." : "Enter the Hub URL and this code on the other iPhone. The code grants controller access to this Relay.") }
-            if let pair = relay.pairCode, pair.kind == kind {
+            if let pair = relay.pairCode, pair.kind == kind, !name.isEmpty, kind != "agent" || pair.machine == machine {
                 Section("One-time pairing code") {
-                    Text(pair.code.prefix(4) + " " + pair.code.suffix(4)).font(.title.monospaced()).textSelection(.enabled)
-                    Text("Expires after 5 minutes. Redeem once.").font(.caption).foregroundStyle(.secondary)
+                    TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                        if let expires = RelayDate.parse(pair.expiresAt), expires > timeline.date {
+                            Text(pair.code.prefix(4) + " " + pair.code.suffix(4)).font(.title.monospaced()).textSelection(.enabled)
+                            (Text("Expires in ") + Text(expires, style: .timer)).font(.caption).foregroundStyle(.secondary)
+                        } else { Label("Code expired. Create a new one.", systemImage: "clock.badge.exclamationmark").foregroundStyle(RelayPalette.attention) }
+                    }
+                    Text("Redeem once. Keep this code private.").font(.caption).foregroundStyle(.secondary)
                 }
             }
         }.navigationTitle(kind == "agent" ? "Add machine" : "Pair controller").navigationBarTitleDisplayMode(.inline)
+            .onAppear { relay.pairCode = nil }
             .onDisappear { relay.pairCode = nil }
+            .onChange(of: kind) { _, _ in relay.pairCode = nil }
+            .onChange(of: name) { _, _ in relay.pairCode = nil }
+            .onChange(of: machine) { _, _ in relay.pairCode = nil }
     }
 }
 

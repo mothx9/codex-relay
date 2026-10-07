@@ -2,12 +2,13 @@
 # Per-user installation. No network, firewall, Wi-Fi, or VPN configuration changes.
 set -eu
 role=${1:-}
-case "$role" in hub|agent) shift ;; *) printf '%s\n' 'Usage: install.sh hub|agent --public-url URL [--apns-config FILE|none] | --hub-url URL --machine ID --token-file FILE [--binary FILE] [--dry-run] [--no-start (Linux)]'; exit 2 ;; esac
+case "$role" in hub|agent) shift ;; *) printf '%s\n' 'Usage: install.sh hub|agent --public-url URL [--apns-config FILE|none] | --hub-url URL --machine ID [--pair | --token-file FILE] [--binary FILE] [--dry-run] [--no-start (Linux)]'; exit 2 ;; esac
 relay_binary=''
 hub_url=''
 public_url=''
 machine=''
 token_file=''
+pair_agent=0
 codex_binary=''
 apns_config=''
 apns_supplied=0
@@ -22,6 +23,7 @@ while [ "$#" -gt 0 ]; do
   --public-url) public_url=$2; shift 2 ;;
   --machine) machine=$2; shift 2 ;;
   --token-file) token_file=$2; shift 2 ;;
+  --pair) pair_agent=1; shift ;;
   --codex) codex_binary=$2; shift 2 ;;
   --apns-config) apns_config=$2; apns_supplied=1; shift 2 ;;
   --listen) listen=$2; shift 2 ;;
@@ -49,17 +51,31 @@ done
 case "$role" in
  hub) [ -n "$public_url" ] || { printf '%s\n' '--public-url is required' >&2; exit 2; } ;;
  agent)
-  [ -n "$hub_url" ] && [ -n "$machine" ] && [ -n "$token_file" ] || { printf '%s\n' '--hub-url, --machine, --token-file are required' >&2; exit 2; }
+  [ -n "$hub_url" ] && [ -n "$machine" ] || { printf '%s\n' '--hub-url and --machine are required; choose --pair or --token-file' >&2; exit 2; }
+  if [ "$pair_agent" = 1 ]; then
+   case "$hub_url" in https://*) ;; *) printf '%s\n' 'One-time pairing requires HTTPS.' >&2; exit 2 ;; esac
+   [ -z "$token_file" ] || { printf '%s\n' 'Use --pair or --token-file, not both.' >&2; exit 2; }
+   token_file="$HOME/.config/codex-relay/$machine.token"
+   [ ! -e "$token_file" ] && [ ! -L "$token_file" ] || { printf '%s\n' 'A credential already exists. Use --token-file for upgrades; enrollment never overwrites credentials.' >&2; exit 2; }
+   if [ -f "$HOME/.config/systemd/user/codex-relay-agent.service" ] || [ -f "$HOME/Library/LaunchAgents/net.codex-relay.agent.plist" ]; then
+    printf '%s\n' 'An Agent is already installed. Upgrade with its existing --token-file; --pair is for first enrollment.' >&2; exit 2
+   fi
+  else
+   [ -n "$token_file" ] || { printf '%s\n' 'Use --pair to enter a one-time code, or --token-file for an existing enrollment.' >&2; exit 2; }
+  fi
   case "$machine" in *[!A-Za-z0-9_-]*|'') printf '%s\n' 'Invalid machine ID' >&2; exit 2 ;; esac
+  if [ "$pair_agent" = 0 ]; then
   [ -f "$token_file" ] && [ -r "$token_file" ] && [ -s "$token_file" ] || {
    printf 'Agent token is missing, empty or unreadable: %s\n' "$token_file" >&2
    printf '%s\n' "Securely copy this machine's token from the active hub. If not yet enrolled, run codex-relay token add on that hub first. Cloning this repository does not enroll an agent; no service was installed." >&2
    exit 1
   }
   [ ! -L "$token_file" ] || { printf '%s\n' 'Token files must not be symlinks' >&2; exit 1; }
+  fi
   if [ -z "$codex_binary" ]; then codex_binary=$(command -v codex || true); fi
   [ -n "$codex_binary" ] || { printf '%s\n' 'Install and sign in to Codex before installing an agent.' >&2; exit 1; } ;;
 esac
+if [ "$role" = hub ] && [ "$pair_agent" = 1 ]; then printf '%s\n' '--pair enrolls an Agent. Create iPhone codes with codex-relay pair on the Hub.' >&2; exit 2; fi
 install_bin="$HOME/.local/bin/codex-relay"
 state_dir="$HOME/.local/share/codex-relay/$role"
 config_dir="$HOME/.config/codex-relay"
@@ -106,6 +122,12 @@ if [ "$dry_run" = 0 ]; then
   expected=$(awk -v file="codex-relay-$target" '$2==file {print $1}' "$download_dir/SHA256SUMS")
   [ -n "$expected" ] && [ "$actual" = "$expected" ] || { printf '%s\n' 'Binary checksum mismatch' >&2; exit 1; }
   relay_binary="$download_dir/codex-relay-$target"
+  chmod 0700 "$relay_binary"
+ fi
+ if [ "$pair_agent" = 1 ]; then
+  printf '%s\n' 'Create an Agent pairing code in Relay Settings → Machines → Add a machine, then enter it here.' >&2
+  "$relay_binary" pair --kind agent --hub-url "$hub_url" --machine "$machine" --code-stdin --out "$token_file"
+  [ -s "$token_file" ] && private_file "$token_file" || { printf '%s\n' 'Enrollment did not create a private credential; no service was installed.' >&2; exit 1; }
  fi
  install -m 0755 "$relay_binary" "$install_bin"
  if [ "$role" = hub ] && [ "$apns_supplied" = 1 ]; then
@@ -156,4 +178,12 @@ else
  launchctl bootout "gui/$(id -u)/net.codex-relay.agent" 2>/dev/null || true
  launchctl bootstrap "gui/$(id -u)" "$unit_file"
  printf 'Installed: %s\n' "$unit_file"
+fi
+
+if [ "$role" = hub ]; then
+ printf '%s\n' 'Next: create an iPhone code with codex-relay pair on this Hub host.'
+ printf 'Use --hub-url %s and --data-dir %s. Enter the one-time code in the native app.\n' "$public_url" "$state_dir"
+else
+ printf '%s\n' 'Next: open Fleet on your paired iPhone. The machine becomes Online after Codex state synchronizes.'
+ printf '%s\n' 'If Codex is unavailable, use codex-relay doctor. The installer never starts or restarts shared Codex.'
 fi

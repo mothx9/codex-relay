@@ -105,5 +105,49 @@ class InstallerTests(unittest.TestCase):
         self.assertIn("--apns-config", self.unit.read_text())
 
 
+    def test_one_time_pairing_before_service_install_and_no_code_in_arguments(self):
+        self.binary.write_text("""#!/bin/sh
+printf '%s\\n' "$*" > "$RELAY_TEST_INSTALL_ROOT/pair.args"
+IFS= read -r code
+[ "$code" = "12345678" ] || exit 42
+while [ "$#" -gt 0 ]; do
+ if [ "$1" = --out ]; then shift; destination=$1; break; fi
+ shift
+done
+umask 077
+printf '%s' fictional-test-credential > "$destination"
+""")
+        command = ["sh", str(self.installer), "agent", "--binary", str(self.binary),
+                   "--hub-url", "https://relay.test", "--machine", "laptop", "--pair", "--codex", "/bin/true", "--no-start"]
+        result = subprocess.run(command, env=self.env, input="12345678\n", capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("12345678", (self.install_root / "pair.args").read_text())
+        token = self.install_root / ".config/codex-relay/laptop.token"
+        self.assertEqual(token.stat().st_mode & 0o777, 0o600)
+        unit = self.install_root / ".config/systemd/user/codex-relay-agent.service"
+        self.assertTrue(unit.exists())
+        before = token.read_bytes()
+        again = subprocess.run(command, env=self.env, input="87654321\n", capture_output=True, text=True)
+        self.assertNotEqual(again.returncode, 0)
+        self.assertEqual(token.read_bytes(), before)
+
+    def test_failed_pairing_never_installs_or_starts_service(self):
+        self.binary.write_text("#!/bin/sh\nexit 42\n")
+        command = ["sh", str(self.installer), "agent", "--binary", str(self.binary),
+                   "--hub-url", "https://relay.test", "--machine", "laptop", "--pair", "--codex", "/bin/true"]
+        result = subprocess.run(command, env=self.env, input="12345678\n", capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.install_root / ".config/systemd/user/codex-relay-agent.service").exists())
+        self.assertFalse((self.install_root / "systemctl.calls").exists())
+        self.assertFalse((self.install_root / ".local/bin/codex-relay").exists())
+
+    def test_pairing_dry_run_does_not_read_code_or_create_files(self):
+        result = subprocess.run(["sh", str(self.installer), "agent", "--hub-url", "https://relay.test",
+                                 "--machine", "laptop", "--pair", "--codex", "/bin/true", "--dry-run"],
+                                env=self.env, input="", capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(list(self.install_root.iterdir()), [])
+
+
 if __name__ == "__main__":
     unittest.main()
