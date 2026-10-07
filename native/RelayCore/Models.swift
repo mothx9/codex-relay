@@ -1,6 +1,46 @@
 import Foundation
 
-public struct Account: Codable, Sendable { public let kind: String; public let email: String?; public let plan: String? }
+public struct Account: Codable, Sendable {
+    public let kind: String; public let email: String?; public let plan: String?
+    public let id: String?; public let source: String?; public let observedAt: String?; public let hubObservedAt: String?
+    public let limits: AccountLimits?; public let buckets: [String: AccountLimits]?
+    public let ordinaryUsageAllowed: Bool?; public let resetCredits: ResetCredits?
+    public var usageBuckets: [(String, AccountLimits)] {
+        if let buckets, !buckets.isEmpty { return buckets.keys.sorted().map { ($0, buckets[$0]!) } }
+        return limits.map { [($0.limitId ?? "usage", $0)] } ?? []
+    }
+}
+public struct RateWindow: Codable, Sendable {
+    public let usedPercent: Int
+    public let windowDurationMins: Int?; public let resetsAt: Int64?
+    public var label: String {
+        guard let minutes = windowDurationMins, minutes > 0 else { return "Usage window" }
+        if minutes % 1440 == 0 { return "\(minutes / 1440)-day window" }
+        if minutes % 60 == 0 { return "\(minutes / 60)-hour window" }
+        return "\(minutes)-minute window"
+    }
+    public var fraction: Double { min(1, max(0, Double(usedPercent) / 100)) }
+}
+public struct AccountLimits: Codable, Sendable {
+    public let limitId: String?; public let limitName: String?; public let normalModelSlug: String?; public let planType: String?
+    public let primary: RateWindow?; public let secondary: RateWindow?; public let credits: AccountCredits?
+    public let individualLimit: SpendControl?; public let spendControlReached: Bool?; public let rateLimitReachedType: String?
+}
+public struct AccountCredits: Codable, Sendable { public let hasCredits: Bool; public let unlimited: Bool; public let balance: String? }
+public struct SpendControl: Codable, Sendable { public let limit: String; public let used: String; public let remainingPercent: Int; public let resetsAt: Int64 }
+public struct ResetCredits: Codable, Sendable { public let availableCount: Int; public let credits: [ResetCredit]? }
+public struct ResetCredit: Codable, Identifiable, Sendable { public let id: String; public let title: String?; public let description: String?; public let status: String; public let resetType: String; public let grantedAt: Int64; public let expiresAt: Int64? }
+public struct AccountRegistry: Decodable, Sendable { public let accounts: [AccountEntry] }
+public struct AccountEntry: Decodable, Identifiable, Sendable {
+    public let id: String; public let identityBasis: String; public let account: Account; public let machines: [String]
+    public let sourceMachine: String; public let fresh: Bool; public let updatedAt: String
+}
+public struct TokenBreakdown: Codable, Sendable {
+    public let inputTokens: Int64; public let cachedInputTokens: Int64; public let cacheWriteInputTokens: Int64?
+    public let outputTokens: Int64; public let reasoningOutputTokens: Int64?; public let totalTokens: Int64
+}
+public struct TokenUsage: Codable, Sendable { public let last: TokenBreakdown; public let total: TokenBreakdown; public let modelContextWindow: Int64?; public let observedAt: String?; public let source: String? }
+
 public struct MachineFreshness: Codable, Sendable {
     public let connectionId: String?; public let epoch: String?; public let protocolVersion: Int?
     public let lastHeartbeat: String?; public let lastEvent: String?; public let lastSnapshot: String?
@@ -34,6 +74,7 @@ public struct Capabilities: Codable, Sendable {
     }
 }
 public struct RelaySession: Codable, Identifiable, Sendable {
+    public var tokenUsage: TokenUsage? = nil
     public var fresh: Bool? = nil
     public var observedAt: String? = nil
     public var agentEpoch: String? = nil

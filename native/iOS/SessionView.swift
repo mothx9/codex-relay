@@ -13,6 +13,7 @@ struct SessionView: View {
     @State private var context = false
     @State private var tools: TranscriptGroup?
     @State private var nearBottom = true
+    @State private var userScrolling = false
     @State private var unread = false
     @State private var submitting = false
     @State private var scrollRequest = 0
@@ -35,39 +36,19 @@ struct SessionView: View {
         if let session = relay.current {
             VStack(spacing: 0) {
                 transcript(session)
-                if !machineOnline(session) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(relay.machineConnectionLabel(session.machineId)).font(.caption.weight(.semibold))
-                        LastKnownSession(session: session, machine: relay.machines[session.machineId])
-                    }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16)
-                        .accessibilityIdentifier("session.stale")
-                }
+                SessionHeartbeat(session: session).padding(.horizontal, RelaySpacing.page)
                 composer(session).padding(.horizontal, 16).padding(.vertical, 8)
             }
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .principal) {
-                        VStack(spacing: 3) {
-                            Text(session.title).font(.headline).lineLimit(1)
-                            Text("\(relay.machines[session.machineId]?.name ?? session.machineId) · \(session.project)")
-                                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                        }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Menu {
-                            Button("Contesto della sessione", systemImage: "info.circle") { context = true }
-                            if let last = relay.outbox.visible(session: session.id).last(where: { $0.phase == .queued && $0.queueEditable }) {
-                                Button("Modifica ultimo messaggio in coda", systemImage: "pencil") { beginQueueEdit(last) }
-                                    .disabled(!machineOnline(session) || !session.allows("queue_update") || submitting)
-                            }
-                            Button(steer ? "Torna al follow-up" : "Steer del turno corrente", systemImage: "arrow.triangle.branch") {
-                                steer.toggle(); expectedTurn = session.turnId ?? ""; composing = true
-                            }.disabled(editingQueue != nil || (!steer && (!machineOnline(session) || !session.allows("steer"))))
-                            Button("Interrompi turno", systemImage: "stop.circle", role: .destructive) {
-                                interruptTurn = session.turnId ?? ""; interrupt = true
-                            }.disabled(!machineOnline(session) || !session.allows("interrupt"))
-                        } label: { Image(systemName: "ellipsis").frame(minWidth: 44, minHeight: 44) }
-                            .accessibilityLabel("Azioni della sessione")
+                        Button { context = true } label: {
+                            VStack(spacing: 3) {
+                                Text(session.title).font(.headline).lineLimit(1).foregroundStyle(.primary)
+                                Text("\(relay.machines[session.machineId]?.name ?? session.machineId) · \(session.project)")
+                                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            }.frame(minHeight: 44)
+                        }.buttonStyle(.plain).accessibilityLabel("Session Info")
                     }
                 }
                 .confirmationDialog("Interrompere il turno in corso?", isPresented: $interrupt, titleVisibility: .visible) {
@@ -91,15 +72,6 @@ struct SessionView: View {
                     // Keep stable geometry when reading older history and returning
                     // from the keyboard; the selected-session memory is bounded.
                     VStack(alignment: .leading, spacing: RelaySpacing.page) {
-                        HStack(spacing: 6) {
-                            Circle().fill(machineOnline(session) ? statusColor(session.status) : .secondary).frame(width: 6, height: 6)
-                            Text(machineOnline(session) ? conversationStatus(session.status) : relay.machineConnectionLabel(session.machineId))
-                                .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("session.connection").accessibilityValue(machineOnline(session) ? "Live" : "Offline")
-                            if machineOnline(session), session.status == "WORKING" { ElapsedLabel(start: session.turnStarted) }
-                        }
-                        if machineOnline(session), session.status == "WORKING", let activity = relay.liveActivities[session.id] {
-                            Text(activity.detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                        }
                         if relay.historyLoading {
                             ProgressView("Caricamento cronologia…").font(.caption).frame(maxWidth: .infinity)
                         } else if relay.historyCursor != nil && !relay.chat.atCapacity {
@@ -143,10 +115,13 @@ struct SessionView: View {
                             })
                     }.scrollTargetLayout().padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
                 }
-                .scrollPosition(id: $visibleItem, anchor: .bottom)
                 .coordinateSpace(name: "transcript")
                 .accessibilityIdentifier("session.transcript")
+                .accessibilityValue("\(relay.chat.items.count) items")
                 .scrollDismissesKeyboard(.interactively)
+                .simultaneousGesture(DragGesture(minimumDistance: 3)
+                    .onChanged { _ in userScrolling = true; nearBottom = false }
+                    .onEnded { _ in userScrolling = false })
                 .onChange(of: viewport.size, initial: true) { _, size in
                     guard !initialScroll, size.height > 0 else { return }
                     // Navigation may lay out the destination after its first
@@ -157,7 +132,7 @@ struct SessionView: View {
                     }
                 }
                 .onPreferenceChange(TranscriptBottom.self) { value in
-                    nearBottom = value <= viewport.size.height + 80
+                    nearBottom = !userScrolling && value <= viewport.size.height + 80
                     if nearBottom { unread = false }
                 }
                 .onChange(of: relay.historyLoading) { _, loading in
@@ -168,7 +143,7 @@ struct SessionView: View {
                     DispatchQueue.main.async { proxy.scrollTo(bottomID, anchor: .bottom) }
                 }
                 .onChange(of: revision) { _, _ in
-                    if nearBottom { DispatchQueue.main.async { proxy.scrollTo(bottomID, anchor: .bottom) } }
+                    if nearBottom && !userScrolling { DispatchQueue.main.async { if nearBottom && !userScrolling { proxy.scrollTo(bottomID, anchor: .bottom) } } }
                     else { unread = true }
                 }
                 .onChange(of: scrollRequest) { _, _ in
@@ -221,6 +196,21 @@ struct SessionView: View {
                 let available = machineOnline(session) && session.allows(kind) && (editingQueue != nil || ["READY", "WORKING"].contains(session.status))
                 let canSend = available && !submitting && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 HStack(alignment: .bottom, spacing: 6) {
+                        Menu {
+                            Button("Contesto della sessione", systemImage: "info.circle") { context = true }
+                            if let last = relay.outbox.visible(session: session.id).last(where: { $0.phase == .queued && $0.queueEditable }) {
+                                Button("Modifica ultimo messaggio in coda", systemImage: "pencil") { beginQueueEdit(last) }
+                                    .disabled(!machineOnline(session) || !session.allows("queue_update") || submitting)
+                            }
+                            Button(steer ? "Torna al follow-up" : "Steer del turno corrente", systemImage: "arrow.triangle.branch") {
+                                steer.toggle(); expectedTurn = session.turnId ?? ""; composing = true
+                            }.disabled(editingQueue != nil || (!steer && (!machineOnline(session) || !session.allows("steer"))))
+                            Button("Interrompi turno", systemImage: "stop.circle", role: .destructive) {
+                                interruptTurn = session.turnId ?? ""; interrupt = true
+                            }.disabled(!machineOnline(session) || !session.allows("interrupt"))
+                        } label: { Image(systemName: "plus").frame(minWidth: 44, minHeight: 44) }
+                            .accessibilityLabel("Azioni della sessione")
+
                     TextField(steer ? "Correggi il lavoro in corso…" : session.status == "WORKING" ? "Aggiungi un follow-up…" : "Scrivi a Codex…", text: $draft, axis: .vertical)
                         .font(.body).lineLimit(1...5).focused($composing).padding(.leading, 20).padding(.vertical, 16)
                         .disabled(!available).accessibilityIdentifier("composer.text")
@@ -289,6 +279,12 @@ struct SessionView: View {
                 LabeledContent("Cartella", value: session.cwd)
                 if let branch = session.branch, !branch.isEmpty { LabeledContent("Branch", value: branch) }
                 LabeledContent("Thread", value: session.threadId)
+                if let machine = relay.machines[session.machineId] {
+                    if let version = machine.codexVersion { LabeledContent("Codex", value: version) }
+                    if let account = machine.account { LabeledContent("Codex Account", value: account.email ?? account.kind) }
+                    LabeledContent("Connection", value: relay.machineConnectionLabel(machine.id))
+                }
+                if let usage = session.tokenUsage { SessionUsageView(usage: usage) }
                 Text("Questa chat mostra contesto recente ed effimero. La cronologia rimane in Codex.").font(.footnote).foregroundStyle(.secondary)
             }.textSelection(.enabled).navigationTitle("Contesto").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Chiudi") { context = false } } }
@@ -319,18 +315,6 @@ private struct ChatMessageView: View, Equatable {
         HStack(alignment: .top, spacing: 0) {
             if user { Spacer(minLength: 44) }
             VStack(alignment: user ? .trailing : .leading, spacing: 8) {
-                Menu {
-                    Button("Copia messaggio completo", systemImage: "doc.on.doc") { UIPasteboard.general.string = activity.text }
-                    if !user { ShareLink(item: activity.text) { Label("Condividi", systemImage: "square.and.arrow.up") } }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(user ? "Tu" : "Codex")
-                        Image(systemName: "chevron.down").font(.caption2)
-                    }.font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                        .frame(minWidth: 44, minHeight: 44, alignment: user ? .trailing : .leading)
-                        .contentShape(Rectangle())
-                }.buttonStyle(.plain).accessibilityLabel("Azioni del messaggio")
-                    .accessibilityIdentifier("message.actions." + activity.id)
                 if user {
                     Text(activity.text).font(.body).textSelection(.enabled)
                         .padding(.horizontal, 16).padding(.vertical, 12)
@@ -358,6 +342,17 @@ private struct ChatMessageView: View, Equatable {
                     }
                     if activity.truncated == true { Text("Contesto parziale · consulta Codex per il contenuto completo.").font(.caption).foregroundStyle(.secondary) }
                 }
+                Menu {
+                    Button("Copia messaggio completo", systemImage: "doc.on.doc") { UIPasteboard.general.string = activity.text }
+                    if !user { ShareLink(item: activity.text) { Label("Condividi", systemImage: "square.and.arrow.up") } }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "ellipsis").font(.caption)
+                    }.font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        .frame(minWidth: 44, minHeight: 44, alignment: user ? .trailing : .leading)
+                        .contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityLabel("Azioni del messaggio")
+                    .accessibilityIdentifier("message.actions." + activity.id)
             }.frame(maxWidth: .infinity, alignment: user ? .trailing : .leading)
                 .environment(\.completeMessage, activity.text)
                 .contextMenu {
@@ -392,7 +387,6 @@ private struct OutgoingMessageView: View {
         HStack {
             Spacer(minLength: 44)
             VStack(alignment: .trailing, spacing: 8) {
-                Text("Tu").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 Text(item.text).font(.body).textSelection(.enabled)
                     .padding(.horizontal, 16).padding(.vertical, 12)
                     .background(.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 20))
@@ -423,196 +417,33 @@ private struct OutgoingMessageView: View {
     }
 }
 
-private struct ToolSummaryView: View {
-    let group: TranscriptGroup
-    let open: () -> Void
-    @State private var expanded = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    private var running: Int { group.items.filter { $0.state == "running" }.count }
-    private var failed: Int { group.items.filter { $0.state == "failed" || $0.state == "declined" }.count }
-    private var current: Activity? { group.items.last(where: { $0.state == "running" }) ?? group.items.last }
-    private var state: String { running > 0 ? "WORKING" : failed > 0 ? "FAILED" : group.items.allSatisfy { $0.state == "completed" } ? "READY" : "INACTIVE" }
-    private var tint: Color { group.kind == .terminal ? .blue : group.kind == .mcp ? .purple : .orange }
-    private var summary: String {
-        var value = toolCount(group)
-        if running > 0 { value += " · \(running) in corso" }
-        if failed > 0 { value += " · \(failed) \(failed == 1 ? "non riuscito" : "non riusciti")" }
-        if state == "READY" { value += group.items.count == 1 ? " · completato" : " · completati" }
-        return value
-    }
-    private var preview: String? {
-        guard let current else { return nil }
-        if let command = current.command { return command }
-        if let tool = current.toolName { return [current.toolServer, tool].compactMap { $0 }.joined(separator: " · ") }
-        if let files = current.files, !files.isEmpty {
-            return files.prefix(3).map { URL(fileURLWithPath: $0.path).lastPathComponent }.joined(separator: ", ")
-        }
-        return nil
-    }
-    var body: some View {
-        VStack(alignment: .leading, spacing: RelaySpacing.row) {
-            Button { withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { expanded.toggle() } } label: {
-                VStack(alignment: .leading, spacing: RelaySpacing.compact) {
-                    HStack(spacing: 10) {
-                        Image(systemName: toolIcon(group.kind)).font(.subheadline.weight(.medium)).foregroundStyle(tint)
-                            .frame(width: 28, height: 28).background(tint.opacity(0.1), in: RoundedRectangle(cornerRadius: 7))
-                        Text(toolTitle(group.kind)).font(.subheadline.weight(.semibold))
-                        Spacer(minLength: 4)
-                        SessionStatusMark(status: state).font(.caption)
-                        Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
-                            .rotationEffect(.degrees(expanded ? 90 : 0))
-                    }
-                    Text(summary).font(.caption).foregroundStyle(.secondary)
-                        .contentTransition(.opacity)
-                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: state)
-                    if let preview {
-                        if current?.command != nil { CommandPreviewView(command: preview).lineLimit(expanded ? 3 : 2) }
-                        else { Text(preview).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
-                    }
-                }.foregroundStyle(.primary).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
-            }.buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("tool." + group.id)
-                .accessibilityValue(expanded ? "Dettagli aperti" : "Dettagli chiusi")
-            if running > 0, group.kind == .terminal, let item = current, !item.commandOutput.isEmpty {
-                // A bounded tail is a live preview, not another scrolling terminal.
-                Text(item.commandOutput.suffix(600).split(separator: "\n", omittingEmptySubsequences: false).suffix(3).joined(separator: "\n"))
-                    .font(.caption2.monospaced()).foregroundStyle(.secondary).lineLimit(3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, 10).overlay(alignment: .leading) { Capsule().fill(tint.opacity(0.4)).frame(width: 2) }
-                    .accessibilityIdentifier("tool.live." + group.id)
-            }
-            if expanded {
-                VStack(alignment: .leading, spacing: RelaySpacing.row) {
-                    Button("Apri dettagli e output", action: open).font(.caption).frame(minHeight: 44)
-                        .accessibilityIdentifier("tool.details." + group.id)
-                    ForEach(group.items) { item in
-                        HStack(alignment: .top, spacing: RelaySpacing.compact) {
-                            SessionStatusMark(status: item.state == "running" ? "WORKING" : item.state == "failed" || item.state == "declined" ? "FAILED" : item.state == "completed" ? "READY" : "INACTIVE")
-                                .font(.caption).frame(width: 20)
-                            VStack(alignment: .leading, spacing: RelaySpacing.small) {
-                                if let command = item.command { CommandPreviewView(command: command).lineLimit(3) }
-                                else {
-                                    Text(item.toolName ?? item.files?.first.map { URL(fileURLWithPath: $0.path).lastPathComponent } ?? toolTitle(group.kind))
-                                        .font(.subheadline).lineLimit(3).textSelection(.enabled)
-                                }
-                                HStack(spacing: 8) {
-                                    Text(activityState(item.state))
-                                    if let code = item.exitCode { Text("Exit \(code)") }
-                                    if let duration = item.durationMs { Text(String(format: "%.1f s", Double(duration) / 1000)) }
-                                }.font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }.transition(.opacity.combined(with: .move(edge: .top)))
-            }
-        }.padding(RelaySpacing.row)
-            .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(running > 0 ? tint.opacity(0.25) : Color.primary.opacity(0.04)))
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: state)
-    }
-}
-
-private struct ToolDetailView: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(RelayController.self) private var relay
-    let group: TranscriptGroup
-    private var liveGroup: TranscriptGroup { TranscriptGroup.make(relay.chat.items).first { $0.id == group.id } ?? group }
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 24) {
-                    Text("Attività recente della sessione.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                    ForEach(liveGroup.items) { item in
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text(item.toolName ?? toolTitle(group.kind)).font(.subheadline.weight(.semibold))
-                                Spacer()
-                                if item.state == "running" { ProgressView().controlSize(.small) }
-                                Text(activityState(item.state)).font(.caption).foregroundStyle(.secondary)
-                                Menu {
-                                    if let command = item.command { Button("Copia comando", systemImage: "terminal") { UIPasteboard.general.string = command } }
-                                    Button("Copia output completo", systemImage: "doc.on.doc") { UIPasteboard.general.string = item.command != nil ? item.commandOutput : item.text }
-                                } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
-                                    .accessibilityLabel("Azioni output")
-                            }
-                            if let server = item.toolServer { Text(server).font(.caption).foregroundStyle(.secondary) }
-                            if let command = item.command {
-                                ScrollView(.horizontal) { CommandPreviewView(command: command).fixedSize(horizontal: true, vertical: false) }
-                                    .contextMenu { Button("Copia comando", systemImage: "doc.on.doc") { UIPasteboard.general.string = command } }
-                            }
-                            HStack {
-                                if let code = item.exitCode { Text("Exit \(code)") }
-                                if let milliseconds = item.durationMs { Text(String(format: "%.1f s", Double(milliseconds) / 1000)) }
-                                if item.truncated == true { Text("Contenuto parziale") }
-                            }.font(.caption).foregroundStyle(.secondary)
-                            if item.kind == "diff" {
-                                PatchView(patch: item.text)
-                            } else if let files = item.files, !files.isEmpty {
-                                ForEach(Array(files.enumerated()), id: \.offset) { _, file in
-                                    Text(URL(fileURLWithPath: file.path).lastPathComponent + " · " + fileChangeLabel(file.kind)).font(.subheadline)
-                                    if let patch = file.patch {
-                                        if patch.hasPrefix("diff --git ") || patch.hasPrefix("@@ ") || patch.contains("\n@@ ") {
-                                            PatchView(patch: patch, path: file.path)
-                                        } else {
-                                            CodeBlockView(code: patch, language: URL(fileURLWithPath: file.path).pathExtension)
-                                        }
-                                    }
-                                }
-                            } else if group.kind == .terminal {
-                                if #available(iOS 18.0, *) {
-                                    TerminalOutputView(text: item.command != nil ? item.commandOutput : item.text)
-                                        .accessibilityIdentifier("activity." + item.kind + "." + item.id)
-                                } else {
-                                    CodeBlockView(code: item.command != nil ? item.commandOutput : item.text, language: "output")
-                                }
-                            } else {
-                            ScrollView(.horizontal) {
-                                Text(item.command != nil ? item.commandOutput : item.text).font(.callout.monospaced()).textSelection(.enabled)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .accessibilityIdentifier("activity." + item.kind + "." + item.id)
-                            }.contextMenu { Button("Copia output", systemImage: "doc.on.doc") { UIPasteboard.general.string = item.command != nil ? item.commandOutput : item.text } }
-                            }
-                        }
-                    }
-                }.padding(20)
-            }.navigationTitle(toolTitle(group.kind)).navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Menu {
-                            Button("Copia tutti gli output", systemImage: "doc.on.doc") {
-                                UIPasteboard.general.string = liveGroup.items.map { $0.command != nil ? $0.commandOutput : $0.text }.joined(separator: "\n\n")
-                            }
-                        } label: { Image(systemName: "doc.on.doc").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("Copia attività")
-                    }
-                    ToolbarItem(placement: .confirmationAction) { Button("Chiudi") { dismiss() } }
-                }
-        }
-    }
-}
-
-private func toolTitle(_ kind: TranscriptGroup.Kind) -> String {
-    switch kind { case .terminal: "Terminale"; case .mcp: "MCP"; case .changes: "Modifiche"; default: "Attività" }
-}
-private func toolIcon(_ kind: TranscriptGroup.Kind) -> String {
-    switch kind { case .terminal: "terminal"; case .mcp: "wrench.and.screwdriver"; case .changes: "doc.text"; default: "list.bullet" }
-}
-private func toolCount(_ group: TranscriptGroup) -> String {
-    let count = group.items.count
-    switch group.kind {
-    case .terminal: return "\(count) \(count == 1 ? "comando" : "comandi")"
-    case .mcp: return "\(count) \(count == 1 ? "operazione" : "operazioni")"
-    case .changes: return "\(count) \(count == 1 ? "evento" : "eventi")"
-    default: return "\(count) \(count == 1 ? "elemento" : "elementi")"
-    }
-}
 private func conversationStatus(_ status: String) -> String {
     ["WORKING": "In corso", "READY": "Pronto", "NEEDS_YOU": "Serve una risposta", "INACTIVE": "Inattivo", "FAILED": "Errore"][status] ?? status
 }
 
-private func activityState(_ state: String?) -> String {
-    switch state { case "running": "In corso"; case "completed": "Completato"; case "failed": "Fallito"; case "declined": "Rifiutato"; default: "" }
-}
 
-private func fileChangeLabel(_ kind: String) -> String {
-    switch kind { case "add", "create": "Creato"; case "delete": "Eliminato"; case "rename", "move": "Rinominato"; default: "Modificato" }
+/// Reads fleet metadata only; high-frequency transcript chunks do not invalidate it.
+private struct SessionHeartbeat: View {
+    @Environment(RelayController.self) private var relay
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let session: RelaySession
+    private var state: String { session.displayStatus(machine: relay.machines[session.machineId], connected: relay.online) }
+    var body: some View {
+        VStack(alignment: .leading, spacing: RelaySpacing.small) {
+            HStack(spacing: RelaySpacing.compact) {
+                SessionStatusMark(status: state)
+                Text(state == "OFFLINE" ? relay.machineConnectionLabel(session.machineId) : statusLabel(state))
+                    .accessibilityIdentifier("session.connection").accessibilityValue(state == "OFFLINE" ? "Offline" : "Live")
+                if state == "WORKING" { ElapsedLabel(start: session.turnStarted) }
+                Spacer(minLength: 0)
+            }.font(.caption.weight(.medium))
+            if ["OFFLINE", "SYNCING", "RECONNECTING", "DEGRADED"].contains(state) {
+                LastKnownSession(session: session, machine: relay.machines[session.machineId]).accessibilityIdentifier("session.stale")
+            } else if state == "WORKING", let activity = relay.liveActivities[session.id] {
+                Text(activity.detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    .contentTransition(.opacity)
+            }
+        }.padding(.top, RelaySpacing.compact)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: state)
+    }
 }

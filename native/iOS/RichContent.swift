@@ -211,8 +211,8 @@ struct PatchView: View {
     }
     private func tint(_ kind: PatchLine.Kind) -> Color {
         switch kind {
-        case .addition: .green.opacity(0.12)
-        case .deletion: .red.opacity(0.12)
+        case .addition: RelayPalette.addition.opacity(0.12)
+        case .deletion: RelayPalette.deletion.opacity(0.12)
         case .hunk: .accentColor.opacity(0.12)
         default: .clear
         }

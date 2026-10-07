@@ -35,6 +35,7 @@ import UIKit
     var connection = "Accesso richiesto"
     var error: String?
     var registry: DeviceRegistry?
+    var accounts: [AccountEntry] = []
     var settingsProgress: [String: String] = [:]
     var settingsErrors: [String: String] = [:]
     var notificationPermission = "Da verificare"
@@ -330,6 +331,11 @@ import UIKit
         guard let api else { return }
         do { registry = try await api.fetch("api/devices"); settingsErrors["devices"] = nil }
         catch { settingsErrors["devices"] = error.localizedDescription }
+    }
+    func loadAccounts() async {
+        guard let api else { return }
+        do { let registry: AccountRegistry = try await api.fetch("api/accounts"); accounts = registry.accounts; settingsErrors["accounts"] = nil }
+        catch { settingsErrors["accounts"] = error.localizedDescription }
     }
     func createCode(kind: String, name: String, machine: String = "") async {
         guard let api, settingsProgress["pairing"] == nil else { return }

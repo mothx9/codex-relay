@@ -57,13 +57,57 @@ import XCTest
         XCTAssertTrue(composer.isHittable)
         XCTAssertEqual(composer.value as? String, "Mantieni il testo corrente.")
     }
+    func testLiveProductNavigationAndHeartbeat() throws {
+        guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires a paired live Hub.") }
+        let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launch()
+        let machines = app.buttons["fleet.connection"]
+        XCTAssertTrue(machines.waitForExistence(timeout: 20)); machines.tap()
+        let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "machine.")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "M2 Machines live"; capture.lifetime = .keepAlways; add(capture)
+        app.buttons["machines.close"].tap()
+        let search = app.textFields["fleet.search"]; XCTAssertTrue(search.waitForExistence(timeout: 10)); search.tap(); search.typeText(config.sessionTitle)
+        let session = app.buttons["session." + config.sessionID]
+        XCTAssertTrue(session.waitForExistence(timeout: 15)); session.tap()
+        let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
+        XCTAssertTrue(composer.waitForExistence(timeout: 15))
+        let heartbeat = app.staticTexts["session.connection"]
+        XCTAssertTrue(heartbeat.isHittable)
+        XCTAssertLessThan(heartbeat.frame.maxY, composer.frame.minY)
+        XCTAssertFalse(app.tabBars.firstMatch.isHittable)
+        app.buttons["Session Info"].tap()
+        XCTAssertTrue(app.staticTexts["Thread"].waitForExistence(timeout: 5)); app.buttons["Chiudi"].tap()
+        app.buttons["Azioni della sessione"].tap()
+        XCTAssertTrue(app.buttons["Steer del turno corrente"].waitForExistence(timeout: 5))
+        // Menu inspection only; no mutation of this real workload.
+        app.terminate()
+    }
+    func testLiveCodexAccountPresentation() throws {
+        guard Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") != nil else { throw XCTSkip("Requires the paired Hub with account metadata.") }
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.textFields["fleet.search"].waitForExistence(timeout: 15))
+        app.tabBars.buttons["Impostazioni"].tap()
+        let accounts = app.buttons["Codex Accounts"]
+        XCTAssertTrue(accounts.waitForExistence(timeout: 10)); accounts.tap()
+        let entry = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "account.")).firstMatch
+        XCTAssertTrue(entry.waitForExistence(timeout: 15))
+        let registry = XCTAttachment(screenshot: app.screenshot()); registry.name = "M2 actual Account Registry"; registry.lifetime = .keepAlways; add(registry)
+        entry.tap()
+        XCTAssertTrue(app.staticTexts["Plan"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Data"].exists)
+        let detail = XCTAttachment(screenshot: app.screenshot()); detail.name = "M2 actual Codex Account"; detail.lifetime = .keepAlways; add(detail)
+        // Only runtime-reported fields. No login, quota reset or account mutation.
+    }
     func testLiveCataloguePaginationIsReadOnly() throws {
         guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires the configured live fleet.") }
         let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
         guard !config.machineIDs.isEmpty else { throw XCTSkip("Requires configured machines.") }
         continueAfterFailure = false
         let app = XCUIApplication(); app.launch()
-        let search = app.searchFields.firstMatch
+        let search = app.textFields["fleet.search"]
         XCTAssertTrue(search.waitForExistence(timeout: 20))
         search.tap(); search.typeText("RELAY_NONEXISTENT_" + UUID().uuidString)
         app.swipeUp()
@@ -87,7 +131,7 @@ import XCTest
         guard config.sendTurn && config.sessionTitle == "Relay live validation" else { throw XCTSkip("Mutations only on the explicitly owned validation thread.") }
         continueAfterFailure = false
         let app = XCUIApplication(); app.launch()
-        let search = app.searchFields.firstMatch
+        let search = app.textFields["fleet.search"]
         XCTAssertTrue(search.waitForExistence(timeout: 15))
         let row = app.buttons["session." + config.sessionID]
         XCTAssertTrue(row.waitForExistence(timeout: 20)); row.tap()
@@ -182,7 +226,7 @@ import XCTest
         XCTAssertGreaterThanOrEqual(expected.components(separatedBy: "\n\n").count, 3)
         continueAfterFailure = false
         let app = XCUIApplication(); app.launch()
-        let search = app.searchFields.firstMatch
+        let search = app.textFields["fleet.search"]
         XCTAssertTrue(search.waitForExistence(timeout: 15))
         search.tap(); search.typeText(config.sessionTitle)
         let row = app.buttons["session." + config.sessionID]
@@ -233,7 +277,7 @@ import XCTest
         guard Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") != nil else { throw XCTSkip("Requires a paired real Hub.") }
         continueAfterFailure = false
         let app = XCUIApplication(); app.launch()
-        XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.textFields["fleet.search"].waitForExistence(timeout: 15))
         let fleet = XCTAttachment(screenshot: app.screenshot()); fleet.name = "Live Fleet iPhone 16"; fleet.lifetime = .keepAlways; add(fleet)
         app.tabBars.buttons["Impostazioni"].tap()
         XCTAssertTrue(app.buttons["Connessione e diagnostica"].waitForExistence(timeout: 10))
@@ -257,7 +301,7 @@ import XCTest
         let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
         continueAfterFailure = false
         let app = XCUIApplication(); app.launch()
-        let search = app.searchFields.firstMatch
+        let search = app.textFields["fleet.search"]
         XCTAssertTrue(search.waitForExistence(timeout: 15))
         search.tap(); search.typeText(config.sessionTitle)
         let session = app.buttons["session." + config.sessionID]
@@ -283,14 +327,14 @@ import XCTest
             transcript.swipeDown(velocity: .fast)
         }
         XCTAssertTrue(older.isHittable)
-        let before = older.value as? String
+        let before = transcript.value as? String
         older.tap()
-        wait(15) { older.isEnabled && older.value as? String != before }
+        wait(15) { transcript.value as? String != before }
         XCTAssertTrue(composer.isHittable)
         let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Live canonical history pagination"; capture.lifetime = .keepAlways; add(capture)
         let prose = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "activity.agentMessage."))
         var paragraph = prose.allElementsBoundByIndex.first(where: { $0.isHittable })
-        for _ in 0..<8 where paragraph == nil {
+        for _ in 0..<30 where paragraph == nil {
             transcript.swipeUp()
             paragraph = prose.allElementsBoundByIndex.first(where: { $0.isHittable })
         }
@@ -322,7 +366,8 @@ import XCTest
                     app.buttons["Copia attività"].tap()
                     let copy = app.buttons["Copia tutti gli output"]
                     XCTAssertTrue(copy.waitForExistence(timeout: 5)); copy.tap()
-                    app.buttons["Azioni output"].firstMatch.tap()
+                    let outputActions = app.buttons.matching(identifier: "Azioni output").allElementsBoundByIndex.first { $0.isHittable }
+                    XCTAssertNotNil(outputActions); outputActions?.tap()
                     XCTAssertTrue(app.buttons["Copia output completo"].waitForExistence(timeout: 5))
                     app.buttons["Copia output completo"].tap()
                 }
@@ -356,7 +401,7 @@ import XCTest
         app.terminate(); app.launch()
         wait { app.staticTexts["fleet.connection"].exists && app.staticTexts["fleet.connection"].label.contains("macchine online") }
         XCTAssertFalse(app.textFields["pairing.url"].exists)
-        let search = app.searchFields.firstMatch
+        let search = app.textFields["fleet.search"]
         search.tap(); search.typeText(config.sessionTitle)
         let session = app.buttons["session." + config.sessionID]
         XCTAssertTrue(session.waitForExistence(timeout: 15)); session.tap()
