@@ -58,3 +58,17 @@ extension NotificationRoutingTests {
         XCTAssertEqual(SemanticNotice.event(try event("failed"))?.kind, .failed)
     }
 }
+
+extension NotificationRoutingTests {
+    func testNotificationContextUsesEventTurnAndCanBeHidden() throws {
+        let session = try RelayJSON.decoder().decode(RelaySession.self, from: Data(#"{"id":"node~thread","machine_id":"node","thread_id":"thread","title":"Check empty input","project":"Validator","cwd":"/workspace","status":"WORKING","updated_at":"2026-10-07T12:00:00Z","turn_id":"newer-turn","read_only":false,"capabilities":{"can_send":false,"can_follow_up":true,"can_steer":true,"can_interrupt":true,"can_answer":false}}"#.utf8))
+        let notice = SemanticNotice(key: "key", kind: .completed, sessionID: session.id, machineID: "node", turnID: "turn-12345678")
+        let view = notice.presentation(machine: "GPU node", session: session, hideDetails: false)
+        XCTAssertEqual(view.subtitle, "GPU node · Validator")
+        XCTAssertEqual(view.body, "Check empty input · Turn 12345678")
+        XCTAssertFalse(view.body.contains("newer-turn"))
+        let hidden = notice.presentation(machine: "GPU node", session: session, hideDetails: true)
+        XCTAssertEqual(hidden.subtitle, ""); XCTAssertFalse(hidden.body.contains(session.title))
+        XCTAssertEqual(notice.presentation(machine: nil, session: nil, hideDetails: false).body, "node~thread · Turn 12345678")
+    }
+}

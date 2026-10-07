@@ -5870,6 +5870,36 @@
           }
         }
       }
+    },
+    "Turn": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turno"
+          }
+        }
+      }
+    },
+    "Hide session details": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nascondi dettagli sessione"
+          }
+        }
+      }
+    },
+    "Notifications identify the machine, project, session and turn. Hide these details on shared or locked screens. Message and command contents are never included.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le notifiche identificano macchina, progetto, sessione e turno. Nascondi questi dettagli sugli schermi condivisi o bloccati. Il contenuto dei messaggi e dei comandi non viene mai incluso."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

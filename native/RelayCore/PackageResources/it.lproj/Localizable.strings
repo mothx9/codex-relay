@@ -207,6 +207,7 @@
 "Go to request" = "Vai alla richiesta";
 "Grant permissions for this turn" = "Concedi i permessi per questo turno";
 "Grouped by the email Codex reports; an account identifier was unavailable." = "Raggruppato per l’email fornita da Codex; l’identificativo dell’account non era disponibile.";
+"Hide session details" = "Nascondi dettagli sessione";
 "History is available when Relay reconnects to the machine." = "Cronologia disponibile quando Relay si ricollega alla macchina.";
 "History on Codex" = "Cronologia su Codex";
 "History unavailable." = "Cronologia non disponibile.";
@@ -300,6 +301,7 @@
 "Not verified" = "Non verificato";
 "Notifications" = "Notifiche";
 "Notifications are denied. You can enable them in iOS Settings." = "Le notifiche sono disattivate. Puoi abilitarle nelle Impostazioni iOS.";
+"Notifications identify the machine, project, session and turn. Hide these details on shared or locked screens. Message and command contents are never included." = "Le notifiche identificano macchina, progetto, sessione e turno. Nascondi questi dettagli sugli schermi condivisi o bloccati. Il contenuto dei messaggi e dei comandi non viene mai incluso.";
 "Notifications not enabled" = "Notifiche non abilitate";
 "Observed during the current connection. These hints clear when work moves on or the connection is lost." = "Osservate durante la connessione attuale. Questi avvisi scompaiono quando il lavoro prosegue o la connessione si interrompe.";
 "Observed latency" = "Latenza osservata";
@@ -483,6 +485,7 @@
 "Too many attempts. Wait a minute." = "Troppi tentativi. Attendi un minuto.";
 "Tool" = "Strumento";
 "Total" = "Totale";
+"Turn" = "Turno";
 "Turn duration" = "Durata del turno";
 "Unable to save access securely in Keychain." = "Impossibile proteggere l’accesso nel Portachiavi.";
 "Unavailable" = "Non disponibile";

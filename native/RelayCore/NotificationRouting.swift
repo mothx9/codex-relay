@@ -84,21 +84,41 @@ public struct SemanticNotice: Equatable, Sendable {
     public let sessionID: String
     public let machineID: String
     public let requestID: String?
-    public init(key: String, kind: Kind, sessionID: String = "", machineID: String = "", requestID: String? = nil) {
-        self.key = key; self.kind = kind; self.sessionID = sessionID; self.machineID = machineID; self.requestID = requestID
+    public let turnID: String?
+    public init(key: String, kind: Kind, sessionID: String = "", machineID: String = "", requestID: String? = nil, turnID: String? = nil) {
+        self.key = key; self.kind = kind; self.sessionID = sessionID; self.machineID = machineID; self.requestID = requestID; self.turnID = turnID
     }
     public static func event(_ event: RelayEvent) -> Self? {
         if let request = event.request {
-            return Self(key: request.notifyKey ?? request.sessionId + "/request/" + (request.turnId ?? "") + "/" + request.kind + "/" + request.id, kind: .request, sessionID: request.sessionId, machineID: request.machineId, requestID: request.id)
+            return Self(key: request.notifyKey ?? request.sessionId + "/request/" + (request.turnId ?? "") + "/" + request.kind + "/" + request.id, kind: .request, sessionID: request.sessionId, machineID: request.machineId, requestID: request.id, turnID: request.turnId)
         }
         if ["activity", "live_question"].contains(event.kind), let activity = event.activity, !(activity.questions ?? []).isEmpty, let turn = event.turnId, !turn.isEmpty {
-            return Self(key: event.sessionId + "/live_question/" + turn + "/" + activity.id, kind: .liveQuestion, sessionID: event.sessionId, machineID: event.machineId ?? "")
+            return Self(key: event.sessionId + "/live_question/" + turn + "/" + activity.id, kind: .liveQuestion, sessionID: event.sessionId, machineID: event.machineId ?? "", turnID: turn)
         }
         if ["turn_completed", "failed"].contains(event.kind), let turn = event.turnId, !turn.isEmpty {
-            return Self(key: event.notifyKey ?? event.sessionId + "/turn/" + turn, kind: event.kind == "failed" ? .failed : .completed, sessionID: event.sessionId, machineID: event.machineId ?? "")
+            return Self(key: event.notifyKey ?? event.sessionId + "/turn/" + turn, kind: event.kind == "failed" ? .failed : .completed, sessionID: event.sessionId, machineID: event.machineId ?? "", turnID: turn)
         }
         return nil
     }
+    /// Routing identity is captured from the event, never borrowed from a newer turn.
+    public func presentation(machine: String?, session: RelaySession?, hideDetails: Bool) -> NoticePresentation {
+        guard !hideDetails else { return NoticePresentation(title: title, subtitle: "", body: body) }
+        func clean(_ text: String?, limit: Int) -> String {
+            String((text ?? "").components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.joined(separator: " ").prefix(limit))
+        }
+        let machineName = clean(machine?.isEmpty == false ? machine : machineID, limit: 48)
+        let matching = session?.id == sessionID ? session : nil
+        let project = clean(matching?.project, limit: 48)
+        let subtitle = [machineName, project].filter { !$0.isEmpty }.joined(separator: " · ")
+        let name = clean(matching?.title, limit: 120)
+        var details = name.isEmpty && !sessionID.isEmpty ? clean(sessionID, limit: 100) : name
+        if let turnID, !turnID.isEmpty {
+            let turn = String(localized: "Turn", bundle: relayLocalizationBundle) + " " + clean(String(turnID.suffix(8)), limit: 8)
+            details = [details, turn].filter { !$0.isEmpty }.joined(separator: " · ")
+        }
+        return NoticePresentation(title: title, subtitle: subtitle, body: details.isEmpty ? body : details)
+    }
+
     public var title: String {
         switch kind {
         case .request: String(localized: "Codex needs your input", bundle: relayLocalizationBundle)
@@ -112,6 +132,12 @@ public struct SemanticNotice: Equatable, Sendable {
     public var body: String {
         String(localized: "Open Relay to see the current state.", bundle: relayLocalizationBundle)
     }
+}
+
+public struct NoticePresentation: Equatable, Sendable {
+    public let title: String
+    public let subtitle: String
+    public let body: String
 }
 
 /// Bounded semantic dedupe, independent from transport event IDs. No transcript.

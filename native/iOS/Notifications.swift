@@ -84,6 +84,7 @@ extension RelayController {
             if state.registered, let key = pushPreference, UserDefaults.standard.object(forKey: key) == nil { UserDefaults.standard.set(true, forKey: key); notificationsEnabled = true }
             settingsErrors["notifications"] = nil
             if wantsPush {
+                if apnsToken != nil && nativePushAvailable { await registerNativePush() }
                 let settings = await UNUserNotificationCenter.current().notificationSettings()
                 guard credential?.id == identity else { return }
                 if [.authorized, .provisional, .ephemeral].contains(settings.authorizationStatus) { UIApplication.shared.registerForRemoteNotifications() }
@@ -113,7 +114,7 @@ extension RelayController {
         defer { settingsProgress["pushRegistration"] = nil }
         struct Registration: Encodable, Sendable { let token: String; let environment: String; let privacy: Bool }
         let environment = Bundle.main.object(forInfoDictionaryKey: "RelayAPNSEnvironment") as? String ?? "sandbox"
-        let privacy = UserDefaults.standard.object(forKey: "relay.pushPrivacy") as? Bool ?? true
+        let privacy = UserDefaults.standard.object(forKey: "relay.pushPrivacy") as? Bool ?? false
         do {
             let _: Ack = try await api.post("api/native-push/subscribe", body: Registration(token: apnsToken, environment: environment, privacy: privacy))
             guard credential?.id == identity else { return }
@@ -160,11 +161,14 @@ extension RelayController {
         Task {
             guard credential?.id == identity, notificationReadiness.localReady, !notificationReadiness.remoteOwnsDelivery, noticeIsCurrent(notice) else { return }
             let content = UNMutableNotificationContent()
-            content.title = notice.title; content.body = notice.body; content.sound = .default
+            let view = notice.presentation(machine: machines[notice.machineID]?.name, session: fleetSessions[notice.sessionID], hideDetails: UserDefaults.standard.bool(forKey: "relay.pushPrivacy"))
+            content.title = view.title; content.subtitle = view.subtitle; content.body = view.body; content.sound = .default
+            content.threadIdentifier = notice.sessionID.isEmpty ? notice.machineID : notice.sessionID
             content.badge = NSNumber(value: attentionCount)
             var info: [String: String] = ["notice_key": notice.key, "kind": notice.kind.rawValue]
             if !notice.sessionID.isEmpty { info["session_id"] = notice.sessionID }
             if !notice.machineID.isEmpty { info["machine_id"] = notice.machineID }
+            if let turn = notice.turnID { info["turn_id"] = turn }
             if let request = notice.requestID { info["request_id"] = request }
             content.userInfo = info
             do { try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: notice.key, content: content, trigger: nil)) }
@@ -242,17 +246,19 @@ struct NotificationAcceptanceView: View {
         }.onAppear { relay.online = true }.task { await relay.refreshNotificationPermission() }
     }
     private func emit(_ kind: SemanticNotice.Kind) {
+        let fixture = ProductFixtures.controller(surface: "conversation")
+        relay.machines = fixture.machines; relay.sessions = fixture.sessions
         let key = "acceptance/" + kind.rawValue
         if kind == .request {
-            let request = try! RelayJSON.decoder().decode(PendingRequest.self, from: Data(#"{"request_id":"acceptance-request","session_id":"test~thread","machine_id":"test","kind":"user_input","description":"Scope?","expires_at":"2099-01-01T00:00:00Z","can_approve":true}"#.utf8))
+            let request = try! RelayJSON.decoder().decode(PendingRequest.self, from: Data(#"{"request_id":"acceptance-request","session_id":"workstation~build","machine_id":"workstation","kind":"user_input","description":"Scope?","expires_at":"2099-01-01T00:00:00Z","can_approve":true}"#.utf8))
             relay.requests[request.id] = request
         }
         if kind == .liveQuestion {
-            let event = try! RelayJSON.decoder().decode(RelayEvent.self, from: Data(#"{"kind":"live_question","session_id":"test~thread","machine_id":"test","turn_id":"turn","activity":{"id":"question","kind":"agentMessage","text":"Scope?","questions":[{"title":"Scope?"}]}}"#.utf8))
+            let event = try! RelayJSON.decoder().decode(RelayEvent.self, from: Data(#"{"kind":"live_question","session_id":"workstation~build","machine_id":"workstation","turn_id":"turn","activity":{"id":"question","kind":"agentMessage","text":"Scope?","questions":[{"title":"Scope?"}]}}"#.utf8))
             relay.liveQuestions.observe(event, activeTurn: "turn", current: true)
             relay.deliverLocalNotice(SemanticNotice.event(event)!)
         } else {
-            relay.deliverLocalNotice(SemanticNotice(key: key, kind: kind, sessionID: "test~thread", machineID: "test", requestID: kind == .request ? "acceptance-request" : nil))
+            relay.deliverLocalNotice(SemanticNotice(key: key, kind: kind, sessionID: "workstation~build", machineID: "workstation", requestID: kind == .request ? "acceptance-request" : nil, turnID: "turn-12345678"))
         }
         relay.updateNotificationBadge()
     }

@@ -274,6 +274,7 @@ private struct EnrollmentView: View {
 struct NotificationSettingsView: View {
     @Environment(RelayController.self) private var relay
     @Environment(\.openURL) private var openURL
+    @AppStorage("relay.pushPrivacy") private var hideNotificationDetails = false
     var body: some View {
         List {
             Section {
@@ -299,6 +300,12 @@ struct NotificationSettingsView: View {
                 SettingsFeedback(id: "notifications"); SettingsFeedback(id: "localAlerts")
             } footer: {
                 Text(String(localized: "Needs You, live questions, completion, failure and machines offline after a grace period. Previews omit conversation content. Completion is quiet in the session you are reading.", bundle: relayLocalizationBundle))
+            }
+            Section {
+                Toggle(String(localized: "Hide session details", bundle: relayLocalizationBundle), isOn: $hideNotificationDetails)
+                    .onChange(of: hideNotificationDetails) { _, _ in Task { await relay.registerNativePush() } }
+            } footer: {
+                Text(String(localized: "Notifications identify the machine, project, session and turn. Hide these details on shared or locked screens. Message and command contents are never included.", bundle: relayLocalizationBundle))
             }
             Section {
                 DisclosureGroup(String(localized: "Delivery details", bundle: relayLocalizationBundle)) {

@@ -65,7 +65,8 @@ func (h *Hub) attention(e protocol.Event) {
 	if h.push == nil {
 		return
 	}
-	h.push.Enqueue(push.Notice{Key: key, Kind: "live_question", SessionID: e.SessionID, MachineID: e.MachineID, Current: func() bool {
+	session := h.sessions[e.SessionID]
+	h.push.Enqueue(push.Notice{Key: key, Kind: "live_question", TurnID: e.TurnID, Machine: h.machines[e.MachineID].Name, Project: session.Project, Title: session.Title, SessionID: e.SessionID, MachineID: e.MachineID, Current: func() bool {
 		h.mu.Lock()
 		defer h.mu.Unlock()
 		v, exists := h.liveQuestionNotices[key]

@@ -483,7 +483,7 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 		}
 	}
 	if e.Kind == "turn_completed" || e.Kind == "failed" {
-		h.push.Enqueue(push.Notice{Key: e.NotifyKey, Kind: e.Kind, SessionID: s.ID, MachineID: id, Machine: h.machines[id].Name, Project: s.Project, Title: s.Title})
+		h.push.Enqueue(push.Notice{Key: e.NotifyKey, Kind: e.Kind, TurnID: e.TurnID, SessionID: s.ID, MachineID: id, Machine: h.machines[id].Name, Project: s.Project, Title: s.Title})
 		if !h.watched(s.ID) {
 			delete(h.buffers, s.ID)
 		}
@@ -498,7 +498,7 @@ func (h *Hub) notifyRequest(r protocol.PendingRequest) {
 	} else {
 		key += "/" + r.ID
 	}
-	h.push.Enqueue(push.Notice{Key: key, Kind: "request", SessionID: s.ID, MachineID: r.MachineID, RequestID: r.ID, Machine: h.machines[r.MachineID].Name, Project: s.Project, Title: s.Title})
+	h.push.Enqueue(push.Notice{Key: key, Kind: "request", TurnID: r.TurnID, SessionID: s.ID, MachineID: r.MachineID, RequestID: r.ID, Machine: h.machines[r.MachineID].Name, Project: s.Project, Title: s.Title})
 }
 func (h *Hub) watched(session string) bool {
 	for o := range h.operators {

@@ -207,6 +207,7 @@
 "Go to request" = "Go to request";
 "Grant permissions for this turn" = "Grant permissions for this turn";
 "Grouped by the email Codex reports; an account identifier was unavailable." = "Grouped by the email Codex reports; an account identifier was unavailable.";
+"Hide session details" = "Hide session details";
 "History is available when Relay reconnects to the machine." = "History is available when Relay reconnects to the machine.";
 "History on Codex" = "History on Codex";
 "History unavailable." = "History unavailable.";
@@ -300,6 +301,7 @@
 "Not verified" = "Not verified";
 "Notifications" = "Notifications";
 "Notifications are denied. You can enable them in iOS Settings." = "Notifications are denied. You can enable them in iOS Settings.";
+"Notifications identify the machine, project, session and turn. Hide these details on shared or locked screens. Message and command contents are never included." = "Notifications identify the machine, project, session and turn. Hide these details on shared or locked screens. Message and command contents are never included.";
 "Notifications not enabled" = "Notifications not enabled";
 "Observed during the current connection. These hints clear when work moves on or the connection is lost." = "Observed during the current connection. These hints clear when work moves on or the connection is lost.";
 "Observed latency" = "Observed latency";
@@ -483,6 +485,7 @@
 "Too many attempts. Wait a minute." = "Too many attempts. Wait a minute.";
 "Tool" = "Tool";
 "Total" = "Total";
+"Turn" = "Turn";
 "Turn duration" = "Turn duration";
 "Unable to save access securely in Keychain." = "Unable to save access securely in Keychain.";
 "Unavailable" = "Unavailable";

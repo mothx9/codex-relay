@@ -27,9 +27,9 @@ func Generate() (Keys, error) { priv, pub, e := webpush.GenerateVAPIDKeys(); ret
 
 type Notice struct {
 	// Optional ephemeral currentness check; never serialized or persisted.
-	Current                                                                       func() bool
-	Key, Kind, SessionID, MachineID, Machine, Project, Title, RequestID, DeviceID string
-	Badge                                                                         int
+	Current                                                                               func() bool
+	Key, Kind, SessionID, MachineID, Machine, Project, Title, RequestID, DeviceID, TurnID string
+	Badge                                                                                 int
 }
 type Worker struct {
 	store   *store.Store
@@ -165,29 +165,53 @@ func (w *Worker) Run(ctx context.Context) {
 	}
 }
 func Payload(n Notice, privacy bool) map[string]string {
-	title := "Codex Relay"
-	if !privacy {
-		title = protocol.Clip(n.Machine+" · "+n.Project, 100)
-	}
-	body := "Codex needs your input."
-	if privacy {
-		body = "A session needs your input."
-	}
+	title := "Codex needs your input"
 	switch n.Kind {
 	case "live_question":
-		body = "Codex asked a question during live work."
+		title = "Codex asked a live question"
 	case "turn_completed":
-		body = "Codex completed a turn."
+		title = "Codex finished"
 	case "failed":
-		body = "A Codex session needs attention."
+		title = "Codex needs attention"
 	case "machine_offline":
-		body = "A Relay machine is offline."
+		title = "A machine went offline"
 	case "test":
-		body = "Relay notification test."
+		title = "Relay notification test"
+	}
+	body, subtitle := "Open Relay to see the current state.", ""
+	if !privacy {
+		clean := func(value string, limit int) string {
+			return protocol.Clip(strings.Join(strings.Fields(value), " "), limit)
+		}
+		machine := n.Machine
+		if machine == "" {
+			machine = n.MachineID
+		}
+		subtitle = clean(machine, 48)
+		if n.Project != "" {
+			subtitle += " · " + clean(n.Project, 48)
+		}
+		context := clean(n.Title, 120)
+		if context == "" && n.SessionID != "" {
+			context = clean(n.SessionID, 100)
+		}
+		if n.TurnID != "" {
+			turn := []rune(n.TurnID)
+			if len(turn) > 8 {
+				turn = turn[len(turn)-8:]
+			}
+			if context != "" {
+				context += " · "
+			}
+			context += "Turn " + clean(string(turn), 8)
+		}
+		if context != "" {
+			body = context
+		}
 	}
 	target := "/"
 	if n.SessionID != "" {
 		target = "/session/" + url.PathEscape(n.SessionID)
 	}
-	return map[string]string{"title": title, "body": body, "url": target, "tag": "relay-" + n.SessionID, "kind": n.Kind}
+	return map[string]string{"title": title, "body": body, "subtitle": subtitle, "url": target, "tag": "relay-" + n.SessionID, "kind": n.Kind}
 }

@@ -116,3 +116,22 @@ func TestRejectPushSSRF(t *testing.T) {
 		}
 	}
 }
+
+func TestNoticeContextAndPrivacy(t *testing.T) {
+	n := Notice{Kind: "turn_completed", SessionID: "node~thread", Machine: "GPU node", Project: "Validator", Title: "Check empty input", TurnID: "turn-12345678"}
+	p := Payload(n, false)
+	if p["subtitle"] != "GPU node · Validator" || p["body"] != "Check empty input · Turn 12345678" {
+		t.Fatalf("missing context: %#v", p)
+	}
+	hidden := Payload(n, true)
+	if hidden["subtitle"] != "" || strings.Contains(hidden["body"], n.Title) || strings.Contains(hidden["body"], "12345678") {
+		t.Fatal("hidden metadata leaked")
+	}
+	n.Title = ""
+	n.Machine = ""
+	n.MachineID = "node"
+	p = Payload(n, false)
+	if p["body"] != "node~thread · Turn 12345678" || p["subtitle"] != "node · Validator" {
+		t.Fatal("missing identity fallback")
+	}
+}

@@ -62,7 +62,7 @@ self.addEventListener("push", (e) => {
     typeof p.url === "string" && p.url.startsWith("/session/") ? p.url : "/";
   e.waitUntil(
     self.registration.showNotification(p.title || "Codex Relay", {
-      body: p.body || "Codex richiede attenzione.",
+      body: [p.subtitle, p.body || "Codex needs attention."].filter(Boolean).join("\n"),
       tag: p.tag || "relay",
       icon: "/icon-192.png",
       badge: "/icon-192.png",
