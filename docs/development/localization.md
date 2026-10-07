@@ -21,3 +21,8 @@ onboarding UI tests. Review Italian and accessibility text sizes on iPhone 16;
 longer labels must wrap or adapt without hiding the primary action. Live tests
 reuse an existing development controller; they never create production
 enrollments just to exercise localization.
+
+SwiftPM toolchains that do not compile String Catalogs use generated `.strings`
+resources. After editing the catalog, run `python3 scripts/localization.py`. CI
+checks that these resources match the catalog; the Xcode app compiles the catalog
+directly.

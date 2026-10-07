@@ -13,6 +13,7 @@ jobs:
       - run: test -z "$(gofmt -l cmd internal web)"
       - run: sh -n scripts/install.sh
       - run: python3 scripts/install_test.py
+      - run: python3 scripts/localization.py --check
       - run: go vet ./...
       - run: go test -race ./...
       - run: node web/control.test.mjs
