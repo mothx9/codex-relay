@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="500" viewBox="0 0 1000 500">
+<title>Connection lifecycle</title><desc>A connected transport is not proof of current Codex state.</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M 0 1 L 8 5 L 0 9" fill="none" stroke="#8394aa" stroke-width="1.5"/></marker></defs>
+<rect width="1000" height="500" rx="24" fill="#15181c"/>
+<g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif">
+<text x="40" y="50" fill="#f0f2f3" font-size="26" font-weight="700">Connection lifecycle</text>
+<text x="40" y="81" fill="#afb5bf" font-size="15">A connected transport is not proof of current Codex state.</text>
+<rect x="40" y="155" width="270" height="104" rx="14" fill="#222830" stroke="#8394aa" stroke-width="1.5"/>
+<text x="58" y="185" fill="#f0f2f3" font-size="18" font-weight="600">Offline</text>
+<text x="58" y="213" fill="#afb5bf" font-size="14">Last-known state</text>
+<text x="58" y="235" fill="#afb5bf" font-size="14">Controls unavailable</text>
+<rect x="365" y="155" width="270" height="104" rx="14" fill="#222830" stroke="#e3a552" stroke-width="1.5"/>
+<text x="383" y="185" fill="#f0f2f3" font-size="18" font-weight="600">Syncing</text>
+<text x="383" y="213" fill="#afb5bf" font-size="14">Fetch current snapshot</text>
+<text x="383" y="235" fill="#afb5bf" font-size="14">Replay pending requests</text>
+<rect x="690" y="155" width="270" height="104" rx="14" fill="#222830" stroke="#60b58a" stroke-width="1.5"/>
+<text x="708" y="185" fill="#f0f2f3" font-size="18" font-weight="600">Online</text>
+<text x="708" y="213" fill="#afb5bf" font-size="14">Snapshot accepted</text>
+<text x="708" y="235" fill="#afb5bf" font-size="14">Current capabilities</text>
+<path d="M 310 204 H 357" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="334" y="185" fill="#b9c7d9" font-size="14" text-anchor="middle">connect</text>
+<path d="M 635 204 H 682" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="659" y="185" fill="#b9c7d9" font-size="14" text-anchor="middle">admit</text>
+<rect x="365" y="340" width="270" height="82" rx="14" fill="#222830" stroke="#e3a552" stroke-width="1.5"/>
+<text x="383" y="370" fill="#f0f2f3" font-size="18" font-weight="600">Degraded</text>
+<text x="383" y="398" fill="#afb5bf" font-size="14">Agent reachable; Codex unavailable</text>
+<path d="M 500 259 V 332" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="574" y="326" fill="#b9c7d9" font-size="14" text-anchor="middle">sync fails</text>
+<path d="M 825 259 V 302 H 175 V 266" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="230" y="290" fill="#b9c7d9" font-size="14" text-anchor="middle">transport lost</text>
+<text x="42" y="455" fill="#afb5bf" font-size="14">Old epoch / stale watermark / reordered event: rejected, never a state regression</text>
+</g></svg>

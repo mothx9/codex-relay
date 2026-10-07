@@ -15,7 +15,7 @@ Relay can ask Codex to execute actions with the user's local privileges. Treat i
 
 Approval IDs are one-shot and scoped to the machine/thread. Both hub and adapter prevent repeat submission. Only accept-once/reject are exposed for command/file approvals. Permission grants are limited to the requested profile and **this turn**, explicitly labelled as such. No session grants, reusable execution-policy amendment or approval bypass is offered. File approvals without proposed-file context cannot be approved.
 
-Resolution is confirmed by Codex's `serverRequest/resolved`, including decisions made elsewhere. Requests expire locally after 24 hours; resolve any remaining upstream request through local Codex. Lost command outcomes are surfaced as uncertain, never retried silently. Start and steer have current-state/turn preconditions; final enforcement remains Codex's responsibility. Unsupported requests require local handling.
+Resolution is confirmed by Codex's `serverRequest/resolved`, including decisions made elsewhere. Observed unresolved requests remain canonical until Codex resolution or complete reconnect reconciliation; elapsed time alone does not resolve an upstream request. Lost command outcomes are surfaced as uncertain, never retried silently. Start and steer have current-state/turn preconditions; final enforcement remains Codex's responsibility. Unsupported requests require local handling.
 
 A private fallback server cannot prove that an independent local UI has stopped working on the same stored thread. Do not resume the same thread concurrently in separate runtimes. Shared-daemon mode is the default and has been tested with two clients.
 
@@ -31,7 +31,7 @@ The Service Worker caches only the static application shell, never API responses
 
 ## Reporting
 
-For sensitive issues, contact the repository owner's GitHub profile before publishing credential-bearing evidence. Public reports must omit tokens, prompts, private paths and push endpoints. This is a young privileged tool: verified paths and remaining acceptance gaps are recorded in VALIDATION.md. Restrict ingress to trusted networks while performing initial acceptance.
+For sensitive issues, contact the repository owner's GitHub profile before publishing credential-bearing evidence. Public reports must omit tokens, prompts, private paths and push endpoints. This is a young privileged tool: verified paths and remaining acceptance gaps are recorded in versioned reports under docs/. Restrict ingress to trusted networks while performing initial acceptance.
 
 
 ## Short device pairing
@@ -40,6 +40,10 @@ Authenticated operators (or the local Hub owner via `codex-relay pair`) may mint
 
 Paired operator devices receive distinct random credentials, hashed in SQLite and valid for 90 days. Native clients store them in the iOS Keychain with `ThisDeviceOnly` protection; web clients use Secure/HttpOnly/SameSite cookies. No bootstrap token goes to the phone. Operators can revoke or remove devices; connected sockets close immediately, and HTTP/command routing rejects revoked access. All paired operators have full single-user control privileges; there is no multi-user role model.
 
-Pausing/removing an agent changes its Relay access and derived Fleet metadata. It does not stop Codex, delete its threads, log out the OpenAI account or change the machine network. Machine account data is restricted to the official `account/read` type/email/plan view; token/workspace-routing data is discarded. OpenAI account-wide session management is outside the app-server protocol.
+Pausing/removing an agent changes its Relay access and derived Fleet metadata. It does not stop Codex, delete its threads, log out the OpenAI account or change the machine network. Machine account data is restricted to typed supported identity, plan, usage windows, credits, limits and token counters from the authenticated local runtime; unknown authentication and workspace-routing data is discarded. OpenAI account-wide session management is outside the app-server protocol.
 
 Optional native APNs uses an owner-supplied ES256 key, never checked in. Config and key files require mode 0600. The Hub alone signs provider requests and connects to fixed Apple APNs endpoints; agent hosts remain unaware of notifications. Registrations are bound to paired device IDs; expired/revoked devices receive no push. Private lock-screen text is the default. Apple development team, signing/provisioning and Push Notifications capability are required for real native delivery; tests with an HTTP fake are not delivery proof.
+
+See the [trust-boundary diagram](docs/assets/architecture/trust-boundaries.svg),
+[access model](docs/architecture/access.md), [notification routing](docs/architecture/notifications.md)
+and [test isolation](docs/development/test-isolation.md) for current implementation details.

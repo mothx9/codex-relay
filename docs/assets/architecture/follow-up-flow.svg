@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600">
+<title>Follow-up lifecycle</title><desc>Working send queues future work. Steer changes the current turn.</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M 0 1 L 8 5 L 0 9" fill="none" stroke="#8394aa" stroke-width="1.5"/></marker></defs>
+<rect width="1000" height="600" rx="24" fill="#15181c"/>
+<g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif">
+<text x="40" y="50" fill="#f0f2f3" font-size="26" font-weight="700">Follow-up lifecycle</text>
+<text x="40" y="81" fill="#afb5bf" font-size="15">Working send queues future work. Steer changes the current turn.</text>
+<rect x="40" y="145" width="270" height="82" rx="14" fill="#222830" stroke="#8394aa" stroke-width="1.5"/>
+<text x="58" y="175" fill="#f0f2f3" font-size="18" font-weight="600">Sending</text>
+<text x="58" y="203" fill="#afb5bf" font-size="14">Ephemeral optimistic bubble</text>
+<rect x="365" y="145" width="270" height="82" rx="14" fill="#222830" stroke="#8394aa" stroke-width="1.5"/>
+<text x="383" y="175" fill="#f0f2f3" font-size="18" font-weight="600">Queued</text>
+<text x="383" y="203" fill="#afb5bf" font-size="14">Codex owns the queue</text>
+<rect x="690" y="145" width="270" height="82" rx="14" fill="#222830" stroke="#8394aa" stroke-width="1.5"/>
+<text x="708" y="175" fill="#f0f2f3" font-size="18" font-weight="600">Dispatched</text>
+<text x="708" y="203" fill="#afb5bf" font-size="14">Canonical turn starts</text>
+<path d="M 310 186 H 357" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M 635 186 H 682" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="365" y="340" width="270" height="104" rx="14" fill="#222830" stroke="#8394aa" stroke-width="1.5"/>
+<text x="383" y="370" fill="#f0f2f3" font-size="18" font-weight="600">Canonical</text>
+<text x="383" y="398" fill="#afb5bf" font-size="14">Reconcile by client identity</text>
+<text x="383" y="420" fill="#afb5bf" font-size="14">No duplicate user bubble</text>
+<path d="M 825 227 V 390 H 643" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="40" y="496" fill="#afb5bf" font-size="14">ACK ≠ completion. Deterministic failure retains text for deliberate retry.</text>
+<text x="40" y="526" fill="#afb5bf" font-size="14">UNKNOWN_OUTCOME: inspect canonical state; never automatically resend.</text>
+</g></svg>
