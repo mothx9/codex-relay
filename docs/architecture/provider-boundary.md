@@ -31,3 +31,8 @@ The final coherence pass adds no upstream RPC dispatch to native views. Live
 question hints consume normalized Relay Activity questions and event turn identity;
 choosing an option only prepares an ordinary composer draft. The Hub pending store
 and adapter boundary are unchanged.
+
+Image input maps to Codex data URLs only inside the adapter; the Relay contract
+accepts bounded typed bytes. Codex async-reply envelopes are decoded there into
+generic question/answer presentation metadata. Native views do not parse Codex
+XML/JSON wrappers and do not infer a pending lifecycle from them.

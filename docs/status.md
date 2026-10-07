@@ -5,15 +5,15 @@ engineering evidence; they do not override this page or claim a public release.
 
 ## Release and distribution
 
-The source candidate is **0.1.0-rc.5**. The reference Hub uses
-`0.1.0-rc.5+m2.6`; Agents retain `0.1.0-rc.5+m2.5`. No final v0.1.0 is published by this productization pass.
+The source candidate is **0.1.0-rc.5**. The reference Hub uses `0.1.0-rc.5+m2.8` (updated web branding);
+Agents use `0.1.0-rc.5+m2.7`. No final v0.1.0 is published by this productization pass.
 Build the candidate from source with `make build`; use `--binary` with the
 installer. The legacy default download is an older published RC, not current main.
 
 The latest wave adds explicit context-compaction status, compact mixed activity
 groups, direct file diffs, remaining-capacity quota windows and connected-client
 local banners with machine/session/turn context and a slimmer persistent composer.
-Eighteen sanitized screenshots and a recorded walkthrough document the current native views.
+Sanitized screenshots and a recorded walkthrough document the current native views.
 
 The native app supports iOS 17+, English/Italian, Dynamic Type and Reduce Motion.
 Liquid Glass uses a material fallback on older iOS. Installation currently
@@ -38,23 +38,40 @@ Relay never infers pending state from history or from a missing visible reply.
 
 A live question observed on the current connection appears in a separate
 **Live Questions** section of Needs You and contributes to the connected app's
-attention badge. It is an ephemeral hint, not a pending RPC. It can prepare a
-composer draft; the user chooses Follow-up or explicit Steer. It cannot dismiss
+attention badge. It is an ephemeral hint, not a pending RPC. It stays reachable above the session composer. Reply prepares an explicit
+current-turn Steer draft for review; it never sends automatically. It cannot dismiss
 another client's question. Turn boundaries, user input, local submission,
 disconnect or epoch changes retire the hint. Navigation alone does not.
 History and reconnect never reconstruct it. Cross-client async-question parity
 is not claimed. See the [protocol](architecture/protocol.md) and
 [event audit](development/validation/live-event-audit.md).
 
+## Native inputs
+
+New turns, Follow-ups and explicit Steer accept up to two selected photos or
+screenshots when the connected Agent advertises image support. The iPhone uses
+the system photo picker or an image drop, downscales to 1600 pixels and re-encodes
+without original metadata. Each image is at most 256 KiB. Arbitrary files, video
+and audio are not supported. Image previews are bounded local memory; after
+relaunch, canonical history can show attachment counts rather than stored copies.
+
+Queued work has a separate **Next up** home above the composer. Canonical user
+items enter the transcript by upstream identity, not by the order of taps. An
+absent queue entry is not treated as completed; uncertain outcomes never resend
+automatically. Slow history/catalogue reads use a separate Agent lane from
+serialized control commands.
+
 ## Native notifications
 
 The native app provides **local alerts while connected**, separately from
 **remote APNs push**. Local foreground banners for completion, supported pending
 RPCs, live questions and failure pass simulator OS-notification acceptance.
-The owner accepted the installed physical build: Home Screen icon, chat scroll,
+The owner accepted an earlier installed physical build: Home Screen icon, chat scroll,
 keyboard/composer menu, direct file diff and the local test banner. This is separate
-from the simulator event-routing tests. Local alerts cannot reach a force-quit or
-arbitrarily suspended app. Permission alone does not mean remote delivery is operational. The notification screen
+from the simulator event-routing tests. The latest images, queue controls and
+Notification Center/Lock Screen gestures await a new owner check. Delivered local alerts remain in Notification Center when that iOS presentation
+option is enabled; Lock Screen presentation is a separate system preference.
+New local alerts cannot reach a force-quit or arbitrarily suspended app. Permission alone does not mean remote delivery is operational. The notification screen
 summarizes both paths and discloses registration details.
 
 Routing, semantic deduplication, privacy, expired-token cleanup and deep links

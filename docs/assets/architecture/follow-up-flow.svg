@@ -10,10 +10,10 @@
 <text x="40" y="81" class="muted" font-size="15">Working send queues future work. Steer changes the current turn.</text>
 <rect x="40" y="145" width="270" height="82" rx="14" class="panel" stroke="#8394aa" stroke-width="1.5"/>
 <text x="58" y="175" class="ink" font-size="18" font-weight="600">Sending</text>
-<text x="58" y="203" class="muted" font-size="14">Ephemeral optimistic bubble</text>
+<text x="58" y="203" class="muted" font-size="14">Separate Next up area</text>
 <rect x="365" y="145" width="270" height="82" rx="14" class="panel" stroke="#8394aa" stroke-width="1.5"/>
 <text x="383" y="175" class="ink" font-size="18" font-weight="600">Queued</text>
-<text x="383" y="203" class="muted" font-size="14">Codex owns the queue</text>
+<text x="383" y="203" class="muted" font-size="14">Canonical order · editable text</text>
 <rect x="690" y="145" width="270" height="82" rx="14" class="panel" stroke="#8394aa" stroke-width="1.5"/>
 <text x="708" y="175" class="ink" font-size="18" font-weight="600">Dispatched</text>
 <text x="708" y="203" class="muted" font-size="14">Canonical turn starts</text>

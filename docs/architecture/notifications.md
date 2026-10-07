@@ -123,3 +123,14 @@ and never opens an approval form from the notification payload.
 
 [Notification settings](../assets/app/screenshots/notifications.png) ·
 [Transient Inbox](../assets/app/screenshots/live-inbox.png)
+
+## Banner, Notification Center and Lock Screen
+
+Foreground delivery requests both `.banner` and `.list`, so an alert can remain
+in Notification Center after its banner disappears. iOS independently controls
+Lock Screen, Notification Center and banner presentation in Settings. Relay
+removes obsolete attention notices, not ordinary completion/failure history.
+Badge updates follow unresolved attention and are applied only when the count
+changes. No paid Apple membership is needed for these local presentation modes.
+This does not allow the Hub to deliver new native alerts while the app is
+suspended or terminated; that separate path still requires configured APNs.

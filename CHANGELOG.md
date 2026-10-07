@@ -6,6 +6,15 @@ required physical notification delivery, is complete.
 
 ## Unreleased — M2 productization
 
+- Bounded photo/screenshot input through the native picker and image drops,
+  gated by Agent capability and forwarded through the official Codex input API.
+- Separate Next up queue, canonical queue-edit results and independent read/control
+  lanes; uncertain outcomes remain explicit and never resend automatically.
+- Compact, individually navigable activities with source/tool context; persistent
+  live-question reply access and readable structured reply history.
+- Foreground alerts retained in Notification Center, with Lock Screen and remote
+  delivery limitations made explicit.
+
 - Contextual notification banners identify machine, project, session and source turn,
   with an explicit hide-details preference and automatic device registration retry.
 - Slimmer composer with persistent contextual actions, tighter activity indentation,

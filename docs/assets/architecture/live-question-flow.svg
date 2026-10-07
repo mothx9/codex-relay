@@ -18,7 +18,7 @@
 <text x="388" y="225" class="muted" font-size="14">Fanout without transcript watch</text>
 <rect x="700" y="145" width="260" height="104" rx="14" class="panel" stroke="#8394aa" stroke-width="1.5"/>
 <text x="718" y="175" class="ink" font-size="18" font-weight="600">Native controller</text>
-<text x="718" y="203" class="muted" font-size="14">Live Questions section</text>
+<text x="718" y="203" class="muted" font-size="14">Inbox + composer reply access</text>
 <text x="718" y="225" class="muted" font-size="14">One local or remote notice</text>
 <path d="M 300 186 H 362" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>
 <path d="M 630 186 H 692" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>
@@ -28,5 +28,5 @@
 <text x="268" y="450" class="muted" font-size="14">No authoritative pending-store mutation</text>
 <path d="M 830 249 V 317 H 500 V 362" fill="none" stroke="#8394aa" stroke-width="2" marker-end="url(#arrow)"/>
 <text x="40" y="550" class="muted" font-size="14">History remains readable. Reconnect cannot prove currentness and does not replay hints.</text>
-<text x="40" y="580" class="muted" font-size="14">Preparing an option makes a draft; sending remains Follow-up or explicit Steer.</text>
+<text x="40" y="580" class="muted" font-size="14">Reply prepares a current-turn Steer draft. Review and send explicitly.</text>
 </g></svg>

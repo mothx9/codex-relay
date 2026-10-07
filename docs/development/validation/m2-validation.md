@@ -451,3 +451,91 @@ The public `codex-relay doctor` path documented in the operations guide is a
 transport/service diagnostic, not proof of a visible iPhone banner. Report any
 composer overlap or notification missing its source; owner gesture/banner
 acceptance is separate from the automated receipts above.
+
+
+## Input control and conversation hardening — 2026-10-07
+
+This follow-up starts at `cf3eab7` and preserves the RC release boundary. Source
+slices include `462b0d2`, `7dcd217`, `bea7f67`, `13b1469`, `451d2cf`, `392178c`
+and the Xcode 26.6 compatibility correction `2c1e830`.
+
+### Behavior and evidence
+
+- Follow-ups have a separate **Next up** area. Canonical IDs reconcile Steer and
+  dispatched input; disappearance from the queue is not completion. A real isolated
+  Codex thread passed native queue + Steer acceptance: Steer entered the current
+  turn, the Follow-up remained queued, then appeared exactly once when consumed.
+- System Photos and image drop support bounded JPEG/PNG input. Native photo-picker
+  selection/removal passed. A real native → Hub → Agent → Codex turn received and
+  recognized the selected image; an independent thread read found the image item.
+  The disposable thread was archived afterward. No production thread was used.
+- Expanded activity rows replace the collapsed preview, identify server/tool, and
+  open only the selected operation. File previews share a compact row. A live
+  question remains reachable above the composer and prepares an explicit Steer
+  draft. Historical questions never regain actionability.
+- The Codex adapter projects valid structured question replies into question and
+  answer content, preserving upstream item/client IDs. It does not expose the
+  transport XML/JSON wrapper or infer pending state. Markdown uses a restrained
+  inline-code scale, list rhythm, headings and quotes.
+- Local foreground alerts request both banner and Notification Center list
+  presentation. Completed/failed notices are retained; obsolete attention notices
+  can be retired. Badge changes do not clear delivered completion notices.
+- Native chrome, app icon, PWA icons and public branding now share Codex geometry;
+  the obsolete R mark is removed. Twenty sanitized product surfaces were captured.
+  The refreshed 17.83-second walkthrough was reviewed across its full duration.
+  Diagrams are transparent SVGs, including the bounded image-input path.
+
+### Qualification
+
+Go formatting/vet, ordinary and race tests, 9 web checks, 8 installer checks,
+localization and repository-link checks passed. All 66 Swift tests passed. Simulator
+build and generic build-for-testing passed. Eight focused UI checks passed,
+including four actual local OS banner kinds, semantic dedupe, disabled delivery,
+Notification Center retention, image picking, individual activity navigation and
+live-question draft behavior. Separate real-Codex image and queue/Steer UI tests
+passed; independent canonical history contained four owned turns and one image.
+
+CI initially exposed excessive SwiftUI type-check complexity on Xcode 26.6;
+extracting the live-question choice view fixed it. CI at `2c1e830` is green, and
+its focused live-question UI test also passed locally. This is qualification,
+not a substitute for owner gesture acceptance or remote APNs delivery.
+
+### Reference deployment
+
+Hub and all three Agents were upgraded to `0.1.0-rc.5+m2.7`; the Hub then received
+`0.1.0-rc.5+m2.8` solely to ship the corrected embedded web branding. SQLite backups,
+service/credential hashes and shared Codex daemon identities were preserved.
+The Linux Agent synchronized in 398 ms, the GPU Agent in 445 ms, and all three
+Agents reached Online. These measurements describe that deployment, not an iPhone
+latency guarantee. Slow history now has a separate lane from serialized controls.
+The final signed native build is installed in place without re-pairing.
+
+### One physical acceptance batch (Italian)
+
+Prerequisito: apri Codex Relay già installato; non reinstallare, non ripetere il
+pairing e non usare turni di lavoro reali per prove distruttive.
+
+1. Controlla l'icona Codex nella Home e nella barra Fleet: nessuna R.
+2. In una chat apri `+` → Add photos, scegli uno screenshot e rimuovilo senza
+   inviarlo. Il composer resta visibile. Prova il trascinamento di uno screenshot
+   quando disponibile sul dispositivo.
+3. Espandi un gruppo Activity e tocca una singola operazione: il dettaglio deve
+   riguardare quella operazione. Apri anche un file; scroll e tastiera non devono
+   riportarti forzatamente in fondo.
+4. In un turno isolato, verifica Next up e Steer; confronta ordine e consumo con
+   lo stesso thread nel client Codex. Il messaggio in coda non è un messaggio già
+   eseguito. Per una domanda live usa Reply vicino al composer: prepara soltanto
+   la bozza; inviala solo se vuoi davvero modificare quel turno.
+5. Relay → Settings → Notifications → Test local alert. Dopo il banner abbassa
+   il Centro notifiche; poi blocca il telefono e verifica l'avviso già consegnato.
+   Le opzioni iOS Banner, Centro notifiche e Schermata di blocco devono essere
+   abilitate per Relay. Non è una prova di nuovi eventi ad app sospesa/chiusa.
+
+Restituisci eventuali screenshot di icona, singolo dettaglio, Next up o avviso
+mancante. Confronta Relay → Machines con lo stato canonico Hub; i test backend
+`TestSlowHistoryCannotBlockCurrentTurnControl` e
+`TestReconnectAndHistoryDoNotResurrectAsyncQuestions` coprono rispettivamente
+isolamento delle letture e mancata resurrezione dalla cronologia. Le prove su
+fixture, le due prove Codex isolate e l'accettazione fisica restano distinte.
+L'accettazione fisica precedente non certifica automaticamente questa build.
+Remote APNs resta esclusivamente il gate Apple descritto nello stato prodotto.

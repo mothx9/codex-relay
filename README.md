@@ -28,7 +28,7 @@ controlling and continuing Codex sessions across multiple machines.
 
 - **Know what is happening now:** live responses, commands, tools, files and diffs.
 - **Respond when needed:** canonical decisions and clearly separate transient live questions.
-- **Continue work:** New Turn when ready, queued Follow-up while working, separate Steer.
+- **Continue work:** New Turn, a separate Follow-up queue and explicit current-turn Steer; attach photos or screenshots.
 - **Trust the state:** explicit Online, Syncing, Degraded and Offline; last-known work stays visibly stale.
 - **Understand your fleet:** machines, runtime account usage, controllers and redacted diagnostics.
 - **Stay informed:** native local alerts while connected; remote APNs with your Apple setup.

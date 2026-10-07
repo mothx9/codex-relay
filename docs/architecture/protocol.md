@@ -112,3 +112,29 @@ It contains no reasoning text. The Hub's ephemeral live summary carries the same
 kind; current Online sessions can display “Compacting context” only while its
 state is running. Completion and turn boundaries stop the indication. Historical
 markers remain readable but never imply that compaction is currently running.
+
+## Bounded image input and reply presentation
+
+![Bounded image input](../assets/architecture/image-input.svg)
+
+The optional `can_send_images` capability gates inline image input for New Turn,
+Follow-up and Steer. Commands may contain at most two `images` objects with
+`media_type` and base64 `data`: JPEG/PNG only, each decoded payload at most 256 KiB,
+valid dimensions at most 4096 pixels per side. No remote URL or machine-local
+path is accepted. The unchanged 1 MiB message limit bounds the entire command.
+The Codex adapter maps these to its official image input shape. Pending RPC
+answers and queue edits cannot carry image payloads. Image-bearing queued entries
+are not text-editable. Command payloads are transient and never enter SQLite;
+canonical history exposes `image_count`, not image bytes.
+
+A complete, valid Codex async-reply envelope is projected to generic Activity
+`replies` (question/answer pairs) and readable answer text. Item/client identity
+is unchanged. Malformed envelopes or mixed prose remain untouched. This is only
+presentation: it never resolves a pending RPC or establishes live-question
+currentness. Codex retains the original source.
+
+Queue results distinguish an omitted/null `follow_ups` (no read) from `[]`
+(a successful empty queue read). A queue edit returns its canonical queue state
+without waiting for another event. Duplicate invalidations coalesce without
+losing a change that arrives during the read. Read-only history/catalogue work
+cannot block the Agent's serialized mutation lane.
