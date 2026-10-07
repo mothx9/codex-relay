@@ -54,7 +54,7 @@ Normal launch afterward restores the paired app without clearing Keychain.
 Review every exported image before committing. Source fixtures live in
 `ProductFixtures`; do not publish screenshots from real project work. The pipeline
 covers Fleet, conversation, Needs You, inline question, Terminal, tools, diff,
-Machines, Account, Settings, Diagnostics and pairing.
+Machines, Account, Settings, global and machine Diagnostics, the Relay menu and pairing.
 
 The shared vector mark is `docs/assets/app/mark.svg`. Run
 `python3 scripts/branding.py` with librsvg installed to regenerate AppIcon,
@@ -63,3 +63,7 @@ not only at full source resolution.
 
 See [localization](localization.md), [test isolation](test-isolation.md) and
 [testing](testing.md) for resource generation and safe real-Hub acceptance.
+
+The [navigation rationale](../architecture/native-navigation.md) describes entity
+homes. `LiveQuestions` is a bounded presentation hint fed only by accepted live
+activity events; history never creates hints or canonical pending requests.

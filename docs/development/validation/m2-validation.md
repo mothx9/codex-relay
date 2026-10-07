@@ -1,5 +1,9 @@
 # M2 productization validation
 
+This dated report preserves initial productization evidence. The final coherence
+pass is recorded below when qualified; [current status](../../status.md) is the
+canonical release and compatibility reference.
+
 Validation date: 2026-10-07. M1 remains the reliability baseline in
 [m1-validation.md](m1-validation.md). M2 remains an explicit release candidate:
 physical notification delivery has not passed.
@@ -50,7 +54,7 @@ The real reference fleet reported one fresh account shared by three machines,
 using a supported account ID and one populated rate-limit bucket. This observation
 does not imply every optional field is available on every plan.
 
-The [provider audit](architecture/provider-boundary.md) records the boundary.
+The [provider audit](../../architecture/provider-boundary.md) records the boundary.
 MCP progress, terminal interaction and file patch events are normalized inside the
 Codex adapter. Terminal input text is not forwarded. Tool results retain bounded
 text summaries and discard arbitrary structured/authentication data. The existing
@@ -92,7 +96,7 @@ subsequent exact clipboard comparisons count as copy acceptance.
 ## Visual evidence
 
 Twelve sanitized product screenshots are versioned under
-[assets/app/screenshots](assets/app/screenshots). They show Fleet, Needs You,
+[assets/app/screenshots](../../assets/app/screenshots). They show Fleet, Needs You,
 conversation, Terminal, tools, diff, Machines, Account, Settings, Diagnostics,
 onboarding and pairing. They exercise the production views with isolated DEBUG
 fixtures, without Keychain, Hub or network. Private live-test screenshots remain
@@ -148,9 +152,9 @@ pending decisions. Account allowlists and diagnostics redaction have negative
 secret tests. Notifications are controller-scoped, private by default, suppress
 resolved requests and remove expired APNs tokens. Deep links only select current
 authenticated state; they cannot execute actions or reconstruct stale approvals.
-See [SECURITY.md](../SECURITY.md), [access](architecture/access.md),
-[notifications](architecture/notifications.md) and
-[test isolation](development/test-isolation.md). This is a focused implementation
+See [SECURITY.md](../../../SECURITY.md), [access](../../architecture/access.md),
+[notifications](../../architecture/notifications.md) and
+[test isolation](../test-isolation.md). This is a focused implementation
 review, not an external penetration-test certification.
 
 ## Physical iPhone and remaining acceptance
@@ -172,4 +176,5 @@ the Hub, followed by physical phone acceptance.
 No final v0.1.0 or public tag was published. Source defaults remain `0.1.0-rc.5`;
 the reference deployment has the explicit `+m2.3` build suffix. The tag workflow
 creates a reviewed draft release with checked artifacts, not automatic final
-publication. The milestone remains BLOCKED on the stated physical/Apple gates.
+publication. At this initial checkpoint, physical/Apple acceptance remained outstanding; this
+is not an implementation failure or a current release-status declaration.

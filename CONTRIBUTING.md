@@ -54,3 +54,8 @@ diagrams with `scripts/diagrams.py` when their sources change.
 Prefer durable guides to new root-level handoffs. Keep historical evidence clearly
 marked as version-specific. Report security-sensitive issues privately as described
 in [SECURITY.md](SECURITY.md).
+
+Run `python3 scripts/docs-check.py` after moving guides or assets. The project
+license is [Apache-2.0](LICENSE); keep license metadata consistent. Current release
+and compatibility statements belong in [status](docs/status.md), while dated
+acceptance evidence belongs under `docs/development/validation/`.

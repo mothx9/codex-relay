@@ -57,3 +57,9 @@ Enter the displayed Hub URL and one-time code in Codex Relay. The code expires
 after five minutes and can be redeemed once. The bootstrap credential is read
 locally by the CLI; do not copy it to the phone, shell arguments, chat or Git.
 Then [add a Linux machine](linux-agent.md) or [a macOS machine](macos-agent.md).
+
+## Native notifications
+
+After pairing works, follow [APNs setup](notifications.md) to configure the
+existing Hub with your Apple provider key. No second Hub or enrollment reset is
+required.

@@ -26,3 +26,8 @@ remain where existing consumers/reconciliation need them. They do not justify
 coupling new presentation logic to raw app-server enum spelling. A future provider
 must first demonstrate compatible command/currentness/pending-request semantics;
 there is no claim that existing Codex control can be universally substituted.
+
+The final coherence pass adds no upstream RPC dispatch to native views. Live
+question hints consume normalized Relay Activity questions and event turn identity;
+choosing an option only prepares an ordinary composer draft. The Hub pending store
+and adapter boundary are unchanged.

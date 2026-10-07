@@ -68,10 +68,9 @@ the Hub. Development builds use the sandbox endpoint; production-signed builds
 use production. A Personal Team profile without that entitlement cannot pass
 physical APNs acceptance.
 
-During M2 inspection, the existing reference iPhone build's provisioning profile
-was local provisioning and both its profile and signed executable lacked
-`aps-environment`. No signing credentials were changed. Server and simulator
-validation is distinct from the still-required real-device delivery test.
+Follow the [setup guide](../setup/notifications.md) for the Apple key and Hub
+service configuration. [Current status](../status.md) records external acceptance
+gates separately from application/server test evidence.
 
 Automated coverage exercises controller-scoped status, token privacy,
 ES256 provider authentication, APNs endpoint selection, expired-token cleanup,

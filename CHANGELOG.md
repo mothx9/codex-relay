@@ -6,6 +6,12 @@ required physical notification delivery, is complete.
 
 ## Unreleased — M2 productization
 
+- Work-focused navigation with single entity homes and exception-only Fleet health.
+- Compact Terminal summaries, machine-local diagnostics and account relationships.
+- Live async-question draft preparation stays separate from authoritative Needs You;
+  reconnect/history never reconstruct pending questions from assistant content.
+- Apache-2.0 metadata aligned, public guides edited and validation evidence relocated.
+
 - Native Now/Fleet navigation, live session heartbeat, contextual composer and
   structured Terminal/tool/file/diff presentation.
 - Derived Codex Account Registry with sparse usage windows and account freshness.
@@ -14,13 +20,13 @@ required physical notification delivery, is complete.
 - One-time machine installer flow, iPhone onboarding, English/Italian resources,
   shared product mark and isolated public screenshot tooling.
 
-[M2 validation](docs/m2-validation.md) records the live acceptance evidence.
+[M2 validation](docs/development/validation/m2-validation.md) records the live acceptance evidence.
 Physical APNs delivery is a separate acceptance requirement; implementation and
 provider tests are not a delivery claim.
 
 ## 0.1.0-rc.4+m1.4 — 2026-10-07
 
-Validated canonical reliability baseline ([report](docs/m1-validation.md)):
+Validated canonical reliability baseline ([report](docs/development/validation/m1-validation.md)):
 
 - Separate machine connectivity from last-known Codex session state.
 - Explicit Syncing → Online admission, epochs, sequences and snapshot watermarks.

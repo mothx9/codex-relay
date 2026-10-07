@@ -4,7 +4,7 @@ Use the same user account as local Codex. Start/sign in to Codex through its own
 supported workflow and use its existing shared daemon. Relay never restarts that
 daemon to install an Agent.
 
-Create an Agent code in **Settings → Machines → Add a machine** on your paired
+Create an Agent code in **Relay menu → Machines → Add a machine** on your paired
 iPhone. With the matching macOS arm64 candidate binary available locally:
 
 ```sh

@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Start in **Settings → Diagnostics** and **Machines → machine detail**. Copy
+Start in **Relay menu → Diagnostics** and **Machines → machine detail**. Copy
 Diagnostics produces a redacted report; the detailed on-screen view can still
 contain private identities. Do not post credentials, Hub origins, request bodies
 or real conversation screenshots in public issues.

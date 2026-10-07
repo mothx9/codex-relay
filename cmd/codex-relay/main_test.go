@@ -30,7 +30,7 @@ func TestOccupiedPortDoesNotCreateCredentials(t *testing.T) {
 }
 
 func TestDoctorRejectsUnsafeOriginBeforeReadingToken(t *testing.T) {
-	for _, origin := range []string{"http://192.168.1.60", "https://user:private@example.org", "https://example.org/path", "file:///tmp/local"} {
+	for _, origin := range []string{"http://192.0.2.60", "https://user:private@example.org", "https://example.org/path", "file:///tmp/local"} {
 		err := doctor(context.Background(), []string{"--hub-url", origin, "--token-file", "/missing/token"})
 		if err == nil || !strings.Contains(err.Error(), "Hub") || strings.Contains(err.Error(), "private") {
 			t.Fatalf("unsafe origin accepted or leaked: %v", err)

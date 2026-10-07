@@ -1,24 +1,46 @@
 # Codex Relay documentation
 
-Start with the [product overview](../README.md), then follow the guide for each role.
+Start with the [product overview](../README.md). Choose the guide for what you
+want to do; you do not need the implementation reports to install Relay.
 
-| Goal | Guide |
-| --- | --- |
-| Understand the system | [Architecture](architecture/overview.md), [trust and security](../SECURITY.md) |
-| Install the always-on coordinator | [Linux Hub](setup/hub.md) |
-| Connect a Codex-running machine | [Linux Agent](setup/linux-agent.md), [macOS Agent](setup/macos-agent.md) |
-| Install the controller | [iPhone build and pairing](setup/iphone.md) |
-| Understand synchronization | [Canonical state and recovery](architecture/synchronization.md) |
-| Integrate a client | [Relay protocol](architecture/protocol.md) |
-| Manage access | [Controllers, enrollment and recovery](architecture/access.md) |
-| Understand runtime accounts | [Account registry](architecture/accounts.md) |
-| Enable notifications | [APNs and Web Push](architecture/notifications.md) |
-| Maintain the installation | [Upgrades](operations/upgrading.md), [troubleshooting](operations/troubleshooting.md) |
-| Contribute | [Contributing](../CONTRIBUTING.md), [native development](development/native-ios.md), [testing](development/testing.md) |
-| Prepare a release | [Release engineering](development/releases.md) |
+## Understand
 
-Evidence is versioned: [M1 validation](m1-validation.md) records the completed
-reliability baseline; [M2 product validation](m2-validation.md) records product
-acceptance and the remaining physical/Apple gates. The [live event audit](live-event-audit.md) distinguishes
-supported protocol events from observed acceptance. [Historical records](development/history/README.md)
-are preserved for investigation, not as the normal setup path.
+- [Architecture and source-of-truth boundaries](architecture/overview.md)
+- [Native navigation and entity homes](architecture/native-navigation.md)
+- [Canonical protocol](architecture/protocol.md) and [synchronization](architecture/synchronization.md)
+- [Codex account data](architecture/accounts.md) and [notification behavior](architecture/notifications.md)
+- [Current status, distribution and compatibility](status.md)
+
+## Install
+
+1. [Linux Hub](setup/hub.md)
+2. [iPhone build and pairing](setup/iphone.md)
+3. [Linux Agent](setup/linux-agent.md) or [macOS Agent](setup/macos-agent.md)
+4. [Native notification setup](setup/notifications.md)
+
+## Operate
+
+- [Upgrade safely](operations/upgrading.md)
+- [Troubleshoot and collect diagnostics](operations/troubleshooting.md)
+- [Controllers, enrollment and recovery](architecture/access.md)
+
+## Develop
+
+- [Contributing](../CONTRIBUTING.md)
+- [Native iOS and screenshots](development/native-ios.md)
+- [Testing](development/testing.md) and [test isolation](development/test-isolation.md)
+- [Localization](development/localization.md)
+- [Release engineering](development/releases.md)
+- [Provider boundary](architecture/provider-boundary.md)
+
+## Security
+
+Read [SECURITY.md](../SECURITY.md) before exposing a Hub. Relay credentials grant
+control of local Codex work; OpenAI credentials stay on workers.
+
+## Engineering reference
+
+Dated evidence: [M1](development/validation/m1-validation.md),
+[M2](development/validation/m2-validation.md),
+[live event audit](development/validation/live-event-audit.md).
+[Historical records](development/history/README.md) preserve earlier investigations.

@@ -50,7 +50,7 @@ observation time and Hub receipt time. Operational activity boundaries update
 Fleet summaries. Assistant/command deltas, tool progress and file patches retain
 item identity and reach watchers without waiting for completion. Raw upstream
 method labels are diagnostic metadata, never client dispatch instructions or
-user-visible labels. [Event audit](../live-event-audit.md) lists supported mappings.
+user-visible labels. [Event audit](../development/validation/live-event-audit.md) lists supported mappings.
 
 ## Commands, results and uncertainty
 
@@ -83,3 +83,14 @@ request bodies, tool output or answers. High-frequency events and diagnostics
 remain bounded in memory. Hub restart starts machines Offline and rehydrates
 through Agent/Codex synchronization. Controller reconnect never replays an
 uncertain mutation.
+
+## Pending RPCs versus assistant questions
+
+Supported pending server RPCs own request identity and one-shot resolution. The
+Hub's canonical pending store feeds Fleet, Inbox, inline forms and notifications.
+An assistant `agentMessage.questions` payload is conversation content, not such a
+request. In validated upstream 0.160.1, async-question currentness is client-local;
+no shared authoritative pending list/resolution lifecycle is exposed. Replaying
+history cannot add Needs You entries. Native live hints are bounded presentation
+state and expire with stream/turn/navigation changes, without claiming resolution.
+See [current compatibility](../status.md) for the supported response behavior.

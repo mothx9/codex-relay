@@ -16,6 +16,7 @@ check:
 	node web/control.test.mjs
 	python3 scripts/install_test.py
 	python3 scripts/localization.py --check
+	python3 scripts/docs-check.py
 cross:
 	mkdir -p dist
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="$(LDFLAGS)" -o dist/codex-relay-linux-amd64 ./cmd/codex-relay

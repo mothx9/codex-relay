@@ -4,7 +4,7 @@ Install and sign in to Codex normally as the same OS user who will run Relay.
 Use an existing shared Codex daemon. Relay will not start or restart it. The
 machine needs outbound HTTPS access to your Hub; it needs no inbound Relay port.
 
-1. On the paired iPhone, open **Settings → Machines → Add a machine**.
+1. On the paired iPhone, open **Relay menu → Machines → Add a machine**.
 2. Choose a display name and a unique machine ID (letters, digits, `_` or `-`).
 3. Create the one-time Agent code.
 4. On that machine, install a matching candidate binary with the guided option:

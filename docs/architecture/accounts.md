@@ -38,3 +38,16 @@ Thread token counters include input, cached/cache-write input, output, reasoning
 output count and total, plus model context-window size when reported. These are
 accounting numbers, never reasoning text. Cumulative totals are not current
 context occupancy. Relay does not calculate bills or unsupported analytics.
+
+## Presentation and units
+
+Accounts own usage presentation; “Used on” links to the canonical machine list.
+Relative update age is primary. Source-machine provenance and identity fallback
+belong in expandable data details. Missing data is never represented as zero.
+
+Codex 0.160.1's `CreditsSnapshot.balance` is an optional string alongside
+`hasCredits` and `unlimited`; its protocol definition provides no currency,
+unit or precision contract. Relay therefore shows availability/unlimited state
+in the primary UI. The exact reported balance is inspectable in Data details
+with an explicit unknown-unit explanation. Relay does not convert it into money
+or infer a purchase value. Reset credits are a separate typed count.

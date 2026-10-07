@@ -17,11 +17,6 @@ controlling and continuing Codex sessions across multiple machines.
 - **Understand your fleet:** machines, runtime account usage, controllers and redacted diagnostics.
 - **Keep control:** your Hub, your machines, local Codex login, no Relay cloud account.
 
-The native app is a release candidate built with Xcode. There is no claimed App
-Store/TestFlight distribution yet. Native push requires a suitable Apple team,
-provisioning and Hub APNs configuration; pairing does not require push.
-Screenshots use sanitized fixtures of the production views, not private workloads.
-
 ## How it works
 
 <img src="docs/assets/architecture/architecture.svg" alt="An iPhone connects to one Hub; Linux and macOS Agents connect outbound and use local Codex" width="850">
@@ -41,8 +36,8 @@ build. Use the Go version in `go.mod` to build the current candidate.
 
 ### 1. Install the Hub
 
-On the Hub host, build the candidate. For a different architecture, build with
-`make cross` and transfer the matching binary through your trusted channel.
+Choose an always-on Linux host as the coordinator. On that host, build the
+current candidate:
 
 ```sh
 git clone https://github.com/mothx9/codex-relay.git
@@ -58,9 +53,9 @@ HTTPS/proxy configuration remains yours; Relay does not configure your network.
   --public-url "$RELAY_HUB_URL"
 ```
 
-The service preserves its identity and SQLite metadata in its private state
-directory. Follow the [Hub guide](docs/setup/hub.md) for TLS, service lifetime and
-candidate artifact details.
+Expected: the Hub service is running and reachable at your HTTPS origin. Follow
+the [Hub guide](docs/setup/hub.md) for TLS, cross-builds, service lifetime and
+advanced installation.
 
 ### 2. Pair the iPhone
 
@@ -75,11 +70,11 @@ own signing team. On the Hub host, generate a one-time controller code:
 Enter the Hub URL and code in the app. The code expires in five minutes; the
 bootstrap/admin credential stays on the Hub host.
 
-<img src="docs/assets/app/screenshots/pairing.png" width="270" alt="First-run explanation and one-time pairing form">
+Expected: Fleet opens. [Pairing walkthrough and screenshot](docs/setup/iphone.md).
 
 ### 3. Add a machine
 
-On iPhone, open **Settings → Machines → Add a machine** to mint a one-time Agent
+On iPhone, open **Relay menu → Machines → Add a machine** to mint a one-time Agent
 code. On the Codex-running machine, install its matching candidate binary:
 
 ```sh
@@ -91,7 +86,8 @@ Enter the code at the prompt. The Agent connects outbound and progresses through
 Syncing to Online after a fresh Codex snapshot. Existing enrollment is never
 silently replaced. [Linux guide](docs/setup/linux-agent.md) · [macOS guide](docs/setup/macos-agent.md).
 
-<img src="docs/assets/app/screenshots/machines.png" width="270" alt="Machines show Relay connectivity independently from local Codex work">
+Expected: the machine appears Online in **Relay menu → Machines**. Its local
+Codex login and work stay on that machine.
 
 ### 4. Run Codex normally
 
@@ -109,7 +105,7 @@ current-turn actions. Acknowledgement is not completion, and an uncertain outcom
 is never automatically resent.
 
 <p>
-<img src="docs/assets/app/screenshots/question.png" width="260" alt="Inline Needs You with explicit choices">
+<img src="docs/assets/app/screenshots/needs-you.png" width="260" alt="Authoritative decisions across machines in Needs You">
 <img src="docs/assets/app/screenshots/account.png" width="260" alt="Codex runtime account and dynamically described usage windows">
 </p>
 
@@ -129,10 +125,14 @@ protect controller/machine credentials, and read [SECURITY.md](SECURITY.md).
 OpenAI authentication stays on the worker. Push text is private by default;
 notification taps navigate and never approve work.
 
-The adapter was validated against Codex app-server `0.160.1`; supported actions
-are capability-gated. Relay protocol v1 is separate from the upstream schema.
-The [M1 report](docs/m1-validation.md) records the validated reliability baseline;
-build success alone does not prove live control or physical APNs delivery.
+## Current status and distribution
+
+The native app is an Xcode development build. The project remains an explicit
+release candidate, with physical push acceptance outstanding. See the canonical
+[current status and compatibility](docs/status.md) for validated Codex versions,
+iOS distribution, APNs requirements and the distinction between supported pending
+RPCs and transient async assistant questions. Pairing and ordinary control work
+without APNs. Public screenshots use sanitized production-view fixtures.
 
 Native iOS 17+ supports English and Italian, semantic typography, Dynamic Type,
 Reduce Motion, and material fallback where Liquid Glass is unavailable. The

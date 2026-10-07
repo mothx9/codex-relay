@@ -24,7 +24,7 @@ do not require re-pairing and must not erase this enrollment.
 
 ## Add machines and work
 
-Open **Settings → Machines → Add a machine**, generate an Agent code and follow
+Open **Relay menu → Machines → Add a machine**, generate an Agent code and follow
 the Linux/macOS setup guide on that machine. Run Codex normally. Fleet prioritizes
 Needs You and current work. A Ready session sends a New Turn; a Working session
 normally queues a Follow-up. Steer is a separate current-turn action.
@@ -36,3 +36,8 @@ your machines. Relay never creates a second OpenAI login.
 TestFlight/App Store distribution can be prepared after product acceptance and
 Apple configuration. No consumer distribution or real push acceptance is claimed
 by a successful simulator build.
+
+<img src="../assets/app/screenshots/pairing.png" width="270" alt="Concise role explanation and one-time iPhone pairing">
+
+See [current distribution and compatibility](../status.md) and
+[native notification setup](notifications.md) for the remaining Apple requirements.
