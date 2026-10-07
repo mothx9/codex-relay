@@ -258,6 +258,14 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	m.LastSeen = time.Now().UTC()
 	m.Name = protocol.Clip(m.Name, 64)
 	if m.Account != nil {
+		account := *m.Account
+		previous := h.machines[id].Account
+		if msg.Machine.Account != nil && (previous == nil || previous.ObservedAt != account.ObservedAt) {
+			account.HubObservedAt = time.Now().UTC()
+		} else if previous != nil {
+			account.HubObservedAt = previous.HubObservedAt
+		}
+		m.Account = &account
 		m.Account.Kind = protocol.Clip(m.Account.Kind, 32)
 		m.Account.Email = protocol.Clip(m.Account.Email, 254)
 		m.Account.Plan = protocol.Clip(m.Account.Plan, 64)
@@ -389,7 +397,9 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 	h.machines[id] = m
 	if e.Kind == "account" {
 		if e.Account != nil {
-			m.Account = e.Account
+			account := *e.Account
+			account.HubObservedAt = time.Now().UTC()
+			m.Account = &account
 			h.machines[id] = m
 		}
 		snap := h.snapshot()

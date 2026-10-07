@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/mothx9/codex-relay/internal/protocol"
+	"sort"
 	"time"
 )
 
@@ -27,9 +28,36 @@ func (a *Adapter) Account(ctx context.Context) *protocol.Account {
 	account := &protocol.Account{Kind: protocol.Clip(view.Account.Type, 32), Email: protocol.Clip(view.Account.Email, 254), Plan: protocol.Clip(view.Account.Plan, 64), Source: "codex/account/read", ObservedAt: time.Now().UTC()}
 	if raw, err := a.rpc(ctx, "account/rateLimits/read", map[string]any{}); err == nil {
 		var limits struct {
-			RateLimits *protocol.AccountLimits `json:"rateLimits"`
+			RateLimits           *protocol.AccountLimits           `json:"rateLimits"`
+			AccountID            string                            `json:"accountId"`
+			Buckets              map[string]protocol.AccountLimits `json:"rateLimitsByLimitId"`
+			OrdinaryUsageAllowed *bool                             `json:"ordinaryUsageAllowed"`
+			ResetCredits         *protocol.ResetCredits            `json:"rateLimitResetCredits"`
 		}
 		if json.Unmarshal(raw, &limits) == nil {
+			account.ID = protocol.Clip(limits.AccountID, 256)
+			account.Buckets = boundBuckets(limits.Buckets)
+			account.OrdinaryUsageAllowed = limits.OrdinaryUsageAllowed
+			account.ResetCredits = limits.ResetCredits
+			if account.ResetCredits != nil {
+				if len(account.ResetCredits.Credits) > 100 {
+					account.ResetCredits.Credits = account.ResetCredits.Credits[:100]
+				}
+				for i := range account.ResetCredits.Credits {
+					c := &account.ResetCredits.Credits[i]
+					c.ID = protocol.Clip(c.ID, 128)
+					c.Status = protocol.Clip(c.Status, 64)
+					c.ResetType = protocol.Clip(c.ResetType, 64)
+					if c.Title != nil {
+						v := protocol.Clip(*c.Title, 256)
+						c.Title = &v
+					}
+					if c.Description != nil {
+						v := protocol.Clip(*c.Description, 1024)
+						c.Description = &v
+					}
+				}
+			}
 			account.Limits = limits.RateLimits
 			boundLimits(account.Limits)
 		}
@@ -50,6 +78,9 @@ func boundLimits(l *protocol.AccountLimits) {
 	}
 	l.LimitID = protocol.Clip(l.LimitID, 128)
 	l.Plan = protocol.Clip(l.Plan, 64)
+	l.Name = protocol.Clip(l.Name, 128)
+	l.Model = protocol.Clip(l.Model, 128)
+	l.ReachedType = protocol.Clip(l.ReachedType, 64)
 	if l.Credits != nil && l.Credits.Balance != nil {
 		v := protocol.Clip(*l.Credits.Balance, 64)
 		l.Credits.Balance = &v
@@ -95,7 +126,8 @@ func (a *Adapter) accountEvent(m rpcMessage) bool {
 		next := p.Limits
 		boundLimits(next)
 		if next.LimitID != "" && next.LimitID != limits.LimitID {
-			limits = protocol.AccountLimits{LimitID: next.LimitID}
+			limits = account.Buckets[next.LimitID]
+			limits.LimitID = next.LimitID
 		}
 		if next.Plan != "" {
 			limits.Plan = next.Plan
@@ -115,6 +147,23 @@ func (a *Adapter) accountEvent(m rpcMessage) bool {
 		}
 		limits.SpendControlReached = next.SpendControlReached
 		account.Limits = &limits
+		if next.Name != "" {
+			limits.Name = next.Name
+		}
+		if next.Model != "" {
+			limits.Model = next.Model
+		}
+		limits.ReachedType = next.ReachedType
+		if limits.LimitID != "" {
+			buckets := make(map[string]protocol.AccountLimits)
+			for key, value := range account.Buckets {
+				buckets[key] = value
+			}
+			if len(buckets) < 64 || buckets[limits.LimitID].LimitID != "" {
+				buckets[limits.LimitID] = limits
+			}
+			account.Buckets = buckets
+		}
 	}
 	account.Source = "codex/" + m.Method
 	account.ObservedAt = time.Now().UTC()
@@ -122,4 +171,25 @@ func (a *Adapter) accountEvent(m rpcMessage) bool {
 	a.mu.Unlock()
 	a.emit(protocol.Event{Kind: "account", Account: &account, RawEvent: m.Method})
 	return true
+}
+
+func boundBuckets(input map[string]protocol.AccountLimits) map[string]protocol.AccountLimits {
+	if input == nil {
+		return nil
+	}
+	result := make(map[string]protocol.AccountLimits)
+	keys := make([]string, 0, len(input))
+	for key := range input {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		if len(result) >= 64 {
+			break
+		}
+		value := input[key]
+		boundLimits(&value)
+		result[protocol.Clip(key, 128)] = value
+	}
+	return result
 }

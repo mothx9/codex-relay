@@ -20,6 +20,9 @@ type SpendControl struct {
 	ResetsAt         int64  `json:"resetsAt"`
 }
 type AccountLimits struct {
+	Name                string        `json:"limitName,omitempty"`
+	Model               string        `json:"normalModelSlug,omitempty"`
+	ReachedType         string        `json:"rateLimitReachedType,omitempty"`
 	LimitID             string        `json:"limitId,omitempty"`
 	Plan                string        `json:"planType,omitempty"`
 	Primary             *RateWindow   `json:"primary,omitempty"`
@@ -29,6 +32,7 @@ type AccountLimits struct {
 	SpendControlReached *bool         `json:"spendControlReached,omitempty"`
 }
 type TokenBreakdown struct {
+	ReasoningOutput int64 `json:"reasoningOutputTokens"`
 	Input           int64 `json:"inputTokens"`
 	CachedInput     int64 `json:"cachedInputTokens"`
 	CacheWriteInput int64 `json:"cacheWriteInputTokens"`
@@ -41,4 +45,19 @@ type TokenUsage struct {
 	ContextWindow *int64         `json:"modelContextWindow,omitempty"`
 	ObservedAt    time.Time      `json:"observed_at"`
 	Source        string         `json:"source"`
+}
+
+// Only display metadata; reset-credit redemption remains local to Codex.
+type ResetCredits struct {
+	Available int64         `json:"availableCount"`
+	Credits   []ResetCredit `json:"credits"`
+}
+type ResetCredit struct {
+	ID          string  `json:"id"`
+	Title       *string `json:"title,omitempty"`
+	Description *string `json:"description,omitempty"`
+	ExpiresAt   *int64  `json:"expiresAt,omitempty"`
+	GrantedAt   int64   `json:"grantedAt"`
+	ResetType   string  `json:"resetType"`
+	Status      string  `json:"status"`
 }

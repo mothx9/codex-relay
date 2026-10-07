@@ -35,6 +35,9 @@ func TestAccountViewExcludesAuthenticationAndRouting(t *testing.T) {
 				}
 				result = map[string]any{"account": map[string]string{"type": "chatgpt", "email": "fixture@example.invalid", "planType": "plus"}, "workspaceRouting": map[string]string{"chatgptAccountId": "PRIVATE_ROUTING_CANARY"}, "accessToken": "PRIVATE_AUTH_CANARY"}
 			}
+			if msg.Method == "account/rateLimits/read" {
+				result = map[string]any{"accountId": "account-fixture", "ordinaryUsageAllowed": false, "rateLimits": map[string]any{"primary": map[string]any{"usedPercent": 61, "windowDurationMins": 300}}, "rateLimitsByLimitId": map[string]any{"codex": map[string]any{"limitId": "codex", "limitName": "Codex", "primary": map[string]any{"usedPercent": 61}}}, "rateLimitResetCredits": map[string]any{"availableCount": 2}, "accessToken": "PRIVATE_QUOTA_CANARY"}
+			}
 			if conn.WriteJSON(map[string]any{"id": msg.ID, "result": result}) != nil {
 				return
 			}
@@ -49,6 +52,9 @@ func TestAccountViewExcludesAuthenticationAndRouting(t *testing.T) {
 	view := adapter.Account(context.Background())
 	if view == nil || view.Kind != "chatgpt" || view.Email != "fixture@example.invalid" {
 		t.Fatal("account metadata missing")
+	}
+	if view.ID != "account-fixture" || view.OrdinaryUsageAllowed == nil || *view.OrdinaryUsageAllowed || view.ResetCredits.Available != 2 || len(view.Buckets) != 1 {
+		t.Fatal("supported usage metadata missing")
 	}
 	raw, _ := json.Marshal(view)
 	if strings.Contains(string(raw), "PRIVATE_") {
@@ -81,5 +87,15 @@ func TestTokenUsageIsAccountingOnly(t *testing.T) {
 	b, _ := json.Marshal(ev)
 	if strings.Contains(string(b), "PRIVATE") || ev.Session.TokenUsage.Total.Total != 100 {
 		t.Fatal("unsafe or missing accounting")
+	}
+}
+
+func TestAccountMultiBucketSparseUpdatePreservesOtherWindows(t *testing.T) {
+	a := &Adapter{cfg: Config{MachineID: "m"}, events: make(chan protocol.Event, 8), done: make(chan struct{}), sessions: map[string]protocol.Session{}}
+	for _, raw := range []string{`{"rateLimits":{"limitId":"codex","primary":{"usedPercent":10}}}`, `{"rateLimits":{"limitId":"fast","primary":{"usedPercent":20}}}`, `{"rateLimits":{"limitId":"codex","secondary":{"usedPercent":30}}}`} {
+		a.handle(rpcMessage{Method: "account/rateLimits/updated", Params: json.RawMessage(raw)})
+	}
+	if a.account.Buckets["codex"].Primary.UsedPercent != 10 || a.account.Buckets["codex"].Secondary.UsedPercent != 30 || a.account.Buckets["fast"].Primary.UsedPercent != 20 {
+		t.Fatal("bucket updates contaminated or lost prior windows")
 	}
 }

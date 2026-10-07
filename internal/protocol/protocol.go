@@ -39,12 +39,17 @@ type Machine struct {
 
 // Account contains public account metadata, never authentication material.
 type Account struct {
-	Source     string         `json:"source,omitempty"`
-	ObservedAt time.Time      `json:"observed_at,omitempty"`
-	Limits     *AccountLimits `json:"limits,omitempty"`
-	Kind       string         `json:"kind"`
-	Email      string         `json:"email,omitempty"`
-	Plan       string         `json:"plan,omitempty"`
+	ID                   string                   `json:"id,omitempty"`
+	HubObservedAt        time.Time                `json:"hub_observed_at,omitempty"`
+	Buckets              map[string]AccountLimits `json:"buckets,omitempty"`
+	OrdinaryUsageAllowed *bool                    `json:"ordinary_usage_allowed,omitempty"`
+	ResetCredits         *ResetCredits            `json:"reset_credits,omitempty"`
+	Source               string                   `json:"source,omitempty"`
+	ObservedAt           time.Time                `json:"observed_at,omitempty"`
+	Limits               *AccountLimits           `json:"limits,omitempty"`
+	Kind                 string                   `json:"kind"`
+	Email                string                   `json:"email,omitempty"`
+	Plan                 string                   `json:"plan,omitempty"`
 }
 type Session struct {
 	TokenUsage     *TokenUsage  `json:"token_usage,omitempty"`
