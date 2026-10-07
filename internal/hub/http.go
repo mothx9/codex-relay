@@ -469,7 +469,9 @@ func (h *Hub) result(machine string, r protocol.Result) {
 	} else {
 		r.History = nil
 		r.HistoryCursor = ""
-		r.FollowUps = nil
+		if f.kind != protocol.QueueUpdate {
+			r.FollowUps = nil
+		}
 	}
 	if f.operator.session == f.session || f.kind != "history" {
 		f.operator.peer.Enqueue(protocol.Message{Type: "result", Result: &r})

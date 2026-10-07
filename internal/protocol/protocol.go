@@ -230,7 +230,7 @@ type Result struct {
 	ErrorCode       string     `json:"error_code,omitempty"`
 	Retryable       bool       `json:"retryable"`
 	QueueID         string     `json:"queue_id,omitempty"`
-	FollowUps       []FollowUp `json:"follow_ups,omitempty"`
+	FollowUps       []FollowUp `json:"follow_ups"`
 }
 type Snapshot struct {
 	LiveActivities map[string]LiveActivity `json:"live_activities,omitempty"`

@@ -81,6 +81,9 @@ func (a *Adapter) queueLoop() {
 		case <-a.done:
 			return
 		case id := <-a.queueSignals:
+			a.mu.Lock()
+			delete(a.queuePending, id)
+			a.mu.Unlock()
 			queue, err := a.nativeQueue(context.Background(), id)
 			if err == nil {
 				a.emit(protocol.Event{Kind: "follow_up_queue", SessionID: protocol.SessionID(a.cfg.MachineID, id), FollowUps: queue, RawEvent: "thread/queue/changed"})

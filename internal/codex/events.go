@@ -267,6 +267,16 @@ func (a *Adapter) handle(m rpcMessage) {
 		}
 		ev.Kind = "session"
 	case "thread/queue/changed":
+		// Collapse duplicate invalidations, not queue contents. The worker reads
+		// canonical state once; a change during its RPC schedules another read.
+		if a.queuePending == nil {
+			a.queuePending = make(map[string]bool)
+		}
+		if a.queuePending[id] {
+			a.mu.Unlock()
+			return
+		}
+		a.queuePending[id] = true
 		a.mu.Unlock()
 		select {
 		case a.queueSignals <- id:

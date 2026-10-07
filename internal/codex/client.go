@@ -102,6 +102,7 @@ type Adapter struct {
 	account          *protocol.Account
 	queue            bool
 	queueSignals     chan string
+	queuePending     map[string]bool
 	subscribeSignals chan string
 }
 type pending struct {

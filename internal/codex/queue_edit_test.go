@@ -93,3 +93,23 @@ func TestQueueEditKeepsCanonicalIdentityAndRejectsStaleContent(t *testing.T) {
 		t.Fatal("duplicate queue mutation")
 	}
 }
+
+func TestQueueInvalidationBurstCoalescesWithoutLosingNextRead(t *testing.T) {
+	a := &Adapter{sessions: map[string]protocol.Session{"t": {ID: "m~t", ThreadID: "t", Status: protocol.Working}}, requests: map[string]pending{}, subscribed: map[string]bool{"t": true}, events: make(chan protocol.Event, 8), done: make(chan struct{}), queueSignals: make(chan string, 64), queue: true}
+	change := rpcMessage{Method: "thread/queue/changed", Params: json.RawMessage(`{"threadId":"t"}`)}
+	for range 1000 {
+		a.handle(change)
+	}
+	if len(a.queueSignals) != 1 {
+		t.Fatal("duplicate queue reads accumulated", len(a.queueSignals))
+	}
+	id := <-a.queueSignals
+	// Same transition performed by the worker before starting its RPC.
+	a.mu.Lock()
+	delete(a.queuePending, id)
+	a.mu.Unlock()
+	a.handle(change)
+	if len(a.queueSignals) != 1 {
+		t.Fatal("change during an in-flight read was lost")
+	}
+}
