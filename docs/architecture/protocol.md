@@ -92,7 +92,7 @@ An assistant `agentMessage.questions` payload is conversation content, not such 
 request. In validated upstream 0.160.1, async-question currentness is client-local;
 no shared authoritative pending list/resolution lifecycle is exposed. Replaying
 history cannot add Needs You entries. Native live hints are bounded presentation
-state and expire with stream/turn/navigation changes, without claiming resolution.
+state and expire with stream/turn changes, without claiming resolution.
 See [current compatibility](../status.md) for the supported response behavior.
 
 ### Ephemeral attention (additive v1 message)
@@ -103,3 +103,12 @@ not watching the transcript. Identity, epoch and sequence remain unchanged.
 It is neither pending state nor a replay stream. Clients discard hints after
 connection loss and apply an independent freshness gate. Old clients may ignore
 this message. See [notifications](notifications.md#transient-live-question-channel).
+
+### Context maintenance
+
+The adapter maps upstream `contextCompaction` items to Relay
+`context_compaction` activity with normal item/turn identity and lifecycle state.
+It contains no reasoning text. The Hub's ephemeral live summary carries the same
+kind; current Online sessions can display “Compacting context” only while its
+state is running. Completion and turn boundaries stop the indication. Historical
+markers remain readable but never imply that compaction is currently running.

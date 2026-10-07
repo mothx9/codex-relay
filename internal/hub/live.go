@@ -41,6 +41,8 @@ func (h *Hub) updateLiveActivity(e protocol.Event) {
 			if len(a.Files) > 0 {
 				next.Label = filepath.Base(a.Files[0].Path)
 			}
+		case "context_compaction":
+			next.Kind = "context_compaction"
 		case "agentMessage":
 			next.Kind = "assistant"
 		default:

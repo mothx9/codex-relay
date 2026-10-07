@@ -12,6 +12,7 @@ Relay does not expose model reasoning.
 | `turn/started`, `turn/completed` | Turn identity/state; completion/failure separated | Ordered control events | State and elapsed turn; outbox completion still canonical |
 | `item/agentMessage/delta` | Incremental visible assistant text | Ephemeral watched-session buffer | Incremental transcript |
 | `item/started`, `item/completed` | User-visible message, command, file and MCP activity | Ephemeral activity and bounded fleet summary | Stable activity identity / running or final state |
+| `contextCompaction` through `item/started`, `item/completed` | Maps to canonical `context_compaction` activity; preserves item/turn identity and running/completed state | Bounded live summary; cleared at turn boundaries | Compact transcript marker and “Compacting context” heartbeat; no reasoning content |
 | `item/commandExecution/outputDelta` | Command-output delta | Watched-session stream | Incremental terminal output |
 | `item/commandExecution/terminalInteraction` | M2: canonical interaction marker; stdin and process ID omitted | Watched-session progress, separate from output | Input-sent marker; does not replace command output |
 | `item/fileChange/patchUpdated` | M2: replaces the bounded patch under the existing item identity | Ephemeral activity replacement | File sections and diff update before completion |

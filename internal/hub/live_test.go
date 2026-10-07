@@ -44,3 +44,17 @@ func TestFleetNeverUsesAssistantTextOrReasoning(t *testing.T) {
 		t.Fatal("reasoning entered live presentation")
 	}
 }
+
+func TestCompactionLiveSummaryEndsOnCompletionAndTurnBoundary(t *testing.T) {
+	h := &Hub{}
+	for _, state := range []string{"running", "completed"} {
+		h.updateLiveActivity(protocol.Event{Kind: "activity", SessionID: "m~t", Activity: &protocol.Activity{ID: "compact", Kind: "context_compaction", State: state}})
+		if v := h.liveActivities["m~t"]; v.Kind != "context_compaction" || v.State != state {
+			t.Fatal(v)
+		}
+	}
+	h.updateLiveActivity(protocol.Event{Kind: "turn_completed", SessionID: "m~t"})
+	if len(h.liveActivities) != 0 {
+		t.Fatal("compaction survived turn completion")
+	}
+}

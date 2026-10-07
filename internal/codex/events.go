@@ -51,6 +51,9 @@ func activity(raw json.RawMessage) protocol.Activity {
 		v.State = item.Status
 	}
 	switch item.Type {
+	case "contextCompaction":
+		v.Kind = "context_compaction"
+		v.Text = "Context compacted"
 	case "agentMessage":
 		v.Text = item.Text
 		v.Questions, v.Truncated = clipAsyncQuestions(item.Questions)
