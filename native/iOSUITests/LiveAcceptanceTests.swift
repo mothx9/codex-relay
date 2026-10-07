@@ -47,6 +47,30 @@ import XCTest
         XCTAssertTrue(app.tabBars.buttons["Needs You"].waitForExistence(timeout: 15)); app.tabBars.buttons["Needs You"].tap()
         XCTAssertTrue(app.staticTexts["No pending requests"].waitForExistence(timeout: 15))
     }
+    func testComposerRemainsVisibleWithContextualActions() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--product-screenshot", "conversation", "-AppleLanguages", "(en)"]
+        app.launch()
+        let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
+        XCTAssertTrue(composer.waitForExistence(timeout: 10))
+        let send = app.buttons["composer.send"]
+        XCTAssertLessThanOrEqual(send.frame.height, 48)
+        let before = composer.frame
+        app.buttons["Session actions"].tap()
+        XCTAssertTrue(app.buttons["Steer Current Turn"].waitForExistence(timeout: 5))
+        XCTAssertTrue(composer.isHittable)
+        XCTAssertEqual(composer.frame.minY, before.minY, accuracy: 2)
+        XCTAssertFalse(app.buttons["Copy Session Link"].exists)
+        let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Compact composer with persistent action panel"; capture.lifetime = .keepAlways; add(capture)
+        app.buttons["Session actions"].tap()
+        composer.tap(); composer.typeText("Keep the draft.")
+        app.buttons["Session actions"].tap()
+        XCTAssertTrue(composer.isHittable); XCTAssertTrue(app.keyboards.firstMatch.exists)
+        app.buttons["Steer Current Turn"].tap()
+        XCTAssertEqual(composer.value as? String, "Keep the draft.")
+        XCTAssertEqual(send.label, "Send Steer")
+    }
     func testIsolatedChatComposerAndToolDetails() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -196,6 +220,7 @@ import XCTest
             app.buttons["notice." + kind].tap()
             let banner = springboard.staticTexts[title].firstMatch
             XCTAssertTrue(banner.waitForExistence(timeout: 5), "Missing native banner: " + title)
+            XCTAssertTrue(springboard.staticTexts["Workstation · compiler"].exists)
             let capture = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); capture.name = "local-banner-" + kind; capture.lifetime = .keepAlways; add(capture)
             banner.swipeUp()
             wait(10) { !banner.exists }
@@ -242,6 +267,32 @@ import XCTest
         let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Direct file diff"; capture.lifetime = .keepAlways; add(capture)
     }
 
+    func testPublicProductWalkthrough() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--product-screenshot", "fleet", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        XCTAssertTrue(app.buttons["session.workstation~build"].waitForExistence(timeout: 10))
+        let start = XCTAttachment(screenshot: app.screenshot()); start.name = "Public walkthrough start"; start.lifetime = .keepAlways; add(start)
+        RunLoop.current.run(until: Date().addingTimeInterval(2))
+        app.buttons["session.workstation~build"].tap()
+        XCTAssertTrue(app.buttons["Session actions"].waitForExistence(timeout: 5))
+        RunLoop.current.run(until: Date().addingTimeInterval(2))
+        app.buttons["Session actions"].tap()
+        XCTAssertTrue(app.buttons["Steer Current Turn"].exists)
+        RunLoop.current.run(until: Date().addingTimeInterval(2))
+        app.buttons["Session actions"].tap()
+        let file = app.buttons["activity.file.src/validation.rs"]
+        if !file.isHittable { app.scrollViews["session.transcript"].swipeDown() }
+        XCTAssertTrue(file.isHittable); file.tap()
+        XCTAssertTrue(app.navigationBars["validation.rs"].waitForExistence(timeout: 5))
+        RunLoop.current.run(until: Date().addingTimeInterval(3))
+        app.buttons["Close"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.tabBars.buttons["Needs You"].tap()
+        RunLoop.current.run(until: Date().addingTimeInterval(2))
+        let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Public walkthrough end"; capture.lifetime = .keepAlways; add(capture)
+    }
     func testPublicProductScreenshots() {
         continueAfterFailure = false
         let app = XCUIApplication()

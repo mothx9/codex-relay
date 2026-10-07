@@ -58,7 +58,7 @@ struct ToolSummaryView: View {
                         Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
                             .rotationEffect(.degrees(expanded ? 90 : 0))
                     }
-                    if group.kind != .activity { Text(summary).font(.caption).foregroundStyle(.secondary).padding(.leading, 34)
+                    if group.kind != .activity { Text(summary).font(.caption).foregroundStyle(.secondary).padding(.leading, 24)
                         .contentTransition(.opacity)
                         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: state) }
 
@@ -81,7 +81,7 @@ struct ToolSummaryView: View {
                         }.frame(maxWidth: .infinity, alignment: .leading)
                     }.font(.caption).foregroundStyle(.secondary)
                 }
-            }.padding(.leading, 34)
+            }.padding(.leading, 24)
             if expanded, running > 0, let progress = current?.progress, !progress.isEmpty {
                 Text(progress).font(.caption).foregroundStyle(.secondary).lineLimit(3)
                     .frame(maxWidth: .infinity, alignment: .leading)

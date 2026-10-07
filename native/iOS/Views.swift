@@ -505,12 +505,12 @@ struct LastKnownSession: View {
         relay.selected = ["conversation", "terminal", "tools", "diff", "live-question", "history-question", "compaction"].contains(surface) ? "workstation~build" : surface == "question" ? "laptop~decision" : ""
         relay.outbox = Outbox(); relay.chat = RecentChat()
         relay.chat.put(Activity(id: "example-user", kind: "userMessage", text: "Validate empty inputs, then run the workspace tests."))
-        relay.chat.put(Activity(id: "example-response", kind: "agentMessage", text: "The validator now rejects empty input before running checks. I’m testing the change across the workspace.\n\n### What changed\n- Added an explicit **empty-input guard**.\n- Kept existing error propagation.\n- Added a regression test for `Error::EmptyInput`."))
+        relay.chat.put(Activity(id: "example-response", kind: "agentMessage", text: "I added an **empty-input guard** and a regression test. The workspace suite is running."))
         var command = Activity(id: "example-command", kind: "commandExecution", text: "cargo test --workspace\nCompiling validator v0.4.0\nRunning tests/validation.rs\ntest rejects_empty_input ... ok\ntest preserves_valid_input ... ok\nRunning integration checks…")
         command.command = "cargo test --workspace"; command.state = "running"; command.timestamp = stamp
         relay.chat.put(command)
         var tool = Activity(id: "example-tool", kind: "mcpToolCall", text: "fetch_document")
-        tool.toolName = "fetch_document"; tool.toolServer = "documentation"; tool.state = "running"; tool.progress = "Reading the validation API reference"
+        tool.toolName = "fetch_document"; tool.toolServer = "documentation"; tool.state = surface == "tools" ? "running" : "completed"; tool.progress = "Reading the validation API reference"
         relay.chat.put(tool)
         var file = Activity(id: "example-file", kind: "fileChange", text: "src/validation.rs")
         file.state = "completed"; file.files = decode([["path": "src/validation.rs", "kind": "modify", "patch": patch]])
@@ -567,6 +567,11 @@ struct LastKnownSession: View {
             default: RootView()
             }
         }.environment(relay).preferredColorScheme(.dark)
+            .onChange(of: relay.selected) { _, selected in
+                // The public walkthrough exercises production navigation with isolated content.
+                guard surface == "fleet", !selected.isEmpty else { return }
+                relay.chat = ProductFixtures.controller(surface: selected == "workstation~build" ? "conversation" : "question").chat
+            }
     }
 }
 #Preview("Product · Fleet") { ProductPreviewScreen(surface: "fleet") }
