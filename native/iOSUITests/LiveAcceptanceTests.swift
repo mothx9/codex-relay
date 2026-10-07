@@ -64,7 +64,7 @@ import XCTest
         composer.tap(); composer.typeText("Mantieni il testo corrente.")
         XCTAssertTrue(send.isEnabled); XCTAssertTrue(send.isHittable)
         XCTAssertFalse(app.buttons["composer.dismissKeyboard"].exists)
-        app.scrollViews.firstMatch.swipeDown()
+        app.scrollViews["session.transcript"].swipeDown()
         let terminal = app.buttons["tool.terminal.preview-command-0"]
         for _ in 0..<25 {
             if terminal.isHittable { break }
@@ -77,7 +77,7 @@ import XCTest
         let output = app.buttons["activity.output.preview-command-0"]
         reveal(output, in: app)
         if output.value as? String == "Collapsed" { output.tap() }
-        XCTAssertTrue(app.staticTexts["activity.commandExecution.preview-command-0"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "activity.commandExecution.preview-command-0").firstMatch.waitForExistence(timeout: 5))
         app.buttons["Close"].tap()
         XCTAssertTrue(composer.isHittable)
         XCTAssertEqual(composer.value as? String, "Mantieni il testo corrente.")

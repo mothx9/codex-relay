@@ -22,7 +22,7 @@ Relay does not expose model reasoning.
 | `thread/tokenUsage/updated` | Typed token counters, source and observation time | Session accounting metadata | M2: counters in Session Info |
 | command/file/permissions approval, `item/tool/requestUserInput`, `mcpServer/elicitation/request` | Supported pending RPC mapping; replay pins session | One canonical pending map, metadata persistence, private watched form context | Fleet, Inbox and inline form derive from the same request identity |
 | `serverRequest/resolved` | Removes canonical local pending request once | Removes Hub request and reservation | Removes request across routes |
-| `agentMessage.delivery = async` with `questions` | Preserves visible question content; **not a pending RPC** | Transcript activity only | Readable conversation content; no inferred Inbox entry |
+| `agentMessage.delivery = async` with `questions` | Preserves visible question content; **not a pending RPC** | Transcript activity only | Readable options; current live-turn hint can prepare a composer draft; no inferred Inbox entry |
 | `account/updated`, `account/rateLimits/updated` | Allowlisted typed account event and sparse quota merge | Canonical account metadata / fleet snapshot | M2: derived Account Registry and dynamic usage windows |
 | `account/read`, `account/rateLimits/read` | Read without token refresh; source/freshness metadata | Snapshot account foundation | No Relay-side authentication |
 | reasoning deltas, auth token refresh RPCs | Not forwarded | No reasoning/auth payload | No reasoning/auth payload |

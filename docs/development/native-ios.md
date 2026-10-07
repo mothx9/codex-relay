@@ -54,7 +54,7 @@ Normal launch afterward restores the paired app without clearing Keychain.
 Review every exported image before committing. Source fixtures live in
 `ProductFixtures`; do not publish screenshots from real project work. The pipeline
 covers Fleet, conversation, Needs You, inline question, Terminal, tools, diff,
-Machines, Account, Settings, global and machine Diagnostics, the Relay menu and pairing.
+Machines, Account, Settings, global and machine Diagnostics, the Relay menu, pairing and a live transient assistant question.
 
 The shared vector mark is `docs/assets/app/mark.svg`. Run
 `python3 scripts/branding.py` with librsvg installed to regenerate AppIcon,

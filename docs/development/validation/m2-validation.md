@@ -1,14 +1,14 @@
 # M2 productization validation
 
 This dated report preserves initial productization evidence. The final coherence
-pass is recorded below when qualified; [current status](../../status.md) is the
+pass is recorded in the final section below; [current status](../../status.md) is the
 canonical release and compatibility reference.
 
 Validation date: 2026-10-07. M1 remains the reliability baseline in
 [m1-validation.md](m1-validation.md). M2 remains an explicit release candidate:
 physical notification delivery has not passed.
 
-## Product and implementation
+## Initial product and implementation checkpoint
 
 The native root is Fleet / Needs You / Settings. Fleet prioritizes pending work,
 current work and a bounded recent set; an actionable machine summary opens the
@@ -178,3 +178,109 @@ the reference deployment has the explicit `+m2.3` build suffix. The tag workflow
 creates a reviewed draft release with checked artifacts, not automatic final
 publication. At this initial checkpoint, physical/Apple acceptance remained outstanding; this
 is not an implementation failure or a current release-status declaration.
+
+
+## Final product coherence pass — 2026-10-07
+
+Starting main: `7b88f79453cf6d9aedc7be3de43360981e9fc5c1`. This section supersedes
+the initial checkpoint's navigation and physical-launch observations. Reliability
+and the supported-RPC source-of-truth model remain unchanged.
+
+### Entity homes and visual acceptance
+
+The chosen root is **Fleet / Needs You**, with a native Relay administration
+sheet. It was compared with the preceding three-tab layout on iPhone 16.
+Settings contains Hub configuration, notifications and About; it does not repeat
+Machines, Accounts, Controllers or Diagnostics. Accounts link to a filtered
+canonical Machines screen. Global Diagnostics summarizes system health; machine
+measurements belong to Machine → Diagnostics. See the
+[navigation rationale](../../architecture/native-navigation.md).
+
+Fleet is quiet when infrastructure is healthy and shows an actionable exception
+when necessary. Working stays green without changing the application accent.
+The conversation keeps its reader-intent policy and heartbeat, with a compact
+jump-to-latest button. Terminal cards show current/last activity, while execution
+history and output live in detail. Inline pending questions use neutral content
+with restrained warning treatment and avoid repeated machine/project labels.
+
+Fifteen sanitized screenshots were captured using production views and visually
+reviewed: Fleet, conversation, Inbox, inline question, Terminal, tools, diff,
+Machines, Account, Settings, global Diagnostics, machine Diagnostics, Relay menu,
+pairing and [live assistant question](../../assets/app/screenshots/live-question.png).
+Visual iteration corrected a clipped Terminal header, unnecessary zero-count
+metadata, repeated question headings and singular warning copy. Public fixtures
+are visual evidence only; real-Hub acceptance is listed separately below.
+
+### Async questions and account data
+
+Installed Codex remained **0.160.1**. Supported pending RPCs remain canonical;
+historical assistant questions never create pending requests or Inbox entries.
+A bounded live-turn presentation hint preserves observed assistant questions and
+lets an option prepare a draft. It sends no Answer RPC and does not dismiss
+another client's local question. Disconnect, navigation away and turn changes
+clear the hint; transcript content remains readable. No cross-client async
+currentness guarantee is claimed.
+
+The upstream `CreditsSnapshot.balance` is an optional string without a defined
+unit or display precision. Primary UI therefore shows only supported availability
+or unlimited state; exact reported balance is under Data details, explicitly
+without an invented currency/unit. Usage windows retain protocol-defined duration
+and sparse values. Updated time is primary; source-machine provenance is advanced.
+
+### Repository and checks
+
+Apache-2.0 is consistent with the unchanged tracked LICENSE. README is edited as
+a product introduction with five selected screenshots and an expected-result
+Quick Start. The documentation portal is user-oriented. Validation/audit evidence
+moved here with links repaired; [current status](../../status.md) is the single
+release/limitations reference. Public docs were inspected for private origins,
+paths, identifiers and deployment-specific instructions. Reference-deployment
+history remains clearly identified. A local documentation-link check now runs in
+`make check` and CI. No new provider abstraction or Codex RPC leakage was added.
+
+- `make check test checksums` passed: formatting, vet, Go ordinary/race tests,
+  nine web checks, eight installer checks, localization, local links and three
+  Go cross-builds. All generated checksums verified.
+- 52 Swift core/presentation tests passed, including live-question lifetime and
+  history exclusion; historical async-question regression remains green.
+- Simulator build and build-for-testing passed on iPhone 16.
+- Seven read-only real-Hub UI tests passed: Settings/diagnostics, account,
+  historical Inbox exclusion, reading position with keyboard, notification deep
+  links, management surfaces and Fleet/session heartbeat navigation.
+- Behavioral UI tests passed for nonduplicated administrative homes, live-question
+  draft preparation versus static history, composer/Terminal inspection with draft
+  preservation, and Home Screen icon launch. The icon attachment was visually
+  reviewed. The screenshot pipeline passed.
+- Test harness assumptions were updated for the new navigation and explicit
+  transcript scroll target. The real scroll test loads earlier history when the
+  first page is shorter than the viewport, before checking reading-position
+  retention; production scroll policy was preserved.
+- No test controller or validation Codex thread was created in production by this
+  pass. Real workloads were observed only. Existing paired simulator state was
+  restored after isolated screenshot/tests.
+
+### Deployment and external acceptance
+
+The read-only deployment sample found Hub and all three Agents Online on
+`0.1.0-rc.5+m2.3`, database reachable, 403 catalogue sessions, six hot sessions and
+zero pending RPCs. This pass changes native presentation, documentation and a
+sanitized backend test fixture; it requires no Hub/Agent upgrade. Shared Codex
+daemons, service settings, SQLite, enrollment, credentials and networking were
+unchanged. These are current counts from one sample, not workload guarantees.
+
+The newest native build **built, signed, installed and launched** on the existing
+physical iPhone. Enrollment was retained. Current-build owner gesture/Home Screen
+acceptance is still pending and must not be inferred from automated launch.
+
+Both the signed app and Personal Team profile lack `aps-environment`. The Hub
+service has neither APNs configuration nor provider key; no usable key was found
+in the inspected local Relay/private setup locations. The missing material cannot
+be generated from notification permission. The exact external gate is a
+Push-capable Apple team/profile plus an authorized APNs key privately configured
+on the Hub, followed by physical delivery, badge and tap/cold-start acceptance.
+The [notification setup guide](../../setup/notifications.md) documents the existing
+installer-supported path. No key was fabricated or Apple credential changed.
+
+Independent software work is RC-ready. Source stays `0.1.0-rc.5`, reference
+services stay `0.1.0-rc.5+m2.3`; no final release/tag is published. Physical owner
+and Apple/APNs acceptance remain explicit external gates.
