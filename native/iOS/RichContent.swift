@@ -13,7 +13,8 @@ extension EnvironmentValues {
 struct ChatMarkdown: View {
     let text: String
     let identifier: String
-    @State private var blocks: [RichBlock] = []
+    @State private var rendering = MarkdownRendering()
+    private var blocks: [RichBlock] { rendering.blocks }
     var body: some View {
         VStack(alignment: .leading, spacing: RelaySpacing.row) {
             if blocks.isEmpty {
@@ -24,12 +25,35 @@ struct ChatMarkdown: View {
                 }
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
-            .task(id: text) {
-                let source = text
-                let parsed = await Task.detached(priority: .userInitiated) { RichDocument.parse(source) }.value
-                if !Task.isCancelled { blocks = parsed }
-            }
+            .onChange(of: text, initial: true) { _, value in rendering.submit(value) }
+            .onDisappear { rendering.cancel() }
     }
+}
+
+/// One parse at a time per visible message; a short throttle coalesces deltas
+/// without waiting for the stream to become quiet. Stable parser block IDs keep
+/// selection, code scrollers and disclosure state in place across updates.
+@MainActor @Observable
+private final class MarkdownRendering {
+    private(set) var blocks: [RichBlock] = []
+    @ObservationIgnored private var latest = ""
+    @ObservationIgnored private var rendered: String?
+    @ObservationIgnored private var worker: Task<Void, Never>?
+    func submit(_ text: String) {
+        latest = text
+        guard worker == nil, rendered != latest else { return }
+        worker = Task {
+            while !Task.isCancelled, rendered != latest {
+                let source = latest
+                let parsed = await Task.detached(priority: .userInitiated) { RichDocument.parse(source) }.value
+                guard !Task.isCancelled else { return }
+                blocks = parsed; rendered = source
+                do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
+            }
+            worker = nil
+        }
+    }
+    func cancel() { worker?.cancel(); worker = nil }
 }
 
 private struct MarkdownBlockView: View {

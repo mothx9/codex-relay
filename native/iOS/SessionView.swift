@@ -11,23 +11,10 @@ struct SessionView: View {
     @State private var interrupt = false
     @State private var interruptTurn = ""
     @State private var context = false
-    @State private var tools: TranscriptGroup?
-    @State private var nearBottom = true
-    @State private var userScrolling = false
-    @State private var unread = false
     @State private var submitting = false
     @State private var scrollRequest = 0
-    @State private var visibleItem: String? = "transcript.bottom"
-    @State private var initialScroll = false
-    @State private var historyPositioned = false
     @FocusState private var composing: Bool
-    private let bottomID = "transcript.bottom"
 
-    private var revision: [String] {
-        relay.chat.items.map(\.id) + [relay.chat.items.last?.text ?? ""]
-        + relay.outbox.visible(session: relay.selected).map { $0.id + $0.phase.rawValue }
-        + relay.requests.values.filter { $0.sessionId == relay.selected }.map(\.id).sorted()
-    }
     private func machineOnline(_ session: RelaySession) -> Bool {
         relay.online && relay.machines[session.machineId]?.status == "ONLINE" && session.fresh != false
     }
@@ -35,7 +22,7 @@ struct SessionView: View {
     var body: some View {
         if let session = relay.current {
             VStack(spacing: 0) {
-                transcript(session)
+                SessionTranscript(session: session, scrollRequest: $scrollRequest, onEdit: beginQueueEdit)
                 SessionHeartbeat(session: session).padding(.horizontal, RelaySpacing.page)
                 composer(session).padding(.horizontal, 16).padding(.vertical, 8)
             }
@@ -60,104 +47,8 @@ struct SessionView: View {
                     draft = failed.text
                     steer = false
                 }
-                .sheet(item: $tools) { ToolDetailView(group: $0) }
                 .sheet(isPresented: $context) { contextSheet(session) }
         } else { ContentUnavailableView("Sessione non disponibile", systemImage: "bubble.left.and.bubble.right") }
-    }
-
-    private func transcript(_ session: RelaySession) -> some View {
-        GeometryReader { viewport in
-            ScrollViewReader { proxy in
-                ScrollView {
-                    // Keep stable geometry when reading older history and returning
-                    // from the keyboard; the selected-session memory is bounded.
-                    VStack(alignment: .leading, spacing: RelaySpacing.page) {
-                        if relay.historyLoading {
-                            ProgressView("Caricamento cronologia…").font(.caption).frame(maxWidth: .infinity)
-                        } else if relay.historyCursor != nil && !relay.chat.atCapacity {
-                            Button("Carica messaggi precedenti") {
-                                nearBottom = false
-                                Task { await relay.loadOlderHistory() }
-                            }.frame(minHeight: 44).frame(maxWidth: .infinity).accessibilityIdentifier("history.older")
-                                .accessibilityValue("\(relay.chat.items.count) elementi caricati")
-                                .disabled(!machineOnline(session))
-                        }
-                        if let error = relay.historyError {
-                            Text(error).font(.caption).foregroundStyle(.secondary)
-                            if relay.registry?.machines.first(where: { $0.id == session.machineId })?.access == "PAUSED" {
-                                Button("Riprendi Relay su questa macchina") { Task { await relay.manageMachine(session.machineId, action: "resume") } }
-                                    .font(.subheadline).frame(minHeight: 44)
-                            }
-                        }
-                        if relay.chat.atCapacity || relay.chat.trimmed {
-                            Text("Finestra in memoria limitata. La cronologia completa rimane in Codex.")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        ForEach(TranscriptGroup.make(relay.chat.items)) { group in
-                            if group.kind == .message, let activity = group.items.first {
-                                ChatMessageView(activity: activity).equatable()
-                            } else {
-                                ToolSummaryView(group: group) { tools = group }
-                            }
-                        }
-                        ForEach(relay.outbox.visible(session: session.id)) { item in
-                            OutgoingMessageView(item: item, session: session, onEdit: beginQueueEdit)
-                        }
-                        ForEach(relay.requests.values.filter { $0.sessionId == session.id }.sorted { $0.id < $1.id }) { request in
-                            PendingView(request: request).id(request.presentationID)
-                        }
-                        if relay.chat.items.isEmpty && relay.outbox.visible(session: session.id).isEmpty {
-                            Text("Il contesto recente di Codex apparirà qui.").font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 24)
-                        }
-                        Color.clear.frame(height: 1).id(bottomID)
-                            .background(GeometryReader { geometry in
-                                Color.clear.preference(key: TranscriptBottom.self, value: geometry.frame(in: .named("transcript")).maxY)
-                            })
-                    }.scrollTargetLayout().padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
-                }
-                .coordinateSpace(name: "transcript")
-                .accessibilityIdentifier("session.transcript")
-                .accessibilityValue("\(relay.chat.items.count) items")
-                .scrollDismissesKeyboard(.interactively)
-                .simultaneousGesture(DragGesture(minimumDistance: 3)
-                    .onChanged { _ in userScrolling = true; nearBottom = false }
-                    .onEnded { _ in userScrolling = false })
-                .onChange(of: viewport.size, initial: true) { _, size in
-                    guard !initialScroll, size.height > 0 else { return }
-                    // Navigation may lay out the destination after its first
-                    // appearance. Position only once, after that layout pass.
-                    DispatchQueue.main.async {
-                        proxy.scrollTo(bottomID, anchor: .bottom)
-                        initialScroll = true
-                    }
-                }
-                .onPreferenceChange(TranscriptBottom.self) { value in
-                    nearBottom = !userScrolling && value <= viewport.size.height + 80
-                    if nearBottom { unread = false }
-                }
-                .onChange(of: relay.historyLoading) { _, loading in
-                    guard !loading, !historyPositioned, relay.historyError == nil else { return }
-                    historyPositioned = true
-                    // The initial empty viewport can lay out before canonical
-                    // history arrives. Position after that first hydration too.
-                    DispatchQueue.main.async { proxy.scrollTo(bottomID, anchor: .bottom) }
-                }
-                .onChange(of: revision) { _, _ in
-                    if nearBottom && !userScrolling { DispatchQueue.main.async { if nearBottom && !userScrolling { proxy.scrollTo(bottomID, anchor: .bottom) } } }
-                    else { unread = true }
-                }
-                .onChange(of: scrollRequest) { _, _ in
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { proxy.scrollTo(bottomID, anchor: .bottom) }
-                }
-                .overlay(alignment: .bottomTrailing) {
-                    if unread {
-                        Button { scrollRequest += 1 } label: { Label("Messaggi recenti", systemImage: "arrow.down") }
-                            .font(.caption.weight(.medium)).buttonStyle(.bordered).padding(12)
-                            .accessibilityIdentifier("transcript.latest")
-                    }
-                }
-            }
-        }
     }
 
     @ViewBuilder private func composer(_ session: RelaySession) -> some View {
@@ -289,6 +180,125 @@ struct SessionView: View {
             }.textSelection(.enabled).navigationTitle("Contesto").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Chiudi") { context = false } } }
         }
+    }
+}
+
+// Owns high-frequency transcript observation and scroll state. The composer,
+// header and heartbeat observe only their own canonical metadata.
+private struct SessionTranscript: View {
+    @Environment(RelayController.self) private var relay
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let session: RelaySession
+    @Binding var scrollRequest: Int
+    let onEdit: (Outgoing) -> Void
+    @State private var tools: TranscriptGroup?
+    @State private var nearBottom = true
+    @State private var userScrolling = false
+    @State private var unread = false
+    @State private var initialScroll = false
+    @State private var historyPositioned = false
+    private let bottomID = "transcript.bottom"
+    private var revision: [String] {
+        relay.chat.items.map(\.id) + [relay.chat.items.last?.text ?? ""]
+        + relay.outbox.visible(session: relay.selected).map { $0.id + $0.phase.rawValue }
+        + relay.requests.values.filter { $0.sessionId == relay.selected }.map(\.id).sorted()
+    }
+    private func machineOnline(_ session: RelaySession) -> Bool {
+        relay.online && relay.machines[session.machineId]?.status == "ONLINE" && session.fresh != false
+    }
+    var body: some View {
+        GeometryReader { viewport in
+            ScrollViewReader { proxy in
+                ScrollView {
+                    // Keep stable geometry when reading older history and returning
+                    // from the keyboard; the selected-session memory is bounded.
+                    VStack(alignment: .leading, spacing: RelaySpacing.page) {
+                        if relay.historyLoading {
+                            ProgressView("Caricamento cronologia…").font(.caption).frame(maxWidth: .infinity)
+                        } else if relay.historyCursor != nil && !relay.chat.atCapacity {
+                            Button("Carica messaggi precedenti") {
+                                nearBottom = false
+                                Task { await relay.loadOlderHistory() }
+                            }.frame(minHeight: 44).frame(maxWidth: .infinity).accessibilityIdentifier("history.older")
+                                .accessibilityValue("\(relay.chat.items.count) elementi caricati")
+                                .disabled(!machineOnline(session))
+                        }
+                        if let error = relay.historyError {
+                            Text(error).font(.caption).foregroundStyle(.secondary)
+                            if relay.registry?.machines.first(where: { $0.id == session.machineId })?.access == "PAUSED" {
+                                Button("Riprendi Relay su questa macchina") { Task { await relay.manageMachine(session.machineId, action: "resume") } }
+                                    .font(.subheadline).frame(minHeight: 44)
+                            }
+                        }
+                        if relay.chat.atCapacity || relay.chat.trimmed {
+                            Text("Finestra in memoria limitata. La cronologia completa rimane in Codex.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        ForEach(TranscriptGroup.make(relay.chat.items)) { group in
+                            if group.kind == .message, let activity = group.items.first {
+                                ChatMessageView(activity: activity).equatable()
+                            } else {
+                                ToolSummaryView(group: group) { tools = group }
+                            }
+                        }
+                        ForEach(relay.outbox.visible(session: session.id)) { item in
+                            OutgoingMessageView(item: item, session: session, onEdit: onEdit)
+                        }
+                        ForEach(relay.requests.values.filter { $0.sessionId == session.id }.sorted { $0.id < $1.id }) { request in
+                            PendingView(request: request).id(request.presentationID)
+                        }
+                        if relay.chat.items.isEmpty && relay.outbox.visible(session: session.id).isEmpty {
+                            Text("Il contesto recente di Codex apparirà qui.").font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 24)
+                        }
+                        Color.clear.frame(height: 1).id(bottomID)
+                            .background(GeometryReader { geometry in
+                                Color.clear.preference(key: TranscriptBottom.self, value: geometry.frame(in: .named("transcript")).maxY)
+                            })
+                    }.scrollTargetLayout().padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
+                }
+                .coordinateSpace(name: "transcript")
+                .accessibilityIdentifier("session.transcript")
+                .accessibilityValue("\(relay.chat.items.count) items")
+                .scrollDismissesKeyboard(.interactively)
+                .simultaneousGesture(DragGesture(minimumDistance: 3)
+                    .onChanged { _ in userScrolling = true; nearBottom = false }
+                    .onEnded { _ in userScrolling = false })
+                .onChange(of: viewport.size, initial: true) { _, size in
+                    guard !initialScroll, size.height > 0 else { return }
+                    // Navigation may lay out the destination after its first
+                    // appearance. Position only once, after that layout pass.
+                    DispatchQueue.main.async {
+                        proxy.scrollTo(bottomID, anchor: .bottom)
+                        initialScroll = true
+                    }
+                }
+                .onPreferenceChange(TranscriptBottom.self) { value in
+                    nearBottom = !userScrolling && value <= viewport.size.height + 80
+                    if nearBottom { unread = false }
+                }
+                .onChange(of: relay.historyLoading) { _, loading in
+                    guard !loading, !historyPositioned, relay.historyError == nil else { return }
+                    historyPositioned = true
+                    // The initial empty viewport can lay out before canonical
+                    // history arrives. Position after that first hydration too.
+                    DispatchQueue.main.async { proxy.scrollTo(bottomID, anchor: .bottom) }
+                }
+                .onChange(of: revision) { _, _ in
+                    if nearBottom && !userScrolling { DispatchQueue.main.async { if nearBottom && !userScrolling { proxy.scrollTo(bottomID, anchor: .bottom) } } }
+                    else { unread = true }
+                }
+                .onChange(of: scrollRequest) { _, _ in
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { proxy.scrollTo(bottomID, anchor: .bottom) }
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    if unread {
+                        Button { scrollRequest += 1 } label: { Label("Messaggi recenti", systemImage: "arrow.down") }
+                            .font(.caption.weight(.medium)).buttonStyle(.bordered).padding(12)
+                            .accessibilityIdentifier("transcript.latest")
+                    }
+                }
+            }
+        }.sheet(item: $tools) { ToolDetailView(group: $0) }
     }
 }
 

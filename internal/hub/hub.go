@@ -465,7 +465,7 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 	if b := h.buffers[e.SessionID]; b != nil {
 		b.Apply(e)
 	}
-	if e.Kind == "delta" || e.Kind == "activity" || e.Kind == "command_output" || e.Kind == "diff" || e.Kind == "follow_up_queue" {
+	if e.Kind == "delta" || e.Kind == "activity" || e.Kind == "command_output" || e.Kind == "diff" || e.Kind == "follow_up_queue" || e.Kind == "tool_progress" || e.Kind == "terminal_interaction" {
 		h.broadcast(protocol.Message{Type: "event", Event: &e}, e.SessionID)
 	} else {
 		// Full approval context is ephemeral and only delivered to operators viewing this session.

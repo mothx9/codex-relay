@@ -365,6 +365,8 @@ function renderChat() {
         fileChange: "File",
       }[a.kind] || a.kind;
     article.append(node("p", label, "activity-label"), node("pre", a.text));
+    if (a.progress) article.append(node("p", a.progress, "activity-label"));
+    if (a.result_summary) article.append(node("pre", a.result_summary));
     if (a.outbox) {
       const v = a.outbox;
       const phases = {
@@ -442,18 +444,20 @@ function renderChat() {
   if (nearBottom) $("chat").scrollTop = $("chat").scrollHeight;
 }
 function addActivity(a) {
-  if (!a?.text) return;
+  if (!a || (!a.text && !a.progress && !a.result_summary)) return;
   outbox.materialize(state.selected, a);
   const existing = state.chat.find((v) => v.id === a.id);
   a = {
     ...a,
     timestamp: existing?.timestamp || a.timestamp || new Date().toISOString(),
-    text: a.text.slice(0, 16384),
+    text: (a.text || "").slice(0, 16384),
+    progress: a.progress?.slice(0, 1024),
+    result_summary: a.result_summary?.slice(0, 4096),
   };
   reconcileActivity(state.chat, a);
   while (
     state.chat.length > 50 ||
-    state.chat.reduce((n, a) => n + a.text.length, 0) > 131072
+    state.chat.reduce((n, a) => n + a.text.length + (a.progress?.length || 0) + (a.result_summary?.length || 0), 0) > 131072
   )
     state.chat.shift();
 }
@@ -463,6 +467,14 @@ function applyChat(e) {
     outbox.dispatched(e.session_id, e.client_id);
   if (e.activity) {
     addActivity(e.activity);
+    return;
+  }
+  if (["tool_progress", "terminal_interaction"].includes(e.kind)) {
+    const previous = state.chat.find((a) => a.id === e.item_id);
+    if (previous && previous.state && previous.state !== "running") return;
+    addActivity({ ...previous, id: e.item_id,
+      kind: e.kind === "tool_progress" ? "mcpToolCall" : "commandExecution",
+      state: "running", text: previous?.text || "", progress: (e.text || "").slice(0, 1024) });
     return;
   }
   if (!["delta", "command_output", "diff"].includes(e.kind)) return;

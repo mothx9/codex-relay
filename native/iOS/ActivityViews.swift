@@ -50,6 +50,11 @@ struct ToolSummaryView: View {
                 }.foregroundStyle(.primary).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
             }.buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("tool." + group.id)
                 .accessibilityValue(expanded ? "Dettagli aperti" : "Dettagli chiusi")
+            if running > 0, let progress = current?.progress, !progress.isEmpty {
+                Text(progress).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("tool.progress." + group.id)
+            }
             if running > 0, group.kind == .terminal, let item = current, !item.commandOutput.isEmpty {
                 // A bounded tail is a live preview, not another scrolling terminal.
                 Text(item.commandOutput.suffix(600).split(separator: "\n", omittingEmptySubsequences: false).suffix(3).joined(separator: "\n"))
@@ -109,6 +114,7 @@ struct ToolDetailView: View {
     private var liveGroup: TranscriptGroup { TranscriptGroup.make(relay.chat.items).first { $0.id == group.id } ?? group }
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: RelaySpacing.page) {
                     HStack {
@@ -118,69 +124,122 @@ struct ToolDetailView: View {
                         if running > 0 { Text("\(running) in corso").foregroundStyle(RelayPalette.working) }
                     }.font(.caption.weight(.medium)).foregroundStyle(.secondary)
                     ForEach(liveGroup.items) { item in
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text(item.toolName ?? toolTitle(group.kind)).font(.subheadline.weight(.semibold))
-                                Spacer()
-                                if item.state == "running" { ProgressView().controlSize(.small) }
-                                Text(activityState(item.state)).font(.caption).foregroundStyle(.secondary)
-                                Menu {
-                                    if let command = item.command { Button("Copia comando", systemImage: "terminal") { UIPasteboard.general.string = command } }
-                                    Button("Copia output completo", systemImage: "doc.on.doc") { UIPasteboard.general.string = item.command != nil ? item.commandOutput : item.text }
-                                } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
-                                    .accessibilityLabel("Azioni output")
-                            }
-                            if let server = item.toolServer { Text(server).font(.caption).foregroundStyle(.secondary) }
-                            if let command = item.command {
-                                ScrollView(.horizontal) { CommandPreviewView(command: command).fixedSize(horizontal: true, vertical: false) }
-                                    .contextMenu { Button("Copia comando", systemImage: "doc.on.doc") { UIPasteboard.general.string = command } }
-                            }
-                            HStack {
-                                if let code = item.exitCode { Text("Exit \(code)") }
-                                if let milliseconds = item.durationMs { Text(String(format: "%.1f s", Double(milliseconds) / 1000)) }
-                                if item.truncated == true { Text("Contenuto parziale") }
-                            }.font(.caption).foregroundStyle(.secondary)
-                            if item.kind == "diff" {
-                                PatchView(patch: item.text)
-                            } else if let files = item.files, !files.isEmpty {
-                                ForEach(Array(files.enumerated()), id: \.offset) { _, file in
-                                    Text(URL(fileURLWithPath: file.path).lastPathComponent + " · " + fileChangeLabel(file.kind)).font(.subheadline)
-                                    if let patch = file.patch {
-                                        if patch.hasPrefix("diff --git ") || patch.hasPrefix("@@ ") || patch.contains("\n@@ ") {
-                                            PatchView(patch: patch, path: file.path)
-                                        } else {
-                                            CodeBlockView(code: patch, language: URL(fileURLWithPath: file.path).pathExtension)
-                                        }
-                                    }
-                                }
-                            } else if group.kind == .terminal {
-                                if #available(iOS 18.0, *) {
-                                    TerminalOutputView(text: item.command != nil ? item.commandOutput : item.text)
-                                        .accessibilityIdentifier("activity." + item.kind + "." + item.id)
-                                } else {
-                                    CodeBlockView(code: item.command != nil ? item.commandOutput : item.text, language: "output")
-                                }
-                            } else {
-                            ScrollView(.horizontal) {
-                                Text(item.command != nil ? item.commandOutput : item.text).font(.callout.monospaced()).textSelection(.enabled)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .accessibilityIdentifier("activity." + item.kind + "." + item.id)
-                            }.contextMenu { Button("Copia output", systemImage: "doc.on.doc") { UIPasteboard.general.string = item.command != nil ? item.commandOutput : item.text } }
-                            }
-                        }
+                        ActivityDetailRow(item: item, initiallyExpanded: item.state == "running" || item.id == liveGroup.items.last?.id).id(item.id)
+                        if item.id != liveGroup.items.last?.id { Divider() }
                     }
-                }.padding(20)
+                }.padding(RelaySpacing.page)
+            }.onAppear {
+                if let target = liveGroup.items.first(where: { $0.state == "running" })?.id ?? liveGroup.items.last?.id {
+                    DispatchQueue.main.async { proxy.scrollTo(target, anchor: .top) }
+                }
+            }
             }.navigationTitle(toolTitle(group.kind)).navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Menu {
                             Button("Copia tutti gli output", systemImage: "doc.on.doc") {
-                                UIPasteboard.general.string = liveGroup.items.map { $0.command != nil ? $0.commandOutput : $0.text }.joined(separator: "\n\n")
+                                UIPasteboard.general.string = liveGroup.items.map { $0.command != nil ? $0.commandOutput : $0.resultSummary ?? $0.text }.joined(separator: "\n\n")
                             }
                         } label: { Image(systemName: "doc.on.doc").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel("Copia attività")
                     }
                     ToolbarItem(placement: .confirmationAction) { Button("Chiudi") { dismiss() } }
                 }
+        }
+    }
+}
+
+private struct ActivityDetailRow: View {
+    let item: Activity
+    @State private var expanded: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    init(item: Activity, initiallyExpanded: Bool) {
+        self.item = item; _expanded = State(initialValue: initiallyExpanded)
+    }
+    private var output: String { item.command != nil ? item.commandOutput : item.resultSummary ?? item.text }
+    private var status: String {
+        switch item.state { case "running": "WORKING"; case "completed": "READY"; case "failed", "declined": "FAILED"; default: "INACTIVE" }
+    }
+    private var title: String {
+        if item.kind == "diff" { return "Diff" }
+        if let name = item.toolName { return name }
+        if item.kind == "fileChange" { return "File changes" }
+        return "Command"
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: RelaySpacing.row) {
+            HStack(spacing: RelaySpacing.compact) {
+                SessionStatusMark(status: status).font(.caption)
+                Text(title).font(.subheadline.weight(.semibold))
+                Spacer(minLength: 4)
+                Text(activityState(item.state)).font(.caption).foregroundStyle(.secondary)
+                Menu {
+                    if let command = item.command { Button("Copia comando", systemImage: "terminal") { UIPasteboard.general.string = command } }
+                    Button("Copia output completo", systemImage: "doc.on.doc") { UIPasteboard.general.string = output }
+                } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
+                    .accessibilityLabel("Azioni output")
+            }
+            if let server = item.toolServer { Text(server).font(.caption).foregroundStyle(.secondary) }
+            if let command = item.command {
+                ScrollView(.horizontal) {
+                    CommandPreviewView(command: command).fixedSize(horizontal: true, vertical: false)
+                }.contextMenu { Button("Copia comando", systemImage: "doc.on.doc") { UIPasteboard.general.string = command } }
+            }
+            HStack(spacing: RelaySpacing.row) {
+                if let code = item.exitCode { Label("Exit \(code)", systemImage: code == 0 ? "checkmark.circle" : "exclamationmark.circle") }
+                if let duration = item.durationMs { Text(String(format: "%.1f s", Double(duration) / 1000)) }
+                if item.truncated == true { Text("Contenuto parziale") }
+            }.font(.caption).foregroundStyle(.secondary)
+            if let progress = item.progress, item.state == "running" {
+                Text(progress).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+            }
+            Button {
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { expanded.toggle() }
+            } label: {
+                HStack {
+                    Image(systemName: "chevron.right").rotationEffect(.degrees(expanded ? 90 : 0))
+                    Text(item.files?.isEmpty == false || item.kind == "diff" ? "Changes" : "Output")
+                    Spacer()
+                    if !output.isEmpty { Text("\(output.split(separator: "\n", omittingEmptySubsequences: false).count) lines").foregroundStyle(.secondary) }
+                }.font(.caption.weight(.medium)).frame(minHeight: 44).contentShape(Rectangle())
+            }.buttonStyle(.plain).accessibilityIdentifier("activity.output." + item.id)
+                .accessibilityValue(expanded ? "Expanded" : "Collapsed")
+            if expanded {
+                outputContent.transition(.opacity)
+            }
+        }.animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: status)
+            .onChange(of: item.state) { _, state in if state == "running" { expanded = true } }
+    }
+    @ViewBuilder private var outputContent: some View {
+        if item.kind == "diff" { PatchView(patch: item.text) }
+        else if let files = item.files, !files.isEmpty {
+            ForEach(Array(files.enumerated()), id: \.element.path) { _, file in
+                VStack(alignment: .leading, spacing: RelaySpacing.compact) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(URL(fileURLWithPath: file.path).lastPathComponent).font(.subheadline.weight(.medium)).lineLimit(2)
+                        Spacer()
+                        Text(fileChangeLabel(file.kind)).font(.caption).foregroundStyle(.secondary).fixedSize()
+                    }.contextMenu {
+                        Button("Copy Path", systemImage: "doc.on.doc") { UIPasteboard.general.string = file.path }
+                        if let previous = file.previousPath { Button("Copy Previous Path") { UIPasteboard.general.string = previous } }
+                    }
+                    if let patch = file.patch, !patch.isEmpty {
+                        if patch.hasPrefix("diff --git ") || patch.hasPrefix("@@ ") || patch.contains("\n@@ ") { PatchView(patch: patch, path: file.path) }
+                        else { CodeBlockView(code: patch, language: URL(fileURLWithPath: file.path).pathExtension) }
+                    }
+                }
+            }
+        } else if item.kind == "commandExecution" || item.kind == "command_output" {
+            if output.isEmpty { Text(item.state == "running" ? "Waiting for output…" : "No output").font(.caption).foregroundStyle(.secondary) }
+            else if #available(iOS 18.0, *) {
+                TerminalOutputView(text: output).accessibilityIdentifier("activity." + item.kind + "." + item.id)
+            } else { CodeBlockView(code: output, language: "output") }
+        } else if let result = item.resultSummary {
+            ChatMarkdown(text: result, identifier: "activity." + item.kind + "." + item.id)
+        } else if item.toolName == nil {
+            Text(output).font(.callout).textSelection(.enabled)
+        } else {
+            Text(item.state == "running" ? "Waiting for tool result…" : "No text result provided")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 }

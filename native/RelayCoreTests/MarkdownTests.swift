@@ -57,3 +57,18 @@ final class ShellTokenTests: XCTestCase {
         XCTAssertTrue(tokens.contains { $0.kind == .string && $0.text == "'hello world'" })
     }
 }
+
+
+extension MarkdownTests {
+    func testShellWrapperHighlightsScriptAndPreservesExactSource() {
+        let command = "/bin/zsh -lc \"go test -race ./... | tail -n 3\""
+        let tokens = ShellTokens.tokenize(command)
+        XCTAssertEqual(tokens.map(\.text).joined(), command)
+        XCTAssertTrue(tokens.contains { $0.text == "go" && $0.kind == .command })
+        XCTAssertTrue(tokens.contains { $0.text == "tail" && $0.kind == .command })
+        XCTAssertTrue(tokens.contains { $0.text == "-race" && $0.kind == .flag })
+        for source in ["echo 'plain string'", "/bin/bash -c 'printf hi'", "sh -c 'incomplete", "sh -c \"echo \\\"quoted\\\"\""] {
+            XCTAssertEqual(ShellTokens.tokenize(source).map(\.text).joined(), source)
+        }
+    }
+}

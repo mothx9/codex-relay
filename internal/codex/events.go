@@ -11,6 +11,15 @@ import (
 
 func activity(raw json.RawMessage) protocol.Activity {
 	var item struct {
+		Result *struct {
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"result"`
+		Error *struct {
+			Message string `json:"message"`
+		} `json:"error"`
 		Status     string                   `json:"status"`
 		ExitCode   *int                     `json:"exitCode"`
 		DurationMS *int64                   `json:"durationMs"`
@@ -97,6 +106,29 @@ func activity(raw json.RawMessage) protocol.Activity {
 	case "mcpToolCall":
 		v.ToolName = protocol.Clip(item.Tool, 160)
 		v.ToolServer = protocol.Clip(item.Server, 128)
+		// Only user-visible text results cross the boundary: never MCP _meta,
+		// embedded resources, binary payloads, arbitrary arguments or auth data.
+		if item.Result != nil {
+			for _, content := range item.Result.Content {
+				if content.Type != "text" || content.Text == "" {
+					continue
+				}
+				remaining := 4096 - len(v.ResultSummary)
+				if remaining <= 0 {
+					v.Truncated = true
+					break
+				}
+				if v.ResultSummary != "" {
+					v.ResultSummary += "\n"
+					remaining--
+				}
+				v.ResultSummary += protocol.Clip(content.Text, remaining)
+				v.Truncated = v.Truncated || len(content.Text) > remaining
+			}
+		}
+		if item.Error != nil {
+			v.ResultSummary = protocol.Clip(item.Error.Message, 4096)
+		}
 		v.Text = v.ToolName
 		if v.Text == "" {
 			v.Text = "MCP"
@@ -156,6 +188,8 @@ func (a *Adapter) handle(m rpcMessage) {
 		TurnID    string          `json:"turnId"`
 		ItemID    string          `json:"itemId"`
 		Delta     string          `json:"delta"`
+		Message   string          `json:"message"`
+		Changes   json.RawMessage `json:"changes"`
 		Diff      string          `json:"diff"`
 		RequestID json.RawMessage `json:"requestId"`
 		Status    status          `json:"status"`
@@ -278,6 +312,41 @@ func (a *Adapter) handle(m rpcMessage) {
 	case "item/commandExecution/outputDelta":
 		ev.Kind = "command_output"
 		ev.Text = protocol.Clip(p.Delta, protocol.MaxText)
+	case "item/mcpToolCall/progress", "item/commandExecution/terminalInteraction":
+		if p.ItemID == "" {
+			a.mu.Unlock()
+			return
+		}
+		if prior, exists := a.items[id+"/"+p.ItemID]; exists &&
+			((prior.TurnID != "" && prior.TurnID != p.TurnID) || prior.State != "running") {
+			a.mu.Unlock()
+			return
+		}
+		ev.Kind = "tool_progress"
+		ev.Text = protocol.Clip(p.Message, 1024)
+		if m.Method == "item/commandExecution/terminalInteraction" {
+			ev.Kind = "terminal_interaction"
+			// stdin can be a credential. Only the occurrence is user-visible.
+			ev.Text = "Input sent to command"
+		}
+	case "item/fileChange/patchUpdated":
+		if p.ItemID == "" || len(p.Changes) == 0 {
+			a.mu.Unlock()
+			return
+		}
+		prior, exists := a.items[id+"/"+p.ItemID]
+		if exists && ((prior.TurnID != "" && prior.TurnID != p.TurnID) || prior.State != "running") {
+			a.mu.Unlock()
+			return
+		}
+		raw, _ := json.Marshal(map[string]any{"id": p.ItemID, "type": "fileChange", "status": "inProgress", "changes": p.Changes})
+		v := activity(raw)
+		v.TurnID = p.TurnID
+		if exists {
+			v.Timestamp = prior.Timestamp
+		}
+		a.rememberItem(id, v)
+		ev.Kind, ev.Activity = "activity", &v
 	case "turn/diff/updated":
 		ev.Kind = "diff"
 		ev.Text = protocol.Clip(p.Diff, protocol.MaxText)
@@ -295,16 +364,8 @@ func (a *Adapter) handle(m rpcMessage) {
 			return
 		}
 		v.TurnID = p.TurnID
-		if v.Kind == "commandExecution" || v.Kind == "fileChange" {
-			key := id + "/" + v.ID
-			if _, exists := a.items[key]; !exists {
-				a.itemOrder = append(a.itemOrder, key)
-			}
-			a.items[key] = v
-			if len(a.itemOrder) > 128 {
-				delete(a.items, a.itemOrder[0])
-				a.itemOrder = a.itemOrder[1:]
-			}
+		if v.Kind == "commandExecution" || v.Kind == "fileChange" || v.Kind == "mcpToolCall" {
+			a.rememberItem(id, v)
 		}
 		ev.Kind = "activity"
 		ev.Activity = &v
@@ -337,6 +398,23 @@ func (a *Adapter) handle(m rpcMessage) {
 		}
 	}
 }
+
+// Caller holds a.mu. This cache only supplies bounded operation metadata.
+func (a *Adapter) rememberItem(threadID string, value protocol.Activity) {
+	if a.items == nil {
+		a.items = make(map[string]protocol.Activity)
+	}
+	key := threadID + "/" + value.ID
+	if _, exists := a.items[key]; !exists {
+		a.itemOrder = append(a.itemOrder, key)
+	}
+	a.items[key] = value
+	if len(a.itemOrder) > 128 {
+		delete(a.items, a.itemOrder[0])
+		a.itemOrder = a.itemOrder[1:]
+	}
+}
+
 func (a *Adapter) requestID(raw json.RawMessage) string {
 	var s string
 	if json.Unmarshal(raw, &s) != nil {

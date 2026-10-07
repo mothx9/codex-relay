@@ -43,7 +43,7 @@ func (r *Recent) Apply(e protocol.Event) {
 		r.Put(*e.Activity)
 		return
 	}
-	if e.Kind != "delta" && e.Kind != "command_output" && e.Kind != "diff" {
+	if e.Kind != "delta" && e.Kind != "command_output" && e.Kind != "diff" && e.Kind != "tool_progress" && e.Kind != "terminal_interaction" {
 		return
 	}
 	id := e.ItemID
@@ -57,9 +57,24 @@ func (r *Recent) Apply(e protocol.Event) {
 			break
 		}
 	}
-	if e.Kind == "diff" {
+	if e.Kind == "tool_progress" || e.Kind == "terminal_interaction" {
+		if v.State != "" && v.State != "running" {
+			return
+		}
+		if v.Kind == e.Kind {
+			v.Kind = "mcpToolCall"
+			if e.Kind == "terminal_interaction" {
+				v.Kind = "commandExecution"
+			}
+		}
+		v.Progress = protocol.Clip(e.Text, 1024)
+		v.State = "running"
+	} else if e.Kind == "diff" {
 		v.Text = e.Text
 	} else {
+		if e.Kind == "command_output" && v.Command != "" && v.Text == v.Command {
+			v.Text += "\n"
+		}
 		v.Text += e.Text
 	}
 	r.Put(v)

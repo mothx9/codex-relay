@@ -103,3 +103,34 @@ final class TranscriptTests: XCTestCase {
     }
 
 }
+
+extension TranscriptTests {
+    func testProgressDoesNotReplaceOutputOrResurrectCompletedTool() throws {
+        var chat = RecentChat()
+        var item = Activity(id: "command", kind: "commandExecution", text: "printf hi\nhello")
+        item.command = "printf hi"; item.state = "running"
+        chat.put(item)
+        func event(_ kind: String, _ id: String, _ text: String) throws -> RelayEvent {
+            let data = try JSONSerialization.data(withJSONObject: ["kind": kind, "session_id": "m~t", "item_id": id, "text": text])
+            return try RelayJSON.decoder().decode(RelayEvent.self, from: data)
+        }
+        chat.apply(try event("terminal_interaction", "command", "Input sent to command"))
+        XCTAssertEqual(chat.items.count, 1)
+        XCTAssertEqual(chat.items[0].commandOutput, "hello")
+        chat.apply(try event("command_output", "command", " again"))
+        XCTAssertEqual(chat.items[0].commandOutput, "hello again")
+        XCTAssertEqual(chat.items[0].progress, "Input sent to command")
+        chat.beginHistory()
+        chat.apply(try event("tool_progress", "tool", "Reading page 2"))
+        chat.mergeHistory([Activity(id: "tool", kind: "mcpToolCall", text: "lookup")])
+        XCTAssertEqual(chat.items.last?.progress, "Reading page 2")
+        var completed = Activity(id: "tool", kind: "mcpToolCall", text: "lookup")
+        completed.state = "completed"; completed.resultSummary = "Found documentation"
+        chat.put(completed)
+        chat.apply(try event("tool_progress", "tool", "Late"))
+        XCTAssertEqual(chat.items.last?.state, "completed")
+        XCTAssertNil(chat.items.last?.progress)
+        XCTAssertEqual(chat.items.last?.resultSummary, "Found documentation")
+        XCTAssertEqual(TranscriptGroup.make(chat.items).map(\.id), ["terminal.command", "mcp.tool"])
+    }
+}

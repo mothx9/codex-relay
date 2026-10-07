@@ -87,27 +87,29 @@ type FileChange struct {
 	Patch        string `json:"patch,omitempty"`
 }
 type Activity struct {
-	State      string          `json:"state,omitempty"`
-	Command    string          `json:"command,omitempty"`
-	ExitCode   *int            `json:"exit_code,omitempty"`
-	DurationMS *int64          `json:"duration_ms,omitempty"`
-	ToolName   string          `json:"tool_name,omitempty"`
-	ToolServer string          `json:"tool_server,omitempty"`
-	Files      []FileChange    `json:"files,omitempty"`
-	Truncated  bool            `json:"truncated,omitempty"`
-	ID         string          `json:"id"`
-	TurnID     string          `json:"turn_id,omitempty"`
-	Kind       string          `json:"kind"`
-	Text       string          `json:"text"`
-	Timestamp  time.Time       `json:"timestamp"`
-	ClientID   string          `json:"client_id,omitempty"`
-	Questions  []AsyncQuestion `json:"questions,omitempty"`
+	Progress      string          `json:"progress,omitempty"`
+	ResultSummary string          `json:"result_summary,omitempty"`
+	State         string          `json:"state,omitempty"`
+	Command       string          `json:"command,omitempty"`
+	ExitCode      *int            `json:"exit_code,omitempty"`
+	DurationMS    *int64          `json:"duration_ms,omitempty"`
+	ToolName      string          `json:"tool_name,omitempty"`
+	ToolServer    string          `json:"tool_server,omitempty"`
+	Files         []FileChange    `json:"files,omitempty"`
+	Truncated     bool            `json:"truncated,omitempty"`
+	ID            string          `json:"id"`
+	TurnID        string          `json:"turn_id,omitempty"`
+	Kind          string          `json:"kind"`
+	Text          string          `json:"text"`
+	Timestamp     time.Time       `json:"timestamp"`
+	ClientID      string          `json:"client_id,omitempty"`
+	Questions     []AsyncQuestion `json:"questions,omitempty"`
 }
 
 // ContextBytes counts retained user-visible content, including structured
 // metadata. It deliberately excludes transport identity and scalar state.
 func (a Activity) ContextBytes() int {
-	n := len(a.Text) + len(a.Command) + len(a.ToolName) + len(a.ToolServer)
+	n := len(a.Progress) + len(a.ResultSummary) + len(a.Text) + len(a.Command) + len(a.ToolName) + len(a.ToolServer)
 	for _, f := range a.Files {
 		n += len(f.Path) + len(f.Kind) + len(f.PreviousPath) + len(f.Patch)
 	}

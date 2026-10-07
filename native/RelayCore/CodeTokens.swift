@@ -60,6 +60,20 @@ public enum CodeTokens {
 /// execute, expand, or infer the result of a command.
 public enum ShellTokens {
     public static func tokenize(_ source: String) -> [CodeToken] {
+        let tokens = lex(source)
+        let significant = tokens.indices.filter { !tokens[$0].text.allSatisfy(\.isWhitespace) }
+        // Codex commonly reports a shell wrapper. Color the script inside its
+        // final quoted argument without executing/unescaping or changing source.
+        guard significant.count == 3, let first = significant.first, let last = significant.last,
+              ["sh", "bash", "zsh"].contains(URL(fileURLWithPath: tokens[first].text).lastPathComponent),
+              ["-c", "-lc", "-ic"].contains(tokens[significant[1]].text),
+              tokens[last].kind == .string, tokens[last].text.count >= 2,
+              let quote = tokens[last].text.first, tokens[last].text.last == quote else { return tokens }
+        let script = String(tokens[last].text.dropFirst().dropLast())
+        return Array(tokens[..<last]) + [CodeToken(text: String(quote), kind: .plain)]
+            + lex(script) + [CodeToken(text: String(quote), kind: .plain)] + Array(tokens[(last + 1)...])
+    }
+    private static func lex(_ source: String) -> [CodeToken] {
         let chars = Array(source)
         var result: [CodeToken] = []
         var index = 0, commandExpected = true

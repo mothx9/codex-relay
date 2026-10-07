@@ -106,10 +106,17 @@ public struct RecentChat: Sendable {
     }
     public mutating func apply(_ event: RelayEvent) {
         if let activity = event.activity { if readingHistory { changedDuringHistory.insert(activity.id) }; put(activity); return }
-        guard ["delta", "command_output", "diff"].contains(event.kind) else { return }
+        guard ["delta", "command_output", "diff", "tool_progress", "terminal_interaction"].contains(event.kind) else { return }
         let id = event.itemId ?? "\(event.turnId ?? "")/\(event.kind)"
         if readingHistory { changedDuringHistory.insert(id) }
         var item = items.first { $0.id == id } ?? Activity(id: id, kind: event.kind == "delta" ? "agentMessage" : event.kind, text: "", timestamp: event.timestamp)
+        if event.kind == "tool_progress" || event.kind == "terminal_interaction" {
+            guard item.state == nil || item.state == "running" else { return }
+            item.kind = event.kind == "tool_progress" ? "mcpToolCall" : "commandExecution"
+            item.progress = String(decoding: Array((event.text ?? "").utf8.prefix(1024)), as: UTF8.self)
+            item.state = "running"
+            put(item); return
+        }
         if event.kind == "command_output", let command = item.command, item.text == command { item.text += "\n" }
         if event.kind != "diff" { item.state = "running" }
         item.text = (event.kind == "diff" ? "" : item.text) + (event.text ?? "")
