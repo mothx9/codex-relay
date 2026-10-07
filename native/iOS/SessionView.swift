@@ -192,11 +192,7 @@ private struct SessionTranscript: View {
     @Binding var scrollRequest: Int
     let onEdit: (Outgoing) -> Void
     @State private var tools: TranscriptGroup?
-    @State private var nearBottom = true
-    // Following is user intent, not a side effect of content/keyboard geometry.
-    @State private var followingLatest = true
-    @State private var userScrolling = false
-    @State private var unread = false
+    @State private var scrolling = TranscriptScrollPolicy()
     @State private var initialScroll = false
     @State private var historyPositioned = false
     private let bottomID = "transcript.bottom"
@@ -219,8 +215,7 @@ private struct SessionTranscript: View {
                             ProgressView(String(localized: "Loading history…", bundle: relayLocalizationBundle)).font(.caption).frame(maxWidth: .infinity)
                         } else if relay.historyCursor != nil && !relay.chat.atCapacity {
                             Button(String(localized: "Load earlier messages", bundle: relayLocalizationBundle)) {
-                                nearBottom = false
-                                followingLatest = false
+                                scrolling.readHistory()
                                 Task { await relay.loadOlderHistory() }
                             }.frame(minHeight: 44).frame(maxWidth: .infinity).accessibilityIdentifier("history.older")
                                 .accessibilityValue(String(localized: "\(relay.chat.items.count) items loaded", bundle: relayLocalizationBundle))
@@ -263,27 +258,26 @@ private struct SessionTranscript: View {
                 .accessibilityIdentifier("session.transcript")
                 .accessibilityValue("\(relay.chat.items.count) items")
                 .scrollDismissesKeyboard(.interactively)
-                .simultaneousGesture(DragGesture(minimumDistance: 3)
-                    .onChanged { _ in userScrolling = true; followingLatest = false }
-                    .onEnded { _ in userScrolling = false; followingLatest = nearBottom })
+                .modifier(TranscriptScrollInteraction(
+                    begin: { scrolling.beginInteraction() },
+                    end: { scrolling.endInteraction(distanceFromBottom: $0) }
+                ))
                 .onChange(of: viewport.size, initial: true) { _, size in
-                    guard size.height > 0, !initialScroll || followingLatest else { return }
+                    guard size.height > 0, !initialScroll || scrolling.shouldFollow else { return }
                     // Navigation and keyboard layout settle after this callback.
                     // Preserve the latest position only while the reader follows.
                     DispatchQueue.main.async {
-                        guard !initialScroll || (followingLatest && !userScrolling) else { return }
+                        guard scrolling.shouldFollow else { return }
                         proxy.scrollTo(bottomID, anchor: .bottom)
                         initialScroll = true
                     }
                 }
                 .onPreferenceChange(TranscriptBottom.self) { value in
-                    nearBottom = value <= viewport.size.height + 80
-                    if nearBottom && !userScrolling { unread = false; followingLatest = true }
-                    // Markdown parsing and keyboard transitions can increase the
-                    // layout after the event callback. They must not cancel follow.
-                    if followingLatest && !userScrolling && value > viewport.size.height + 8 {
+                    // Never infer reader intent from geometry: a short upward
+                    // scroll, inertia, or keyboard resize must not re-enable follow.
+                    if scrolling.shouldFollow && value > viewport.size.height + 12 {
                         DispatchQueue.main.async {
-                            if followingLatest && !userScrolling { proxy.scrollTo(bottomID, anchor: .bottom) }
+                            if scrolling.shouldFollow { proxy.scrollTo(bottomID, anchor: .bottom) }
                         }
                     }
                 }
@@ -292,19 +286,17 @@ private struct SessionTranscript: View {
                     historyPositioned = true
                     // The initial empty viewport can lay out before canonical
                     // history arrives. Position after that first hydration too.
-                    DispatchQueue.main.async { proxy.scrollTo(bottomID, anchor: .bottom) }
+                    DispatchQueue.main.async { if scrolling.shouldFollow { proxy.scrollTo(bottomID, anchor: .bottom) } }
                 }
                 .onChange(of: revision) { _, _ in
-                    if followingLatest && !userScrolling { DispatchQueue.main.async { if followingLatest && !userScrolling { proxy.scrollTo(bottomID, anchor: .bottom) } } }
-                    else { unread = true }
+                    if scrolling.shouldFollow { DispatchQueue.main.async { if scrolling.shouldFollow { proxy.scrollTo(bottomID, anchor: .bottom) } } }
                 }
                 .onChange(of: scrollRequest) { _, _ in
-                    followingLatest = true
-                    unread = false
+                    scrolling.jumpToLatest()
                     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { proxy.scrollTo(bottomID, anchor: .bottom) }
                 }
                 .overlay(alignment: .bottomTrailing) {
-                    if unread {
+                    if !scrolling.followsLatest && !scrolling.isInteracting {
                         Button { scrollRequest += 1 } label: { Label(String(localized: "Latest messages", bundle: relayLocalizationBundle), systemImage: "arrow.down") }
                             .font(.caption.weight(.medium)).buttonStyle(.bordered).padding(12)
                             .accessibilityIdentifier("transcript.latest")
@@ -312,6 +304,37 @@ private struct SessionTranscript: View {
                 }
             }
         }.sheet(item: $tools) { ToolDetailView(group: $0) }
+    }
+}
+
+// Native phases include deceleration after the finger lifts. A DragGesture
+// alone ends too early and can let scrollTo fight the scroll view's inertia.
+private struct TranscriptScrollInteraction: ViewModifier {
+    let begin: () -> Void
+    let end: (Double?) -> Void
+    @State private var userInitiated = false
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.onScrollPhaseChange { _, phase, context in
+                switch phase {
+                case .tracking, .interacting, .decelerating:
+                    if !userInitiated { userInitiated = true; begin() }
+                case .idle:
+                    if userInitiated {
+                        userInitiated = false
+                        let g = context.geometry
+                        end(Double(g.contentSize.height + g.contentInsets.bottom - g.contentOffset.y - g.containerSize.height))
+                    }
+                default: break // Programmatic animation is not reader intent.
+                }
+            }
+        } else {
+            // iOS 17 has no scroll-phase API. Once the reader moves, require
+            // Latest messages explicitly rather than guessing when inertia ends.
+            content.simultaneousGesture(DragGesture(minimumDistance: 3)
+                .onChanged { _ in if !userInitiated { userInitiated = true; begin() } }
+                .onEnded { _ in userInitiated = false; end(nil) })
+        }
     }
 }
 

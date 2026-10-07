@@ -28,3 +28,19 @@ public struct TranscriptGroup: Identifiable, Sendable {
         return groups
     }
 }
+
+/// Reader intent is independent of content growth and scroll geometry.
+/// Only a completed user scroll at the bottom or an explicit jump resumes follow.
+public struct TranscriptScrollPolicy: Equatable, Sendable {
+    public private(set) var followsLatest = true
+    public private(set) var isInteracting = false
+    public var shouldFollow: Bool { followsLatest && !isInteracting }
+    public init() {}
+    public mutating func beginInteraction() { isInteracting = true; followsLatest = false }
+    public mutating func endInteraction(distanceFromBottom: Double?) {
+        isInteracting = false
+        followsLatest = distanceFromBottom.map { $0 <= 12 } ?? false
+    }
+    public mutating func readHistory() { followsLatest = false }
+    public mutating func jumpToLatest() { followsLatest = true }
+}

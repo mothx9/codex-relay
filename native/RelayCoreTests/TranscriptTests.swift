@@ -2,6 +2,32 @@ import XCTest
 @testable import RelayCore
 
 final class TranscriptTests: XCTestCase {
+    func testSmallScrollAndDecelerationDoNotResumeFollowing() {
+        var policy = TranscriptScrollPolicy()
+        XCTAssertTrue(policy.shouldFollow)
+        policy.beginInteraction()
+        XCTAssertFalse(policy.shouldFollow)
+        // Finger lift does not end interaction; the view waits for native idle.
+        XCTAssertTrue(policy.isInteracting)
+        policy.endInteraction(distanceFromBottom: 55)
+        XCTAssertFalse(policy.shouldFollow)
+        policy.readHistory()
+        XCTAssertFalse(policy.shouldFollow)
+        policy.jumpToLatest()
+        XCTAssertTrue(policy.shouldFollow)
+    }
+    func testOnlyUserArrivalAtBottomResumesFollowing() {
+        var policy = TranscriptScrollPolicy()
+        policy.beginInteraction()
+        policy.endInteraction(distanceFromBottom: 0)
+        XCTAssertTrue(policy.shouldFollow)
+        policy.beginInteraction()
+        policy.endInteraction(distanceFromBottom: nil)
+        XCTAssertFalse(policy.shouldFollow)
+        policy.jumpToLatest()
+        XCTAssertTrue(policy.shouldFollow)
+    }
+
     func testToolGroupsPreserveConversationOrderAndIdentity() {
         let items = [
             Activity(id: "agent", kind: "agentMessage", text: "Checking"),

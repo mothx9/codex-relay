@@ -460,6 +460,38 @@ import XCTest
         XCTAssertTrue(app.staticTexts["Relay registration"].exists)
         let notifications = XCTAttachment(screenshot: app.screenshot()); notifications.name = "Live notification capability"; notifications.lifetime = .keepAlways; add(notifications)
     }
+    func testLiveReadingPositionSurvivesSmallScroll() throws {
+        guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires paired read-only live chat.") }
+        let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launch()
+        let search = app.textFields["fleet.search"]
+        XCTAssertTrue(search.waitForExistence(timeout: 15)); search.tap(); search.typeText(config.sessionTitle)
+        let row = app.buttons["session." + config.sessionID]
+        XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+        let transcript = app.scrollViews["session.transcript"]
+        XCTAssertTrue(transcript.waitForExistence(timeout: 15))
+        let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'tool.' AND NOT identifier BEGINSWITH 'tool.details.'"))
+        wait(20) { cards.allElementsBoundByIndex.contains { $0.isHittable } }
+        let anchor = try XCTUnwrap(cards.allElementsBoundByIndex.last(where: { $0.isHittable && $0.frame.midY > transcript.frame.minY + 60 }))
+        let before = anchor.frame.minY
+        let start = transcript.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let end = start.withOffset(CGVector(dx: 0, dy: 55))
+        start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.5)
+        // A small deliberate move towards older messages must not snap back,
+        // including after the finger is lifted and live activity changes.
+        for _ in 0..<4 {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+            XCTAssertGreaterThan(anchor.frame.minY, before + 20, "Reading position snapped back to latest")
+        }
+        let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
+        let reading = anchor.frame.minY
+        composer.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(anchor.frame.minY, reading, accuracy: 20, "Keyboard opening moved the history being read")
+        let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Live reading position with keyboard"; capture.lifetime = .keepAlways; add(capture)
+        app.terminate()
+    }
     func testLiveReadOnlyHistoryNavigation() throws {
         guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else {
             throw XCTSkip("Requires the paired Hub and a read-only history target.")
