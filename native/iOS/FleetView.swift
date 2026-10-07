@@ -50,7 +50,7 @@ struct FleetView: View {
                 if search.isEmpty { fleetHeader }
                 if !browsingAll {
                     sessionSection(String(localized: "Needs You", bundle: relayLocalizationBundle), symbol: "bubble.left.and.exclamationmark.bubble.right", sessions: sorted.filter { state($0) == "NEEDS_YOU" }, tint: RelayPalette.attention)
-                    sessionSection(String(localized: "Working", bundle: relayLocalizationBundle), symbol: "waveform.path", sessions: sorted.filter { state($0) == "WORKING" }, tint: RelayPalette.working)
+                    sessionSection(String(localized: "Working", bundle: relayLocalizationBundle), symbol: "waveform.path", sessions: sorted.filter { state($0) == "WORKING" }, tint: .primary)
                     sessionSection(String(localized: "Recent", bundle: relayLocalizationBundle), symbol: "clock", sessions: Array(sorted.filter { !["WORKING", "NEEDS_YOU"].contains(state($0)) }.prefix(6)), tint: .secondary)
                     Button { filter = "HISTORY" } label: {
                         HStack {
@@ -111,10 +111,12 @@ struct FleetView: View {
                     Text("\(sessions.count)").foregroundStyle(.secondary).monospacedDigit()
                     Spacer()
                 }.font(.subheadline.weight(.semibold)).padding(.horizontal, 2).accessibilityAddTraits(.isHeader)
-                ForEach(sessions) { session in
-                    FleetSessionRow(session: session)
-                        .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
-                }
+                VStack(spacing: 0) {
+                    ForEach(sessions) { session in
+                        FleetSessionRow(session: session)
+                        if session.id != sessions.last?.id { Divider().padding(.horizontal, RelaySpacing.page) }
+                    }
+                }.background(RelayPalette.surface, in: RoundedRectangle(cornerRadius: 18))
             }
         }
     }
@@ -148,10 +150,7 @@ struct FleetSessionRow: View {
     var body: some View {
         Button { relay.open(session.id) } label: {
             HStack(alignment: .top, spacing: 12) {
-                if active {
-                    RoundedRectangle(cornerRadius: 2).fill(RelayPalette.status(status)).frame(width: 2)
-                }
-                VStack(alignment: .leading, spacing: 9) {
+                VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
                         Text(relay.machines[session.machineId]?.name ?? session.machineId).fontWeight(.semibold)
                         if !session.project.isEmpty { Text("/"); Text(session.project).lineLimit(1) }
@@ -162,7 +161,7 @@ struct FleetSessionRow: View {
                     if status == "WORKING", let activity = relay.liveActivities[session.id] {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
                             Image(systemName: activity.kind == "terminal" ? "terminal" : activity.kind == "tool" ? "wrench.and.screwdriver" : activity.kind == "file" || activity.kind == "diff" ? "doc.text" : "text.bubble")
-                                .foregroundStyle(RelayPalette.working)
+                                .foregroundStyle(.secondary)
                             Text(activity.detail).lineLimit(2)
                         }.font(.caption).foregroundStyle(.secondary)
                             .contentTransition(.opacity)
@@ -180,8 +179,7 @@ struct FleetSessionRow: View {
                     }
                 }
             }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                .background(RelayPalette.surface, in: RoundedRectangle(cornerRadius: 18))
-                .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(active ? RelayPalette.status(status).opacity(0.2) : Color.primary.opacity(0.045)))
+
                 .contentShape(RoundedRectangle(cornerRadius: 18))
         }.buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("session." + session.id)
     }

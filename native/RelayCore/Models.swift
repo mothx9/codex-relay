@@ -19,6 +19,8 @@ public struct RateWindow: Codable, Sendable {
         if minutes % 60 == 0 { return String(localized: "\(minutes / 60)-hour window", bundle: relayLocalizationBundle) }
         return String(localized: "\(minutes)-minute window", bundle: relayLocalizationBundle)
     }
+    public var remainingPercent: Int { 100 - min(100, max(0, usedPercent)) }
+    public var remainingFraction: Double { Double(remainingPercent) / 100 }
     public var fraction: Double { min(1, max(0, Double(usedPercent) / 100)) }
 }
 public struct AccountLimits: Codable, Sendable {

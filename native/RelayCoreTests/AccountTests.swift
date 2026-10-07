@@ -31,3 +31,14 @@ extension AccountTests {
         XCTAssertEqual(try credits("12 credits").displayBalance, "12 credits")
     }
 }
+
+extension AccountTests {
+    func testRemainingCapacityUsesTheSameClampedValueForTextAndBar() throws {
+        for (used, remaining) in [(-4, 100), (4, 96), (100, 0), (130, 0)] {
+            let window = try RelayJSON.decoder().decode(RateWindow.self, from: Data("{\"used_percent\":\(used),\"window_duration_mins\":10080}".utf8))
+            XCTAssertEqual(window.remainingPercent, remaining)
+            XCTAssertEqual(window.remainingFraction, Double(remaining) / 100)
+            XCTAssertEqual(window.label, "7-day window")
+        }
+    }
+}

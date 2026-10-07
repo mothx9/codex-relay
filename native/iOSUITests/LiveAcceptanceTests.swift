@@ -267,7 +267,7 @@ import XCTest
         XCTAssertTrue(entry.waitForExistence(timeout: 15))
         let registry = XCTAttachment(screenshot: app.screenshot()); registry.name = "M2 actual Account Registry"; registry.lifetime = .keepAlways; add(registry)
         entry.tap()
-        XCTAssertTrue(app.staticTexts["Plan"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["account.plan"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Updated"].exists)
         let relationship = app.buttons.containing(.staticText, identifier: "Used on").firstMatch
         reveal(relationship, in: app)

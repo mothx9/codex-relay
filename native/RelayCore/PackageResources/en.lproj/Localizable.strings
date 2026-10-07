@@ -16,6 +16,7 @@
 "%lld operations" = "%lld operations";
 "%lld running" = "%lld running";
 "%lld sessions working" = "%lld sessions working";
+"%lld%% remaining" = "%lld%% remaining";
 "%lld%% used" = "%lld%% used";
 "%lld-day window" = "%lld-day window";
 "%lld-hour window" = "%lld-hour window";
@@ -462,6 +463,7 @@
 "Unknown outcome. Check the Codex queue before retrying; your text is retained." = "Unknown outcome. Check the Codex queue before retrying; your text is retained.";
 "Unlimited" = "Unlimited";
 "Updated" = "Updated";
+"Usage" = "Usage";
 "Usage window" = "Usage window";
 "Usage windows and balances are reported by Codex. Missing values are not estimated." = "Usage windows and balances are reported by Codex. Missing values are not estimated.";
 "Used" = "Used";

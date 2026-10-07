@@ -32,13 +32,17 @@ struct AccountDetailView: View {
         List {
             if let entry {
                 Section {
-                    Text(entry.account.email ?? entry.account.kind).font(.title3.weight(.semibold)).textSelection(.enabled)
-                    if let plan = entry.account.plan, !plan.isEmpty { LabeledContent(String(localized: "Plan", bundle: relayLocalizationBundle), value: plan.capitalized) }
-                    if !entry.fresh || !relay.online { Label(String(localized: "Last known", bundle: relayLocalizationBundle), systemImage: "clock").foregroundStyle(.secondary) }
-                    if let date = RelayDate.parse(entry.updatedAt) { LabeledContent(String(localized: "Updated", bundle: relayLocalizationBundle)) { Text(date, style: .relative) } }
+                    VStack(alignment: .leading, spacing: RelaySpacing.compact) {
+                        Text(entry.account.email ?? entry.account.kind).font(.headline).textSelection(.enabled)
+                        if let plan = entry.account.plan, !plan.isEmpty { Text(plan.capitalized).font(.subheadline).foregroundStyle(.secondary).accessibilityIdentifier("account.plan") }
+                        HStack(spacing: 4) {
+                            if !entry.fresh || !relay.online { Label(String(localized: "Last known", bundle: relayLocalizationBundle), systemImage: "clock") }
+                            if let date = RelayDate.parse(entry.updatedAt) { Text(String(localized: "Updated", bundle: relayLocalizationBundle)); Text(date, style: .relative) }
+                        }.font(.caption).foregroundStyle(.secondary)
+                    }.padding(.vertical, RelaySpacing.compact)
                 }
                 ForEach(entry.account.usageBuckets, id: \.0) { key, bucket in
-                    Section(bucket.limitName ?? key) {
+                    Section(bucket.limitName ?? String(localized: "Usage", bundle: relayLocalizationBundle)) {
                         if let model = bucket.normalModelSlug { LabeledContent(String(localized: "Model", bundle: relayLocalizationBundle), value: model) }
                         if let window = bucket.primary { UsageWindowView(window: window) }
                         if let window = bucket.secondary { UsageWindowView(window: window) }
@@ -79,6 +83,9 @@ struct AccountDetailView: View {
                     DisclosureGroup(String(localized: "Data details", bundle: relayLocalizationBundle)) {
                         LabeledContent(String(localized: "Reported by", bundle: relayLocalizationBundle), value: relay.machines[entry.sourceMachine]?.name ?? entry.sourceMachine)
                         ForEach(entry.account.usageBuckets, id: \.0) { key, bucket in
+                            ForEach([bucket.primary, bucket.secondary].compactMap { $0 }, id: \.label) { window in
+                                LabeledContent(window.label, value: String(localized: "\(window.usedPercent)% used", bundle: relayLocalizationBundle))
+                            }
                             if let balance = bucket.credits?.displayBalance {
                                 LabeledContent(bucket.limitName ?? key, value: balance).textSelection(.enabled)
                                 Text(String(localized: "Reported credit balance. Codex does not specify a unit; this is not a currency amount.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
@@ -97,9 +104,9 @@ private struct UsageWindowView: View {
     let window: RateWindow
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack { Text(window.label); Spacer(); Text(String(localized: "\(window.usedPercent)% used", bundle: relayLocalizationBundle)).monospacedDigit() }.font(.subheadline)
-            ProgressView(value: window.fraction).tint(window.usedPercent >= 100 ? RelayPalette.attention : Color.accentColor)
-                .accessibilityLabel(window.label).accessibilityValue(String(localized: "\(window.usedPercent)% used", bundle: relayLocalizationBundle))
+            HStack { Text(window.label); Spacer(); Text(String(localized: "\(window.remainingPercent)% remaining", bundle: relayLocalizationBundle)).monospacedDigit() }.font(.subheadline)
+            ProgressView(value: window.remainingFraction).tint(window.remainingPercent <= 10 ? RelayPalette.attention : Color.accentColor)
+                .accessibilityLabel(window.label).accessibilityValue(String(localized: "\(window.remainingPercent)% remaining", bundle: relayLocalizationBundle))
             if let reset = window.resetsAt {
                 Text("Resets \(Date(timeIntervalSince1970: Double(reset)), format: .dateTime.month(.abbreviated).day().hour().minute())").font(.caption).foregroundStyle(.secondary)
             }

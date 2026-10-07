@@ -5561,6 +5561,26 @@
           }
         }
       }
+    },
+    "%lld%% remaining": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld%% disponibile"
+          }
+        }
+      }
+    },
+    "Usage": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilizzo"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

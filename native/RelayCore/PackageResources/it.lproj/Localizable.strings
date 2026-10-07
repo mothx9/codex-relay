@@ -16,6 +16,7 @@
 "%lld operations" = "%lld operazioni";
 "%lld running" = "%lld in corso";
 "%lld sessions working" = "%lld sessioni in corso";
+"%lld%% remaining" = "%lld%% disponibile";
 "%lld%% used" = "%lld%% utilizzato";
 "%lld-day window" = "Finestra di %lld giorni";
 "%lld-hour window" = "Finestra di %lld ore";
@@ -462,6 +463,7 @@
 "Unknown outcome. Check the Codex queue before retrying; your text is retained." = "Esito sconosciuto. Verifica la coda Codex prima di riprovare; il testo è conservato.";
 "Unlimited" = "Illimitato";
 "Updated" = "Aggiornato";
+"Usage" = "Utilizzo";
 "Usage window" = "Finestra di utilizzo";
 "Usage windows and balances are reported by Codex. Missing values are not estimated." = "Finestre di utilizzo e saldi sono forniti da Codex. I valori mancanti non vengono stimati.";
 "Used" = "Utilizzati";
