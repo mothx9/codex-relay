@@ -56,3 +56,31 @@ func (h *Hub) unsubscribeAPNS(w http.ResponseWriter, r *http.Request) {
 	}
 	jsonResponse(w, map[string]bool{"ok": true})
 }
+
+// Status is scoped to the authenticated controller and never returns its APNs token.
+func (h *Hub) statusAPNS(w http.ResponseWriter, r *http.Request) {
+	token, _, ok := h.auth(w, r)
+	if !ok {
+		return
+	}
+	id, _, ok := h.store.DeviceLogin(token)
+	if !ok {
+		http.Error(w, "Paired device required", http.StatusForbidden)
+		return
+	}
+	subscriptions, err := h.store.APNSSubscriptions()
+	if err != nil {
+		http.Error(w, "Notification status unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	result := map[string]any{"configured": h.push.APNS != nil, "registered": false}
+	for _, subscription := range subscriptions {
+		if subscription.DeviceID == id {
+			result["registered"] = true
+			result["environment"] = subscription.Environment
+			result["privacy"] = subscription.Privacy
+			break
+		}
+	}
+	jsonResponse(w, result)
+}

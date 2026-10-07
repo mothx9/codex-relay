@@ -33,6 +33,7 @@
         0000000000000000000000E6 = {isa = PBXBuildFile; fileRef = 000000000000000000000085; };
 0000000000000000000000E7 = {isa = PBXBuildFile; fileRef = 000000000000000000000086; };
 0000000000000000000000E8 = {isa = PBXBuildFile; fileRef = 000000000000000000000087; };
+0000000000000000000000E9 = {isa = PBXBuildFile; fileRef = 000000000000000000000088; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -58,6 +59,7 @@
         000000000000000000000085 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/ActivityViews.swift; sourceTree = SOURCE_ROOT; };
 000000000000000000000086 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/AccountViews.swift; sourceTree = SOURCE_ROOT; };
 000000000000000000000087 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/SettingsViews.swift; sourceTree = SOURCE_ROOT; };
+000000000000000000000088 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCore/NotificationRouting.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -76,6 +78,7 @@
 			isa = PBXGroup;
 			children = (
 000000000000000000000087,
+000000000000000000000088,
 000000000000000000000086,
 				000000000000000000000085,
                 000000000000000000000084,
@@ -191,6 +194,7 @@
 				0000000000000000000000E2,
                 0000000000000000000000E6,
 0000000000000000000000E8,
+0000000000000000000000E9,
 0000000000000000000000E7,
                 0000000000000000000000E5,
                 0000000000000000000000E4,
@@ -243,6 +247,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = iOS/Simulator.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+                INFOPLIST_FILE = iOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Codex Relay";
 				INFOPLIST_KEY_RelayAPNSEnvironment = sandbox;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -267,6 +272,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = iOS/Simulator.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+                INFOPLIST_FILE = iOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Codex Relay";
 				INFOPLIST_KEY_RelayAPNSEnvironment = production;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

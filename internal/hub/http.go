@@ -53,6 +53,7 @@ func (h *Hub) Handler() http.Handler {
 	mux.HandleFunc("POST /api/push/subscribe", h.subscribePush)
 	mux.HandleFunc("POST /api/push/unsubscribe", h.unsubscribePush)
 	mux.HandleFunc("POST /api/push/test", h.testPush)
+	mux.HandleFunc("GET /api/native-push/status", h.statusAPNS)
 	mux.HandleFunc("POST /api/native-push/subscribe", h.subscribeAPNS)
 	mux.HandleFunc("POST /api/native-push/unsubscribe", h.unsubscribeAPNS)
 	mux.Handle("/", web.Handler())
@@ -526,7 +527,8 @@ func (h *Hub) testPush(w http.ResponseWriter, r *http.Request) {
 	if !h.mutation(w, r) {
 		return
 	}
-	if _, _, ok := h.auth(w, r); !ok {
+	token, _, ok := h.auth(w, r)
+	if !ok {
 		return
 	}
 	if h.push.PublicKey() == "" && h.push.APNS == nil {
@@ -549,7 +551,12 @@ func (h *Hub) testPush(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	h.push.Enqueue(push.Notice{Key: "test/" + protocol.ID(), Kind: "test", SessionID: input.SessionID})
+	deviceID := ""
+	// Browser subscriptions are not APNs controller registrations.
+	if strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
+		deviceID, _, _ = h.store.DeviceLogin(token)
+	}
+	h.push.Enqueue(push.Notice{DeviceID: deviceID, Key: "test/" + protocol.ID(), Kind: "test", SessionID: input.SessionID})
 	jsonResponse(w, map[string]bool{"queued": true})
 }
 

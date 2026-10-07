@@ -92,7 +92,7 @@ private struct UsageWindowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack { Text(window.label); Spacer(); Text("\(window.usedPercent)% used").monospacedDigit() }.font(.subheadline)
-            ProgressView(value: window.fraction).tint(window.usedPercent >= 100 ? RelayPalette.attention : RelayPalette.working)
+            ProgressView(value: window.fraction).tint(window.usedPercent >= 100 ? RelayPalette.attention : Color.accentColor)
                 .accessibilityLabel(window.label).accessibilityValue("\(window.usedPercent)% used")
             if let reset = window.resetsAt {
                 Text("Resets \(Date(timeIntervalSince1970: Double(reset)), format: .dateTime.month(.abbreviated).day().hour().minute())").font(.caption).foregroundStyle(.secondary)

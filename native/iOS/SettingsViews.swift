@@ -179,14 +179,17 @@ private struct NotificationSettingsView: View {
                 LabeledContent("Permesso iOS", value: relay.notificationPermission)
                 LabeledContent("APNs sul Hub", value: relay.nativePushAvailable ? "Configurato" : "Non configurato")
                 LabeledContent("Token Apple", value: relay.apnsToken == nil ? "Non ottenuto" : "Ottenuto")
-                LabeledContent("Registrazione Relay", value: relay.pushRegistered ? "Confermata" : "Non verificata")
+                LabeledContent("Relay registration", value: relay.pushRegistrationVerifiedAt == nil ? "Not verified" : relay.pushRegistered ? "Registered" : "Not registered")
+                if let verified = relay.pushRegistrationVerifiedAt { LabeledContent("Last checked") { Text(verified, style: .relative) } }
             }
             Section {
-                Button("Abilita notifiche") { Task { await relay.enableNativePush() } }.disabled(!relay.nativePushAvailable)
+                Button("Allow notifications") { Task { await relay.enableNativePush() } }.disabled(relay.settingsProgress["notifications"] != nil)
                 Button("Invia prova") { Task { await relay.testNativePush() } }.disabled(!relay.nativePushAvailable || !relay.pushRegistered)
                 Button("Disabilita notifiche") { Task { await relay.disableNativePush() } }
                 Text(relay.notificationStatus).font(.caption).foregroundStyle(.secondary)
+                SettingsFeedback(id: "notifications")
+                SettingsFeedback(id: "pushRegistration")
             } footer: { if !relay.nativePushAvailable { Text("Il collegamento a Codex resta attivo. Le notifiche push richiedono APNs sul Hub e la capability Apple Push Notifications, non disponibile con Personal Team.") } }
-        }.navigationTitle("Notifiche").navigationBarTitleDisplayMode(.inline).task { await relay.refreshNotificationPermission() }
+        }.navigationTitle("Notifiche").navigationBarTitleDisplayMode(.inline).task { await relay.refreshNativePush() }
     }
 }

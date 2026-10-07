@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"github.com/mothx9/codex-relay/internal/protocol"
 	"github.com/mothx9/codex-relay/internal/store"
 	"io"
 	"math/big"
@@ -104,5 +105,108 @@ func TestAPNSSubscriptionBoundToLiveDevice(t *testing.T) {
 	_ = s.DB.QueryRow(`SELECT count(*) FROM apns_subscriptions`).Scan(&count)
 	if count != 0 {
 		t.Fatal("removed device token retained")
+	}
+}
+
+func TestNativePayloadRoutesMachineAndUsesCanonicalBadge(t *testing.T) {
+	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	der, _ := x509.MarshalPKCS8PrivateKey(key)
+	a, err := NewAPNS(APNSConfig{TeamID: "AAAAAAAAAA", KeyID: "BBBBBBBBBB", Topic: "net.codex-relay.iphone"}, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.client = &http.Client{Transport: roundTrip(func(r *http.Request) (*http.Response, error) {
+		var payload struct {
+			APS struct {
+				Badge int
+				Alert map[string]string
+			}
+			Machine string `json:"machine_id"`
+			Kind    string `json:"kind"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatal(err)
+		}
+		if payload.APS.Badge != 3 || payload.Machine != "workstation" || payload.Kind != "machine_offline" {
+			t.Fatalf("lost navigation/badge: %+v", payload)
+		}
+		if strings.Contains(payload.APS.Alert["title"], "PRIVATE") {
+			t.Fatal("privacy leak")
+		}
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("{}")), Header: http.Header{}}, nil
+	})}
+	_, err = a.Send(context.Background(), Notice{Kind: "machine_offline", MachineID: "workstation", Machine: "PRIVATE_MACHINE", Badge: 3}, store.APNSSubscription{Token: strings.Repeat("ab", 32), Privacy: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestNativeWorkerSuppressesResolvedRequestsAndTargetsTestController(t *testing.T) {
+	s, err := store.Open(filepath.Join(t.TempDir(), "db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	for _, id := range []string{"phone", "tablet"} {
+		if err := s.AddDevice(id, id, strings.Repeat(id, 16), time.Now().Add(time.Hour)); err != nil {
+			t.Fatal(err)
+		}
+		token := strings.Repeat("ab", 32)
+		if id == "tablet" {
+			token = strings.Repeat("cd", 32)
+		}
+		if err := s.SubscribeAPNS(store.APNSSubscription{DeviceID: id, Token: token, Environment: "sandbox", Privacy: true}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.SavePending(protocol.PendingRequest{ID: "current", SessionID: "m~t", MachineID: "m", Status: "pending"}); err != nil {
+		t.Fatal(err)
+	}
+	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	der, _ := x509.MarshalPKCS8PrivateKey(key)
+	a, err := NewAPNS(APNSConfig{TeamID: "AAAAAAAAAA", KeyID: "BBBBBBBBBB", Topic: "net.codex-relay.iphone"}, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	type delivery struct {
+		path string
+		body string
+	}
+	deliveries := make(chan delivery, 10)
+	a.client = &http.Client{Transport: roundTrip(func(r *http.Request) (*http.Response, error) {
+		raw, _ := io.ReadAll(r.Body)
+		deliveries <- delivery{r.URL.Path, string(raw)}
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("{}")), Header: http.Header{}}, nil
+	})}
+	w := New(s, Keys{}, "")
+	w.APNS = a
+	w.Enqueue(Notice{Kind: "request", Key: "resolved", RequestID: "resolved", SessionID: "m~t"})
+	w.Enqueue(Notice{Kind: "request", Key: "current", RequestID: "current", SessionID: "m~t"})
+	w.Enqueue(Notice{Kind: "request", Key: "current", RequestID: "current", SessionID: "m~t"})
+	w.Enqueue(Notice{Kind: "test", Key: "test", DeviceID: "phone"})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan struct{})
+	go func() { defer close(done); w.Run(ctx) }()
+	for i := 0; i < 3; i++ {
+		select {
+		case got := <-deliveries:
+			if strings.Contains(got.body, "resolved") || !strings.Contains(got.body, `"badge":1`) {
+				t.Errorf("incorrect canonical delivery: %s", got.body)
+			}
+			if strings.Contains(got.body, `"kind":"test"`) && !strings.HasSuffix(got.path, strings.Repeat("ab", 32)) {
+				t.Error("test broadcast to another controller")
+			}
+		case <-time.After(3 * time.Second):
+			t.Error("delivery missing")
+			cancel()
+			<-done
+			return
+		}
+	}
+	cancel()
+	<-done
+	if len(deliveries) != 0 {
+		t.Fatal("duplicate or resolved notification delivered")
 	}
 }

@@ -51,6 +51,22 @@ struct RootView: View {
                 }
             }
         }
+        .onChange(of: relay.returnToFleet) { _, _ in destination = 0 }
+        .safeAreaInset(edge: .top) {
+            if let message = relay.navigationStatus {
+                HStack {
+                    Text(message).font(.caption)
+                    Spacer()
+                    Button("Dismiss", systemImage: "xmark") { relay.navigationStatus = nil; relay.pendingNavigation = PendingNavigation() }.labelStyle(.iconOnly).frame(minWidth: 44, minHeight: 44)
+                }.padding(.horizontal, RelaySpacing.page).background(.regularMaterial)
+            }
+        }
+        .sheet(isPresented: Binding(get: { relay.routedMachine != nil && relay.credential != nil }, set: { if !$0 { relay.routedMachine = nil } })) {
+            NavigationStack {
+                MachineSettingsView(id: relay.routedMachine ?? "")
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Close") { relay.routedMachine = nil } } }
+            }
+        }
         .alert("Codex Relay", isPresented: Binding(get: { relay.error != nil }, set: { if !$0 { relay.error = nil } })) { Button("OK") { relay.error = nil } } message: { Text(relay.error ?? "") }
     }
 

@@ -89,7 +89,7 @@ func (a *APNS) Send(ctx context.Context, n Notice, sub store.APNSSubscription) (
 		host = "https://api.sandbox.push.apple.com"
 	}
 	view := Payload(n, sub.Privacy)
-	payload, _ := json.Marshal(map[string]any{"aps": map[string]any{"alert": map[string]string{"title": view["title"], "body": view["body"]}, "sound": "default"}, "session_id": n.SessionID})
+	payload, _ := json.Marshal(map[string]any{"aps": map[string]any{"alert": map[string]string{"title": view["title"], "body": view["body"]}, "sound": "default", "badge": n.Badge}, "session_id": n.SessionID, "machine_id": n.MachineID, "kind": n.Kind, "request_id": n.RequestID})
 	req, err := http.NewRequestWithContext(ctx, "POST", host+"/3/device/"+sub.Token, bytes.NewReader(payload))
 	if err != nil {
 		return false, err
@@ -101,7 +101,10 @@ func (a *APNS) Send(ctx context.Context, n Notice, sub store.APNSSubscription) (
 	req.Header.Set("apns-expiration", fmt.Sprint(time.Now().Add(5*time.Minute).Unix()))
 	key := n.SessionID
 	if key == "" {
-		key = n.Machine
+		key = n.MachineID
+		if key == "" {
+			key = n.Machine
+		}
 	}
 	hash := sha256.Sum256([]byte(key))
 	req.Header.Set("apns-collapse-id", hex.EncodeToString(hash[:]))

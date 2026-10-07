@@ -84,6 +84,30 @@ import XCTest
         // Menu inspection only; no mutation of this real workload.
         app.terminate()
     }
+    func testLiveNotificationDeepLinks() throws {
+        guard let configURL = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires an existing paired Hub; no enrollment created.") }
+        let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: configURL))
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.terminate()
+        let url = try XCTUnwrap(URL(string: "codex-relay://session/" + config.sessionID))
+        app.open(url)
+        XCTAssertTrue(app.buttons["Session Info"].waitForExistence(timeout: 30), "Cold URL launch must wait for the canonical snapshot")
+        XCTAssertTrue(app.staticTexts["session.connection"].isHittable)
+        let transcript = app.scrollViews["session.transcript"]
+        wait(30) { let value = transcript.value as? String ?? ""; return !value.isEmpty && value != "0 items" }
+        // The URL contains no form payload. Only canonical pending state can render a request.
+        let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "M2 cold session deep link"; capture.lifetime = .keepAlways; add(capture)
+        XCUIDevice.shared.press(.home)
+        app.open(url)
+        XCTAssertTrue(app.buttons["Session Info"].waitForExistence(timeout: 20))
+        let machine = try XCTUnwrap(config.machineIDs.first)
+        app.open(try XCTUnwrap(URL(string: "codex-relay://machine/" + machine)))
+        XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 15))
+        let detail = XCTAttachment(screenshot: app.screenshot()); detail.name = "M2 machine notification destination"; detail.lifetime = .keepAlways; add(detail)
+        app.buttons["Close"].tap()
+        XCTAssertTrue(app.textFields["fleet.search"].waitForExistence(timeout: 15))
+    }
     func testLiveCodexAccountPresentation() throws {
         guard Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") != nil else { throw XCTSkip("Requires the paired Hub with account metadata.") }
         continueAfterFailure = false

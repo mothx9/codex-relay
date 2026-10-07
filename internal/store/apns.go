@@ -50,3 +50,10 @@ func (s *Store) APNSSubscriptions() ([]APNSSubscription, error) {
 	}
 	return out, rows.Err()
 }
+
+// NotificationState reads only durable routing metadata, never transcript/form content.
+func (s *Store) NotificationState(requestID string) (count int, pending bool, err error) {
+	var present int
+	err = s.DB.QueryRow(`SELECT count(*), coalesce(max(CASE WHEN id=? THEN 1 ELSE 0 END),0) FROM pending_requests`, requestID).Scan(&count, &present)
+	return count, present != 0, err
+}

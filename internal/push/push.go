@@ -25,7 +25,10 @@ type Keys struct {
 
 func Generate() (Keys, error) { priv, pub, e := webpush.GenerateVAPIDKeys(); return Keys{pub, priv}, e }
 
-type Notice struct{ Key, Kind, SessionID, Machine, Project, Title string }
+type Notice struct {
+	Key, Kind, SessionID, MachineID, Machine, Project, Title, RequestID, DeviceID string
+	Badge                                                                         int
+}
 type Worker struct {
 	store   *store.Store
 	keys    Keys
@@ -85,6 +88,13 @@ func (w *Worker) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case n := <-w.queue:
+			// Compute the badge at delivery time. Do not alert a request that was
+			// resolved while queued; clients still rehydrate before showing a form.
+			count, pending, err := w.store.NotificationState(n.RequestID)
+			if err != nil || (n.RequestID != "" && !pending) {
+				continue
+			}
+			n.Badge = count
 			subscriptions, e := w.store.Subscriptions()
 			native, nativeErr := w.store.APNSSubscriptions()
 			if e != nil || nativeErr != nil || (len(subscriptions) == 0 && (w.APNS == nil || len(native) == 0)) {
@@ -96,6 +106,9 @@ func (w *Worker) Run(ctx context.Context) {
 			}
 			if w.APNS != nil {
 				for _, sub := range native {
+					if n.DeviceID != "" && n.DeviceID != sub.DeviceID {
+						continue
+					}
 					if ctx.Err() != nil {
 						return
 					}
@@ -108,7 +121,7 @@ func (w *Worker) Run(ctx context.Context) {
 					}
 				}
 			}
-			if w.keys.Public == "" {
+			if w.keys.Public == "" || n.DeviceID != "" {
 				continue
 			}
 			for _, sub := range subscriptions {
@@ -141,19 +154,19 @@ func Payload(n Notice, privacy bool) map[string]string {
 	if !privacy {
 		title = protocol.Clip(n.Machine+" · "+n.Project, 100)
 	}
-	body := "Codex ha bisogno di te."
+	body := "Codex needs your input."
 	if privacy {
-		body = "Una sessione ha bisogno di te."
+		body = "A session needs your input."
 	}
 	switch n.Kind {
 	case "turn_completed":
-		body = "Codex ha completato il turno."
+		body = "Codex completed a turn."
 	case "failed":
-		body = "Una sessione Codex richiede attenzione."
+		body = "A Codex session needs attention."
 	case "machine_offline":
-		body = "Una macchina Relay è offline."
+		body = "A Relay machine is offline."
 	case "test":
-		body = "Web Push è attivo."
+		body = "Relay notification test."
 	}
 	target := "/"
 	if n.SessionID != "" {

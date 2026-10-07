@@ -31,6 +31,11 @@ import UIKit
     private var queueWaiters: [String: CheckedContinuation<Bool, Never>] = [:]
     var outbox = Outbox()
     var selected: String = ""
+    var returnToFleet = 0
+    var routedMachine: String?
+    var pendingNavigation = PendingNavigation()
+    var navigationStatus: String?
+    private var navigationTask: Task<Void, Never>?
     var online = false
     var connection = "Accesso richiesto"
     var error: String?
@@ -40,6 +45,7 @@ import UIKit
     var settingsErrors: [String: String] = [:]
     var notificationPermission = "Da verificare"
     var pushRegistered = false
+    var pushRegistrationVerifiedAt: Date?
     var pairCode: PairCode?
     var busy = false
     var nativePushAvailable = false
@@ -99,7 +105,7 @@ import UIKit
                     self.online = false; self.restoredWatch = false; self.historyLoading = false; self.historyRequestID = nil; self.outbox.disconnected(); for id in Array(self.queueWaiters.keys) { self.finishQueueEditUnknown(id) }; self.commands.removeAll(); self.catalogueCommands.removeAll(); self.catalogueLoading.removeAll(); self.socket?.cancel(with: .goingAway, reason: nil); self.transport?.invalidateAndCancel()
                     self.connection = "Offline · riconnessione"
                     if let hubError = error as? HubFailure {
-                        if hubError.authenticationRequired { self.forget(); self.error = hubError.localizedDescription; return }
+                        if hubError.authenticationRequired { self.forget(preserveNavigation: true); self.error = hubError.localizedDescription; return }
                         if !hubError.retryable { self.error = hubError.localizedDescription; self.connection = "Errore del Hub"; return }
                     }
                     let delay = min(60.0, pow(2.0, Double(min(attempt, 6)))) * Double.random(in: 0.5...1.0); attempt += 1
@@ -112,6 +118,7 @@ import UIKit
         switch message.type {
         case "snapshot":
             guard let snapshot = message.snapshot else { return }
+            let reconnecting = !online
             eventFreshness.snapshot(snapshot.machines)
             liveActivities = snapshot.liveActivities ?? [:]
             machines = Dictionary(uniqueKeysWithValues: snapshot.machines.map { ($0.id, $0) }); sessions = Dictionary(uniqueKeysWithValues: snapshot.sessions.map { ($0.id, $0) })
@@ -120,7 +127,9 @@ import UIKit
             requestProgress = requestProgress.filter { activeRequests.contains($0.key) }
             requestErrors = requestErrors.filter { activeRequests.contains($0.key) }
             if !selected.isEmpty && !restoredWatch { await watchSelected() }
-            Task { await loadDevices() }
+            updateNotificationBadge()
+            resolveNavigation()
+            Task { await loadDevices(); if reconnecting { await refreshNativePush() } }
         case "devices_changed": Task { await loadDevices() }
         case "event", "pending":
             guard let event = message.event else { return }
@@ -143,6 +152,7 @@ import UIKit
             if let session = event.session { sessions[session.id] = session }
             if let request = event.request { requests[request.id] = request.retainingContext(from: requests[request.id]) }
             if event.kind == "request_resolved", let id = event.requestId { requests.removeValue(forKey: id) }
+            if event.request != nil || event.kind == "request_resolved" { updateNotificationBadge() }
             if event.sessionId == selected {
                 if event.kind == "follow_up_queue" { outbox.queue(session: selected, entries: event.followUps ?? []) }
                 if ["turn_started", "message_dispatched"].contains(event.kind), let id = event.clientId { outbox.dispatched(session: selected, clientId: id) }
@@ -158,6 +168,7 @@ import UIKit
                     catalogue.apply(machine: page.machine, page: result.sessions ?? [], cursor: result.catalogueCursor)
                     catalogueErrors[page.machine] = nil
                 } else { catalogueErrors[page.machine] = result.error ?? "Cronologia non disponibile." }
+                resolveNavigation()
                 return
             }
             if let identity = requestCommands.removeValue(forKey: result.id) {
@@ -234,6 +245,45 @@ import UIKit
         guard let machine = machines[id] else { return "Stato macchina non disponibile" }
         let access = registry?.machines.first(where: { $0.id == id })?.access
         return machine.connectionLabel(hubConnected: online, access: access)
+    }
+    func navigate(_ destination: RelayDestination) {
+        pendingNavigation.receive(destination)
+        resolveNavigation()
+    }
+    private func resolveNavigation() {
+        guard credential != nil, online, let target = pendingNavigation.target else { return }
+        switch target {
+        case .fleet:
+            _ = pendingNavigation.take(authenticated: true, snapshotReady: true)
+            closeDetail(); returnToFleet += 1; routedMachine = nil; navigationStatus = nil
+        case .machine(let id):
+            _ = pendingNavigation.take(authenticated: true, snapshotReady: true)
+            closeDetail(); routedMachine = machines[id] == nil ? nil : id
+            navigationStatus = machines[id] == nil ? "This machine is no longer enrolled in this Relay." : nil
+        case .session(let id):
+            if fleetSessions[id] != nil {
+                _ = pendingNavigation.take(authenticated: true, snapshotReady: true)
+                navigationStatus = nil; routedMachine = nil; open(id)
+            } else if let machine = RelayDestination.machineID(in: id), machines[machine] != nil {
+                guard machines[machine]?.status == "ONLINE" else {
+                    routedMachine = machine
+                    navigationStatus = "The session will open when its machine reconnects. Its notification contains no actionable request."
+                    return
+                }
+                if catalogue.completed.contains(machine) {
+                    _ = pendingNavigation.take(authenticated: true, snapshotReady: true)
+                    navigationStatus = "This session is no longer available in the machine’s history."
+                } else if let error = catalogueErrors[machine] { navigationStatus = error }
+                else {
+                    navigationStatus = "Finding this session in Codex history…"
+                    navigationTask?.cancel()
+                    navigationTask = Task { await loadCatalogue(machine: machine) }
+                }
+            } else {
+                _ = pendingNavigation.take(authenticated: true, snapshotReady: true)
+                navigationStatus = "This notification’s machine is no longer enrolled in this Relay."
+            }
+        }
     }
     func open(_ id: String) {
         guard id != selected else { return }
@@ -364,7 +414,7 @@ import UIKit
         do { let _: Ack = try await api.fetch("api/logout", body: [:]); forget() }
         catch { settingsErrors["logout"] = "Accesso non revocato. " + error.localizedDescription }
     }
-    func forget() { guard !previewOnly else { return }; stop(); CredentialVault.clear(); credential = nil; pushRegistered = false; settingsErrors = [:]; machines = [:]; sessions = [:]; catalogue = SessionCatalogue(); catalogueErrors = [:]; liveActivities = [:]; requests = [:]; registry = nil; pairCode = nil; selected = ""; chat = RecentChat(); outbox = Outbox(); connection = "Accesso richiesto" }
+    func forget(preserveNavigation: Bool = false) { guard !previewOnly else { return }; stop(); if !preserveNavigation { pendingNavigation = PendingNavigation() }; navigationTask?.cancel(); routedMachine = nil; CredentialVault.clear(); credential = nil; pushRegistered = false; pushRegistrationVerifiedAt = nil; settingsErrors = [:]; machines = [:]; sessions = [:]; catalogue = SessionCatalogue(); catalogueErrors = [:]; liveActivities = [:]; requests = [:]; registry = nil; accounts = []; pairCode = nil; selected = ""; chat = RecentChat(); outbox = Outbox(); connection = "Accesso richiesto"; updateNotificationBadge() }
     func background() { guard !previewOnly else { return }; paused = true; lastBackground = Date(); stop() }
     func foreground() { guard !previewOnly else { return }; paused = false; outbox.prune(active: ""); if let lastBackground, Date().timeIntervalSince(lastBackground) > 300 { outbox = Outbox(); chat = RecentChat(); historyCursor = nil }; connect() }
     private func stop() { for id in Array(queueWaiters.keys) { finishQueueEditUnknown(id) }; chat.endHistory(); restoredWatch = false; historyLoading = false; historyRequestID = nil; generation = UUID(); loop?.cancel(); loop = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; transport?.invalidateAndCancel(); transport = nil; online = false; commands.removeAll(); catalogueCommands.removeAll(); catalogueLoading.removeAll(); outbox.disconnected() }
