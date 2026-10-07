@@ -87,6 +87,24 @@ import XCTest
         // Menu inspection only; no mutation of this real workload.
         app.terminate()
     }
+    func testPublicProductScreenshots() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        for surface in ["fleet", "conversation", "needs-you", "question", "terminal", "tools", "diff", "machines", "account", "settings", "diagnostics", "pairing"] {
+            app.launchArguments = ["--product-screenshot", surface, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+            app.launch()
+            XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.name = "public-" + surface; screenshot.lifetime = .keepAlways; add(screenshot)
+            if surface == "question" {
+                XCTAssertEqual(app.staticTexts.matching(NSPredicate(format: "label == %@", "Which validation scope should I use?")).count, 1)
+                XCTAssertFalse(app.buttons["Respond"].isEnabled)
+                app.buttons.containing(.staticText, identifier: "Full suite").firstMatch.tap()
+                XCTAssertTrue(app.buttons["Respond"].isEnabled)
+            }
+            app.terminate()
+        }
+    }
     func testAppIconOnHomeScreen() {
         continueAfterFailure = false
         let app = XCUIApplication(); app.launchArguments = ["--preview-onboarding"]; app.launch()

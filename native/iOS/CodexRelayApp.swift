@@ -12,7 +12,7 @@ import UserNotifications
     #endif
     init() {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--preview-onboarding") {
+        if ProcessInfo.processInfo.arguments.contains("--preview-onboarding") || ProcessInfo.processInfo.arguments.contains("--product-screenshot") {
             _relay = State(initialValue: RelayController(preview: true))
             return
         }
@@ -25,7 +25,15 @@ import UserNotifications
     }
     var body: some Scene {
         WindowGroup {
-            RootView().environment(relay)
+            Group {
+                #if DEBUG
+                if let index = ProcessInfo.processInfo.arguments.firstIndex(of: "--product-screenshot"), index + 1 < ProcessInfo.processInfo.arguments.count {
+                    ProductPreviewScreen(surface: ProcessInfo.processInfo.arguments[index + 1])
+                } else { RootView().environment(relay) }
+                #else
+                RootView().environment(relay)
+                #endif
+            }
                 #if canImport(UIKit)
                 .onAppear {
                     notifications.onToken = { token in relay.apnsToken = token; Task { await relay.registerNativePush() } }

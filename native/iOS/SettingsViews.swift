@@ -311,7 +311,7 @@ private struct NotificationSettingsView: View {
     }
 }
 
-private struct DiagnosticsView: View {
+struct DiagnosticsView: View {
     @Environment(RelayController.self) private var relay
     @State private var copied = false
     var body: some View {

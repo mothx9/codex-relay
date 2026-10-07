@@ -199,7 +199,7 @@ private struct ActivityDetailRow: View {
                     Image(systemName: "chevron.right").rotationEffect(.degrees(expanded ? 90 : 0))
                     Text(item.files?.isEmpty == false || item.kind == "diff" ? String(localized: "Changes", bundle: relayLocalizationBundle) : "Output")
                     Spacer()
-                    if !output.isEmpty { Text(String(localized: "\(output.split(separator: "\n", omittingEmptySubsequences: false).count) lines", bundle: relayLocalizationBundle)).foregroundStyle(.secondary) }
+                    if !output.isEmpty && item.files?.isEmpty != false && item.kind != "diff" { Text(String(localized: "\(output.split(separator: "\n", omittingEmptySubsequences: false).count) lines", bundle: relayLocalizationBundle)).foregroundStyle(.secondary) }
                 }.font(.caption.weight(.medium)).frame(minHeight: 44).contentShape(Rectangle())
             }.buttonStyle(.plain).accessibilityIdentifier("activity.output." + item.id)
                 .accessibilityValue(expanded ? String(localized: "Expanded", bundle: relayLocalizationBundle) : String(localized: "Collapsed", bundle: relayLocalizationBundle))

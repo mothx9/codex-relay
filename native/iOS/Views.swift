@@ -218,19 +218,42 @@ struct NeedsYouView: View {
 struct PendingView: View {
     @Environment(RelayController.self) private var relay
     let request: PendingRequest
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var answers: [String: String] = [:]
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(request.kind == "user_input" ? String(localized: "Codex needs your input", bundle: relayLocalizationBundle) : request.kind == "command_approval" ? String(localized: "Codex wants to run", bundle: relayLocalizationBundle) : request.kind == "file_approval" ? String(localized: "Codex wants to change files", bundle: relayLocalizationBundle) : request.kind == "permissions_approval" ? String(localized: "Codex requests permission", bundle: relayLocalizationBundle) : String(localized: "Codex needs a decision", bundle: relayLocalizationBundle)).font(.headline)
             Text("\(relay.machines[request.machineId]?.name ?? request.machineId) · \(relay.current?.project ?? "")").font(.caption).foregroundStyle(.secondary)
-            Text(request.description).textSelection(.enabled)
+            if !(request.questions ?? []).contains(where: { $0.question.trimmingCharacters(in: .whitespacesAndNewlines) == request.description.trimmingCharacters(in: .whitespacesAndNewlines) }) {
+                Text(request.description).textSelection(.enabled)
+            }
             if let operation = request.operation { Text(operation).font(.body.monospaced()).textSelection(.enabled) }
             ForEach(request.questions ?? []) { question in
-                VStack(alignment: .leading) {
-                    Text(question.question)
-                    if let options = question.options { ForEach(options, id: \.label) { option in Button { answers[question.id] = option.label } label: { VStack(alignment: .leading) { Text((answers[question.id] == option.label ? "✓ " : "") + option.label); Text(option.description).font(.caption).foregroundStyle(.secondary) } } } }
+                VStack(alignment: .leading, spacing: RelaySpacing.row) {
+                    Text(question.question).textSelection(.enabled)
+                    if let options = question.options {
+                        ForEach(options, id: \.label) { option in
+                            let selected = answers[question.id] == option.label
+                            Button {
+                                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.18)) { answers[question.id] = option.label }
+                            } label: {
+                                HStack(alignment: .top, spacing: RelaySpacing.row) {
+                                    VStack(alignment: .leading, spacing: RelaySpacing.small) {
+                                        Text(option.label).font(.subheadline.weight(.medium)).foregroundStyle(.primary)
+                                        Text(option.description).font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Spacer(minLength: 4)
+                                    Image(systemName: selected ? "checkmark.circle.fill" : "circle").foregroundStyle(selected ? Color.accentColor : .secondary)
+                                }.padding(RelaySpacing.row).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                                    .background(selected ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
+                            }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
+                        }
+                    }
                     let binding = Binding(get: { answers[question.id] ?? "" }, set: { answers[question.id] = $0 })
-                    if question.secret == true { SecureField(String(localized: "Answer", bundle: relayLocalizationBundle), text: binding) } else { TextField(String(localized: "Custom answer", bundle: relayLocalizationBundle), text: binding) }
+                    Group {
+                        if question.secret == true { SecureField(String(localized: "Answer", bundle: relayLocalizationBundle), text: binding) }
+                        else { TextField(String(localized: "Custom answer", bundle: relayLocalizationBundle), text: binding, axis: .vertical).lineLimit(1...4) }
+                    }.padding(RelaySpacing.row).background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
                 }
             }
             if request.kind == "permissions_approval" {
@@ -254,7 +277,7 @@ struct PendingView: View {
             if let error = relay.requestErrors[request.presentationID] {
                 Text(error).font(.caption).foregroundStyle(.orange)
             }
-        }.padding().background(Color.orange.opacity(0.07)).clipShape(RoundedRectangle(cornerRadius: 12))
+        }.padding(RelaySpacing.page).background(RelayPalette.attention.opacity(0.07)).clipShape(RoundedRectangle(cornerRadius: 12))
             .disabled(relay.requestProgress[request.presentationID] != nil)
     }
 }
@@ -407,3 +430,99 @@ struct LastKnownSession: View {
         let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]; return formatter
     }
 }
+
+#if DEBUG
+/// Public assets exercise production views with a closed, in-memory controller.
+/// These identities are fictional and this mode never reads Keychain or opens a socket.
+@MainActor enum ProductFixtures {
+    static let patch = """
+    diff --git a/src/validation.rs b/src/validation.rs
+    --- a/src/validation.rs
+    +++ b/src/validation.rs
+    @@ -14,4 +14,7 @@
+     pub fn validate(input: &Input) -> Result<()> {
+    -    run_checks(input)
+    +    if input.is_empty() {
+    +        return Err(Error::EmptyInput);
+    +    }
+    +    run_checks(input)?;
+    +    Ok(())
+     }
+    """
+    static func controller(surface: String) -> RelayController {
+        let relay = PreviewData.controller()
+        let now = Date()
+        let stamp = ISO8601DateFormatter().string(from: now)
+        func decode<T: Decodable>(_ value: Any, as: T.Type = T.self) -> T {
+            try! RelayJSON.decoder().decode(T.self, from: JSONSerialization.data(withJSONObject: value))
+        }
+        let specs = [("workstation", "Workstation", "ONLINE"), ("laptop", "Laptop", "ONLINE"), ("node", "GPU node", "OFFLINE")]
+        let machines: [Machine] = specs.map { id, name, status in
+            decode(["id": id, "name": name, "status": status, "last_seen": stamp, "agent_version": "0.1.0-rc.5", "codex_version": "0.160.1", "adapter": "app-server", "freshness": ["protocol_version": 1, "last_heartbeat": stamp, "last_snapshot": stamp, "last_event": stamp, "snapshot_ms": 84, "sync_ms": 102, "sequence": 42, "snapshot_sequence": 40]])
+        }
+        relay.machines = Dictionary(uniqueKeysWithValues: machines.map { ($0.id, $0) })
+        let sessionSpecs = [("laptop", "decision", "Validate the release", "relay", "NEEDS_YOU"), ("workstation", "build", "Harden input validation", "compiler", "WORKING"), ("laptop", "docs", "Update installation guide", "relay", "READY"), ("node", "kernel", "Check CUDA kernels", "compute", "WORKING")]
+        let sessions: [RelaySession] = sessionSpecs.enumerated().map { index, spec in
+            let (machine, thread, title, project, status) = spec
+            return decode(["id": machine + "~" + thread, "machine_id": machine, "thread_id": thread, "title": title, "project": project, "cwd": "/workspace/" + project, "branch": "main", "status": status, "updated_at": ISO8601DateFormatter().string(from: now.addingTimeInterval(Double(-index * 60))), "turn_id": "example-turn", "turn_started": ISO8601DateFormatter().string(from: now.addingTimeInterval(-267)), "read_only": false, "capabilities": ["can_send": true, "can_follow_up": true, "can_steer": true, "can_interrupt": true, "can_answer": true]])
+        }
+        relay.sessions = Dictionary(uniqueKeysWithValues: sessions.map { ($0.id, $0) })
+        relay.liveActivities = ["workstation~build": decode(["item_id": "example-command", "kind": "terminal", "label": "cargo test --workspace", "state": "running", "timestamp": stamp])]
+        let request: PendingRequest = decode(["request_id": "example-request", "session_id": "laptop~decision", "machine_id": "laptop", "kind": "user_input", "description": "Which validation scope should I use?", "expires_at": "2099-01-01T00:00:00Z", "created_at": stamp, "can_approve": true, "questions": [["id": "scope", "header": "Validation", "question": "Which validation scope should I use?", "options": [["label": "Full suite", "description": "Run unit tests and integration checks."], ["label": "Focused checks", "description": "Run tests for the changed module."]]]]])
+        relay.requests = [request.id: request]
+        relay.selected = ["conversation", "terminal", "tools", "diff"].contains(surface) ? "workstation~build" : surface == "question" ? "laptop~decision" : ""
+        relay.outbox = Outbox(); relay.chat = RecentChat()
+        relay.chat.put(Activity(id: "example-user", kind: "userMessage", text: "Validate empty inputs, then run the workspace tests."))
+        relay.chat.put(Activity(id: "example-response", kind: "agentMessage", text: "The validator now rejects empty input before running checks. I’m testing the change across the workspace.\n\n### What changed\n- Added an explicit **empty-input guard**.\n- Kept existing error propagation.\n- Added a regression test for `Error::EmptyInput`."))
+        var command = Activity(id: "example-command", kind: "commandExecution", text: "cargo test --workspace\nCompiling validator v0.4.0\nRunning tests/validation.rs\ntest rejects_empty_input ... ok\ntest preserves_valid_input ... ok\nRunning integration checks…")
+        command.command = "cargo test --workspace"; command.state = "running"; command.timestamp = stamp
+        relay.chat.put(command)
+        var tool = Activity(id: "example-tool", kind: "mcpToolCall", text: "fetch_document")
+        tool.toolName = "fetch_document"; tool.toolServer = "documentation"; tool.state = "running"; tool.progress = "Reading the validation API reference"
+        relay.chat.put(tool)
+        var file = Activity(id: "example-file", kind: "fileChange", text: "src/validation.rs")
+        file.state = "completed"; file.files = decode([["path": "src/validation.rs", "kind": "modify", "patch": patch]])
+        relay.chat.put(file)
+        if surface == "conversation" {
+            relay.chat.put(Activity(id: "example-code", kind: "agentMessage", text: "The guard keeps the failure explicit:\n\n```rust\nif input.is_empty() {\n    return Err(Error::EmptyInput);\n}\nrun_checks(input)?;\n```\n\nThe regression test has passed. Integration checks are still running."))
+        }
+        if surface == "question" { relay.chat = RecentChat(); relay.chat.put(Activity(id: "example-question-intro", kind: "agentMessage", text: "The release candidate is ready for validation. I need your choice before starting the checks.")) }
+        let account: AccountEntry = decode(["id": "example-account", "identity_basis": "account_id", "account": ["kind": "chatgpt", "email": "developer@example.invalid", "plan": "Pro", "source": "codex", "observed_at": stamp, "limits": ["primary": ["used_percent": 61, "window_duration_mins": 300, "resets_at": Int(now.timeIntervalSince1970) + 8040], "secondary": ["used_percent": 31, "window_duration_mins": 10080, "resets_at": Int(now.timeIntervalSince1970) + 172800]]], "machines": ["workstation", "laptop"], "source_machine": "laptop", "fresh": true, "updated_at": stamp])
+        relay.accounts = [account]
+        relay.registry = DeviceRegistry(operators: relay.registry!.operators, machines: machines.map { MachineDevice(machine: $0, access: "ALLOWED") }, currentDeviceId: "preview-device", hubUrl: "https://relay.example.invalid", chatgptDeviceManagement: false)
+        relay.diagnostics = decode(["hub_version": "0.1.0-rc.5", "protocol_version": 1, "transport": "HTTPS / WSS", "database": "reachable", "machines": []])
+        relay.diagnosticsUpdatedAt = now
+        relay.connection = "Connected"; relay.online = true
+        return relay
+    }
+}
+@MainActor struct ProductPreviewScreen: View {
+    let surface: String
+    @State private var relay: RelayController
+    init(surface: String) { self.surface = surface; _relay = State(initialValue: ProductFixtures.controller(surface: surface)) }
+    var body: some View {
+        Group {
+            switch surface {
+            case "fleet": RootView()
+            case "conversation", "question": NavigationStack { SessionView() }
+            case "needs-you": NavigationStack { NeedsYouView().navigationTitle("Needs You") }
+            case "machines": NavigationStack { MachinesView() }
+            case "account": NavigationStack { AccountDetailView(id: "example-account") }
+            case "settings": NavigationStack { DevicesView() }
+            case "diagnostics": NavigationStack { DiagnosticsView() }
+            case "pairing": NavigationStack { PairingView().navigationTitle("Codex Relay").navigationBarTitleDisplayMode(.inline) }
+            case "terminal", "tools", "diff":
+                let kind: TranscriptGroup.Kind = surface == "terminal" ? .terminal : surface == "tools" ? .mcp : .changes
+                if let group = TranscriptGroup.make(relay.chat.items).first(where: { $0.kind == kind }) { ToolDetailView(group: group) }
+            default: RootView()
+            }
+        }.environment(relay).preferredColorScheme(.dark)
+    }
+}
+#Preview("Product · Fleet") { ProductPreviewScreen(surface: "fleet") }
+#Preview("Product · Conversation") { ProductPreviewScreen(surface: "conversation") }
+#Preview("Product · Terminal") { ProductPreviewScreen(surface: "terminal") }
+#Preview("Product · Diff") { ProductPreviewScreen(surface: "diff") }
+#Preview("Product · Account") { ProductPreviewScreen(surface: "account") }
+#Preview("Product · Needs You") { ProductPreviewScreen(surface: "question") }
+#endif
