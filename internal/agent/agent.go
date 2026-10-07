@@ -176,6 +176,7 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 	m.LastSeen = time.Now().UTC()
 	p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", SnapshotRevision: revision, Machine: machineCopy(m), Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
 	commands := make(chan protocol.Command, 32)
+	reads := make(chan protocol.Command, 8)
 	readerDone := make(chan struct{})
 	defer func() { p.Close(); <-readerDone }()
 	go func() {
@@ -189,8 +190,12 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 			if msg.Type != "command" || msg.Command == nil {
 				return
 			}
+			destination := commands
+			if msg.Command.Kind == "history" || msg.Command.Kind == "catalogue" {
+				destination = reads
+			}
 			select {
-			case commands <- *msg.Command:
+			case destination <- *msg.Command:
 			case <-ctx.Done():
 				return
 			default:
@@ -215,13 +220,34 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 				}
 				r := b.Execute(ctx, cmd)
 				if cmd.Kind != "history" && cmd.Kind != "catalogue" {
-					cache[cmd.ID] = r
+					cached := r
+					// Idempotency retains outcomes, never an old queue payload.
+					cached.FollowUps = nil
+					cache[cmd.ID] = cached
 					*order = append(*order, cmd.ID)
 					if len(*order) > 1024 {
 						delete(cache, (*order)[0])
 						*order = (*order)[1:]
 					}
 				}
+				p.Enqueue(protocol.Message{Type: "result", Result: &r})
+			}
+		}
+	}()
+	// A paged read can wait on disk or Codex. Keep it out of the serialized
+	// mutation lane so Steer, answers and Interrupt do not wait behind history.
+	readDone := make(chan struct{})
+	defer func() { cancel(); <-readDone }()
+	go func() {
+		defer close(readDone)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-p.Done:
+				return
+			case cmd := <-reads:
+				r := b.Execute(ctx, cmd)
 				p.Enqueue(protocol.Message{Type: "result", Result: &r})
 			}
 		}
