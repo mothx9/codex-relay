@@ -37,6 +37,7 @@
 0000000000000000000000EA = {isa = PBXBuildFile; fileRef = 000000000000000000000089; };
 000000000000000000000400 = {isa = PBXBuildFile; fileRef = 000000000000000000000401; };
 000000000000000000000402 = {isa = PBXBuildFile; fileRef = 000000000000000000000403; };
+000000000000000000000410 = {isa = PBXBuildFile; fileRef = 000000000000000000000411; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -66,6 +67,7 @@
 000000000000000000000089 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCore/Diagnostics.swift; sourceTree = SOURCE_ROOT; };
 000000000000000000000401 = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = RelayCore/Resources/Localizable.xcstrings; sourceTree = SOURCE_ROOT; };
 000000000000000000000403 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCore/Localization.swift; sourceTree = SOURCE_ROOT; };
+000000000000000000000411 = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = iOS/Assets.xcassets; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -83,6 +85,7 @@
 		000000000000000000000003 = {
 			isa = PBXGroup;
 			children = (
+000000000000000000000411,
 000000000000000000000401,
 000000000000000000000403,
 000000000000000000000087,
@@ -189,7 +192,7 @@
 		00000000000000000000000A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (000000000000000000000400,
+			files = (000000000000000000000410, 000000000000000000000400,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -266,6 +269,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "net.codex-relay.iphone";
+                ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -291,6 +295,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "net.codex-relay.iphone";
+                ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = complete;

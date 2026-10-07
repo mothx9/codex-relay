@@ -80,7 +80,7 @@ struct PairingView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: RelaySpacing.row) {
-                    Image(systemName: "point.3.connected.trianglepath.dotted").font(.largeTitle).foregroundStyle(.secondary)
+                    Image("RelayMark").resizable().scaledToFit().frame(width: 48, height: 48).clipShape(RoundedRectangle(cornerRadius: 12)).accessibilityHidden(true)
                     Text(String(localized: "Your Codex fleet.\nOn iPhone.", bundle: relayLocalizationBundle)).font(.title.weight(.semibold))
                     Text(String(localized: "Follow live work, answer questions and continue sessions across your machines.", bundle: relayLocalizationBundle)).foregroundStyle(.secondary)
                 }

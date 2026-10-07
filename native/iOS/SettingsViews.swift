@@ -359,7 +359,7 @@ private struct AboutView: View {
     static var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? String(localized: "Unavailable", bundle: relayLocalizationBundle) }
     var body: some View {
         List {
-            Section { Text("Codex Relay").font(.title2.weight(.semibold)); Text(String(localized: "Supervise and continue Codex across your machines from iPhone.", bundle: relayLocalizationBundle)).foregroundStyle(.secondary); LabeledContent(String(localized: "Version", bundle: relayLocalizationBundle), value: Self.version) }
+            Section { Image("RelayMark").resizable().scaledToFit().frame(width: 64, height: 64).clipShape(RoundedRectangle(cornerRadius: 16)).accessibilityHidden(true); Text("Codex Relay").font(.title2.weight(.semibold)); Text(String(localized: "Supervise and continue Codex across your machines from iPhone.", bundle: relayLocalizationBundle)).foregroundStyle(.secondary); LabeledContent(String(localized: "Version", bundle: relayLocalizationBundle), value: Self.version) }
             Section { Link(String(localized: "Source & documentation", bundle: relayLocalizationBundle), destination: URL(string: "https://github.com/mothx9/codex-relay")!); Text(String(localized: "Self-hosted. Open source. Independent of OpenAI.", bundle: relayLocalizationBundle)).font(.footnote).foregroundStyle(.secondary) }
         }.navigationTitle(String(localized: "About", bundle: relayLocalizationBundle)).navigationBarTitleDisplayMode(.inline)
     }

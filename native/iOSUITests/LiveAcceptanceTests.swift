@@ -87,6 +87,19 @@ import XCTest
         // Menu inspection only; no mutation of this real workload.
         app.terminate()
     }
+    func testAppIconOnHomeScreen() {
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launchArguments = ["--preview-onboarding"]; app.launch()
+        XCTAssertTrue(app.buttons["pairing.submit"].waitForExistence(timeout: 10))
+        XCUIDevice.shared.press(.home)
+        let home = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let icon = home.icons["Codex Relay"]
+        XCTAssertTrue(icon.waitForExistence(timeout: 10))
+        let screenshot = XCTAttachment(screenshot: home.screenshot()); screenshot.name = "M2 app icon on iPhone 16 Home Screen"; screenshot.lifetime = .keepAlways; add(screenshot)
+        icon.tap()
+        XCTAssertTrue(app.buttons["pairing.submit"].waitForExistence(timeout: 10))
+        app.terminate()
+    }
     func testIsolatedOnboardingDoesNotTouchEnrollment() {
         continueAfterFailure = false
         let app = XCUIApplication(); app.launchArguments = ["--preview-onboarding"]; app.launch()

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<title>Codex Relay — your Codex fleet, on iPhone</title>
+<rect width="1200" height="630" fill="#15181c"/>
+<g transform="translate(60 140) scale(.32)"><rect width="1024" height="1024" fill="#15181c"/>
+  <path d="M320 716V324H554C722 324 722 536 554 536H420M532 536L704 716" fill="none" stroke="#f0f2f3" stroke-width="84" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="320" cy="716" r="63" fill="#f0f2f3"/>
+  <circle cx="704" cy="716" r="63" fill="#f0f2f3"/>
+</g>
+<g fill="#f0f2f3" font-family="-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif">
+<text x="440" y="236" font-size="64" font-weight="700">Codex Relay</text>
+<text x="444" y="313" font-size="32">Your Codex fleet. On iPhone.</text>
+<text x="444" y="386" font-size="22" fill="#afb5bf">Live work · Decisions · Conversations</text>
+<text x="444" y="470" font-size="19" fill="#afb5bf">Self-hosted · Open source</text>
+</g></svg>
