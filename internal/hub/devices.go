@@ -257,13 +257,17 @@ func (h *Hub) manageMachine(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-		for rid, p := range h.requests {
-			if p.MachineID == id {
-				delete(h.requests, rid)
-				delete(h.answering, rid)
+		// Pausing/revoking transport does not resolve Codex requests. Keep the
+		// canonical last-known request and one-shot reservation until a fresh
+		// epoch reconciles it. Explicit enrollment removal discards metadata.
+		if action == "remove" {
+			for rid, p := range h.requests {
+				if p.MachineID == id {
+					delete(h.requests, rid)
+					delete(h.answering, rid)
+				}
 			}
 		}
-		_ = h.store.ClearPending(id)
 		for cid, f := range h.flights {
 			if f.machine == id {
 				res := protocol.Failure(protocol.Command{ID: cid, SessionID: f.session}, protocol.UnknownOutcome)

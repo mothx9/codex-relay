@@ -84,6 +84,28 @@ import XCTest
         // Menu inspection only; no mutation of this real workload.
         app.terminate()
     }
+    func testLiveSettingsAndRedactedDiagnostics() throws {
+        guard Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") != nil else { throw XCTSkip("Uses the existing paired controller without enrollment or mutations.") }
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.textFields["fleet.search"].waitForExistence(timeout: 20))
+        app.tabBars.buttons["Impostazioni"].tap()
+        XCTAssertTrue(app.buttons["Controllers & Access"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["settings.hub"].exists)
+        for label in ["Machines", "Codex Accounts", "Notifications", "Diagnostics"] { XCTAssertTrue(app.buttons[label].exists, label) }
+        let settings = XCTAttachment(screenshot: app.screenshot()); settings.name = "M2 Settings"; settings.lifetime = .keepAlways; add(settings)
+        app.buttons["Diagnostics"].tap()
+        let copy = app.buttons["diagnostics.copy"]
+        reveal(copy, in: app);
+        XCTAssertTrue(copy.exists); wait(15) { copy.isEnabled }; copy.tap()
+        XCTAssertEqual(copy.label, "Copied")
+        let diagnostics = XCTAttachment(screenshot: app.screenshot()); diagnostics.name = "M2 Diagnostics"; diagnostics.lifetime = .keepAlways; add(diagnostics)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["Controllers & Access"].tap()
+        XCTAssertTrue(app.staticTexts["Authorized controllers"].waitForExistence(timeout: 10))
+        let controllers = XCTAttachment(screenshot: app.screenshot()); controllers.name = "M2 Controllers"; controllers.lifetime = .keepAlways; add(controllers)
+        // Never tap production revoke/remove/pause controls in acceptance tests.
+    }
     func testLiveNotificationDeepLinks() throws {
         guard let configURL = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires an existing paired Hub; no enrollment created.") }
         let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: configURL))
@@ -400,7 +422,7 @@ import XCTest
         }
         // No attach, send, approval, interruption or other Codex mutation.
     }
-    func testLivePairingKeychainFleetAndCanonicalTurn() throws {
+    func testLiveKeychainFleetAndCanonicalTurn() throws {
         guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else {
             throw XCTSkip("Requires an owner-supplied live acceptance configuration and isolated thread.")
         }
@@ -412,10 +434,7 @@ import XCTest
         app.launch()
         let pairing = app.textFields["pairing.url"]
         if pairing.waitForExistence(timeout: 3) {
-            pairing.tap(); pairing.typeText(config.origin)
-            let code = app.textFields["pairing.code"]
-            code.tap(); code.typeText(config.code)
-            app.buttons["pairing.submit"].tap()
+            throw XCTSkip("Live acceptance reuses one explicitly paired development controller. Pairing/security tests run against isolated temporary Hubs; never enroll a production controller per test run.")
         }
         wait { app.staticTexts["fleet.connection"].exists && app.staticTexts["fleet.connection"].label.contains("macchine online") }
         for machine in config.machineIDs {

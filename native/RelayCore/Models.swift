@@ -43,6 +43,7 @@ public struct TokenUsage: Codable, Sendable { public let last: TokenBreakdown; p
 
 public struct MachineFreshness: Codable, Sendable {
     public let connectionId: String?; public let epoch: String?; public let protocolVersion: Int?
+    public let connectedAt: String?; public let lastDisconnectReason: String?; public let agentToHub: TransportTiming?
     public let lastHeartbeat: String?; public let lastEvent: String?; public let lastSnapshot: String?
     public let sequence: UInt64?; public let snapshotSequence: UInt64?
     public let reconnectCount: UInt64?; public let snapshotMs: Double?; public let syncMs: Double?

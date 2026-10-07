@@ -55,5 +55,10 @@ func (h *Hub) diagnostics(w http.ResponseWriter, r *http.Request) {
 	h.mu.Lock()
 	machines := h.diagnosticMachines(time.Now())
 	h.mu.Unlock()
-	jsonResponse(w, map[string]any{"hub_version": h.config.Version, "protocol_version": protocol.Version, "machines": machines, "transport": "unspecified", "clock_note": "cross-host timing includes clock offset"})
+	database := "unavailable"
+	var one int
+	if err := h.store.DB.QueryRow(`SELECT 1`).Scan(&one); err == nil && one == 1 {
+		database = "reachable"
+	}
+	jsonResponse(w, map[string]any{"database": database, "hub_version": h.config.Version, "protocol_version": protocol.Version, "machines": machines, "transport": "unspecified", "clock_note": "cross-host timing includes clock offset"})
 }

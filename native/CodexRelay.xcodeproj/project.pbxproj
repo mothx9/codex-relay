@@ -34,6 +34,7 @@
 0000000000000000000000E7 = {isa = PBXBuildFile; fileRef = 000000000000000000000086; };
 0000000000000000000000E8 = {isa = PBXBuildFile; fileRef = 000000000000000000000087; };
 0000000000000000000000E9 = {isa = PBXBuildFile; fileRef = 000000000000000000000088; };
+0000000000000000000000EA = {isa = PBXBuildFile; fileRef = 000000000000000000000089; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -60,6 +61,7 @@
 000000000000000000000086 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/AccountViews.swift; sourceTree = SOURCE_ROOT; };
 000000000000000000000087 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOS/SettingsViews.swift; sourceTree = SOURCE_ROOT; };
 000000000000000000000088 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCore/NotificationRouting.swift; sourceTree = SOURCE_ROOT; };
+000000000000000000000089 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayCore/Diagnostics.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +81,7 @@
 			children = (
 000000000000000000000087,
 000000000000000000000088,
+000000000000000000000089,
 000000000000000000000086,
 				000000000000000000000085,
                 000000000000000000000084,
@@ -195,6 +198,7 @@
                 0000000000000000000000E6,
 0000000000000000000000E8,
 0000000000000000000000E9,
+0000000000000000000000EA,
 0000000000000000000000E7,
                 0000000000000000000000E5,
                 0000000000000000000000E4,

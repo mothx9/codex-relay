@@ -41,6 +41,8 @@ import UIKit
     var error: String?
     var registry: DeviceRegistry?
     var accounts: [AccountEntry] = []
+    var diagnostics: RelayDiagnostics?
+    var diagnosticsUpdatedAt: Date?
     var settingsProgress: [String: String] = [:]
     var settingsErrors: [String: String] = [:]
     var notificationPermission = "Da verificare"
@@ -382,6 +384,26 @@ import UIKit
         do { registry = try await api.fetch("api/devices"); settingsErrors["devices"] = nil }
         catch { settingsErrors["devices"] = error.localizedDescription }
     }
+    func loadDiagnostics() async {
+        guard let api, settingsProgress["diagnostics"] == nil else { return }
+        settingsProgress["diagnostics"] = "Refreshing…"
+        defer { settingsProgress["diagnostics"] = nil }
+        let identity = credential?.id
+        do {
+            let value: RelayDiagnostics = try await api.fetch("api/diagnostics")
+            guard credential?.id == identity else { return }
+            diagnostics = value; diagnosticsUpdatedAt = Date(); settingsErrors["diagnostics"] = nil
+        } catch { if credential?.id == identity { settingsErrors["diagnostics"] = error.localizedDescription } }
+    }
+    func removeController(_ id: String) async {
+        guard let api, settingsProgress[id] == nil else { return }
+        settingsProgress[id] = "Removing controller…"; settingsErrors[id] = nil
+        defer { settingsProgress[id] = nil }
+        do {
+            let _: Ack = try await api.fetch("api/devices/\(id)/remove", body: [:])
+            if id == credential?.id { forget() } else { await loadDevices() }
+        } catch { settingsErrors[id] = error.localizedDescription }
+    }
     func loadAccounts() async {
         guard let api else { return }
         do { let registry: AccountRegistry = try await api.fetch("api/accounts"); accounts = registry.accounts; settingsErrors["accounts"] = nil }
@@ -414,7 +436,7 @@ import UIKit
         do { let _: Ack = try await api.fetch("api/logout", body: [:]); forget() }
         catch { settingsErrors["logout"] = "Accesso non revocato. " + error.localizedDescription }
     }
-    func forget(preserveNavigation: Bool = false) { guard !previewOnly else { return }; stop(); if !preserveNavigation { pendingNavigation = PendingNavigation() }; navigationTask?.cancel(); routedMachine = nil; CredentialVault.clear(); credential = nil; pushRegistered = false; pushRegistrationVerifiedAt = nil; settingsErrors = [:]; machines = [:]; sessions = [:]; catalogue = SessionCatalogue(); catalogueErrors = [:]; liveActivities = [:]; requests = [:]; registry = nil; accounts = []; pairCode = nil; selected = ""; chat = RecentChat(); outbox = Outbox(); connection = "Accesso richiesto"; updateNotificationBadge() }
+    func forget(preserveNavigation: Bool = false) { guard !previewOnly else { return }; stop(); if !preserveNavigation { pendingNavigation = PendingNavigation() }; navigationTask?.cancel(); routedMachine = nil; CredentialVault.clear(); credential = nil; pushRegistered = false; pushRegistrationVerifiedAt = nil; settingsErrors = [:]; machines = [:]; sessions = [:]; catalogue = SessionCatalogue(); catalogueErrors = [:]; liveActivities = [:]; requests = [:]; registry = nil; accounts = []; diagnostics = nil; diagnosticsUpdatedAt = nil; pairCode = nil; selected = ""; chat = RecentChat(); outbox = Outbox(); connection = "Accesso richiesto"; updateNotificationBadge() }
     func background() { guard !previewOnly else { return }; paused = true; lastBackground = Date(); stop() }
     func foreground() { guard !previewOnly else { return }; paused = false; outbox.prune(active: ""); if let lastBackground, Date().timeIntervalSince(lastBackground) > 300 { outbox = Outbox(); chat = RecentChat(); historyCursor = nil }; connect() }
     private func stop() { for id in Array(queueWaiters.keys) { finishQueueEditUnknown(id) }; chat.endHistory(); restoredWatch = false; historyLoading = false; historyRequestID = nil; generation = UUID(); loop?.cancel(); loop = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; transport?.invalidateAndCancel(); transport = nil; online = false; commands.removeAll(); catalogueCommands.removeAll(); catalogueLoading.removeAll(); outbox.disconnected() }

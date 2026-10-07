@@ -175,3 +175,52 @@ func TestMachinePauseResumeAndRemoval(t *testing.T) {
 		t.Fatal("silently replaced credential")
 	}
 }
+
+func TestMachineAccessChangesPreserveUnresolvedRequestUntilEnrollmentRemoval(t *testing.T) {
+	h, s, server := testHub(t, filepath.Join(t.TempDir(), "db"))
+	defer s.Close()
+	defer server.Close()
+	defer h.Close()
+	cookie := login(t, server)
+	if err := s.Token("m", testToken); err != nil {
+		t.Fatal(err)
+	}
+	machine := protocol.Machine{ID: "m", Status: protocol.Online}
+	session := protocol.Session{ID: "m~t", MachineID: "m", ThreadID: "t", Status: protocol.NeedsYou}
+	request := protocol.PendingRequest{ID: "pending", SessionID: session.ID, MachineID: "m", ThreadID: "t", Status: "pending"}
+	h.mu.Lock()
+	h.machines["m"] = machine
+	h.sessions[session.ID] = session
+	h.requests[request.ID] = request
+	h.answering[request.ID] = "one-shot-reservation"
+	h.mu.Unlock()
+	if err := s.ReplaceMachineState(machine, []protocol.Session{session}, []protocol.PendingRequest{request}); err != nil {
+		t.Fatal(err)
+	}
+	for _, action := range []string{"pause", "resume", "revoke"} {
+		status, _ := devicePost(t, server, "/api/machines/m/"+action, `{}`, cookie, "")
+		if status != 200 {
+			t.Fatal(action, status)
+		}
+		h.mu.Lock()
+		snap := h.snapshot()
+		reserved := h.answering[request.ID]
+		h.mu.Unlock()
+		if len(snap.Requests) != 1 || len(snap.Sessions) != 1 || snap.Sessions[0].Status != protocol.NeedsYou || snap.Sessions[0].Fresh || reserved == "" {
+			t.Fatal("access change invented request resolution or live state", action)
+		}
+		durable, err := s.Load()
+		if err != nil || len(durable.Requests) != 1 {
+			t.Fatal("lost durable routing", action, err)
+		}
+	}
+	status, _ := devicePost(t, server, "/api/machines/m/remove", `{}`, cookie, "")
+	if status != 200 {
+		t.Fatal(status)
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if len(h.requests) != 0 || len(h.answering) != 0 {
+		t.Fatal("explicit removal retained routing")
+	}
+}
