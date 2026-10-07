@@ -13,7 +13,11 @@ installer. The legacy default download is an older published RC, not current mai
 The latest wave adds explicit context-compaction status, compact mixed activity
 groups, direct file diffs, remaining-capacity quota windows and connected-client
 local banners with machine/session/turn context and a slimmer persistent composer.
-Sanitized screenshots and a recorded walkthrough document the current native views.
+Fleet now uses open two-line Working rows with a green activity sweep, stable
+ordering and separate Recent sessions. Activity inspection distinguishes its
+compact aggregate, individual operation and changed-file list. Short live
+questions open in a partial-height material sheet. Sanitized screenshots and a
+recorded walkthrough document the current native views.
 
 The native app supports iOS 17+, English/Italian, Dynamic Type and Reduce Motion.
 Liquid Glass uses a material fallback on older iOS. Installation currently

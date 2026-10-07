@@ -193,7 +193,7 @@ struct CodeBlockView: View {
             }.padding(.leading, RelaySpacing.row)
             Divider()
             ScrollView(.horizontal) {
-                Text(tokens.isEmpty ? AttributedString(code) : highlighted).font(.subheadline.monospaced())
+                Text(tokens.isEmpty ? AttributedString(code) : highlighted).font(.footnote.monospaced())
                     .fixedSize(horizontal: true, vertical: false).textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(RelaySpacing.row)
             }

@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--simulator', required=True)
 parser.add_argument('--derived-data', default='/tmp/relay-public-screenshots-build')
 parser.add_argument('--watcher-pid', type=int)
+parser.add_argument('--skip-build', action='store_true')
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 os.chdir(root)
@@ -25,7 +26,8 @@ try:
     if args.watcher_pid:
         os.kill(args.watcher_pid, signal.SIGSTOP)
         paused = True
-    subprocess.run(base + ['CODE_SIGNING_ALLOWED=YES', 'CODE_SIGN_IDENTITY=-', 'build-for-testing'], check=True)
+    if not args.skip_build:
+        subprocess.run(base + ['CODE_SIGNING_ALLOWED=YES', 'CODE_SIGN_IDENTITY=-', 'build-for-testing'], check=True)
     subprocess.run(['xcrun', 'simctl', 'status_bar', args.simulator, 'override', '--time', '9:41',
                     '--dataNetwork', 'wifi', '--wifiMode', 'active', '--wifiBars', '3',
                     '--batteryState', 'charged', '--batteryLevel', '100'], check=True)

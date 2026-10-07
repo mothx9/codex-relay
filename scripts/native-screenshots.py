@@ -37,7 +37,7 @@ try:
         run(['xcrun', 'xcresulttool', 'export', 'attachments', '--path', str(result), '--output-path', str(exported)])
         target = root / 'docs/assets/app/screenshots'
         target.mkdir(parents=True, exist_ok=True)
-        names = {'fleet', 'conversation', 'needs-you', 'question', 'terminal', 'tools', 'diff', 'machines', 'account', 'settings', 'diagnostics', 'pairing', 'navigation', 'machine-diagnostics', 'live-question', 'live-inbox', 'notifications', 'compaction', 'queue', 'question-reply'}
+        names = {'fleet', 'conversation', 'needs-you', 'question', 'terminal', 'tools', 'diff', 'machines', 'account', 'settings', 'diagnostics', 'pairing', 'navigation', 'machine-diagnostics', 'live-question', 'live-inbox', 'notifications', 'compaction', 'queue', 'question-reply', 'activity', 'changed-files', 'question-panel'}
         captured = set()
         for test in json.loads((exported / 'manifest.json').read_text()):
             if test['testIdentifier'] != 'LiveAcceptanceTests/testPublicProductScreenshots()':

@@ -6,8 +6,14 @@ required physical notification delivery, is complete.
 
 ## Unreleased — M2 productization
 
-- Three-line Working rows combine a bounded activity category and elapsed time;
+- Open Fleet, Needs You and Relay menu lists with title-first hierarchy, quiet
+  Recent rows and stable Working order during live updates.
+- Two-line Working rows align machine/project above elapsed time and show a
+  gray-to-green active category sweep;
   current live questions have one composer-side reply home without transcript copies.
+- Consistent activity alignment and distinct routes for one operation, changed files
+  and the compact aggregate; short live questions use a partial-height sheet.
+- Smaller code blocks and renewed native screenshots, video and transparent SVGs.
 
 - Bounded photo/screenshot input through the native picker and image drops,
   gated by Agent capability and forwarded through the official Codex input API.

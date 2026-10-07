@@ -108,3 +108,16 @@ d.note(40,390,'Only JPEG/PNG bytes cross Relay. No URL fetch, remote file path, 
 d.note(40,420,'Codex owns history. Relay history carries attachment counts, not image payloads.')
 d.note(40,450,'Unknown outcome retains the local draft. No automatic retry or resubmission.')
 d.save('image-input')
+
+# Distinct routes from one inline group; no full-output aggregate by default.
+d=Diagram('Activity inspection','One group. Consistent rows. A specific destination for each tap.',640)
+d.box(350,125,300,'Inline group',['Counts · state · recent rows'])
+d.box(40,340,270,'Command / tool',['One operation','Available output · copy actions'])
+d.box(365,340,270,'Changed files',["Only this group's files",'Choose one file → its patch'])
+d.box(690,340,270,'All activities',['Compact list for this group','Choose one operation → detail'])
+d.arrow('M 500 229 V 280 H 175 V 332','operation row',230,265)
+d.arrow('M 500 229 V 332','file preview',565,298)
+d.arrow('M 500 229 V 280 H 825 V 332','View all',765,265)
+d.note(40,545,'Expansion replaces the collapsed preview. Outputs and patches open on demand.')
+d.note(40,575,'Group identity follows the first operation; messages and turn boundaries remain intact.')
+d.save('activity-inspection')

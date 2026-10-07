@@ -1,131 +1,81 @@
 import SwiftUI
 
+/// Explicit destinations keep the aggregate, file list, and one operation distinct.
+enum ActivityRoute: Hashable {
+    case all, files, file(String), operation(String)
+    var identity: String {
+        switch self { case .all: "all"; case .files: "files"; case .file(let path): "file/" + path; case .operation(let id): "operation/" + id }
+    }
+}
+
 struct ToolSummaryView: View {
     let group: TranscriptGroup
-    let open: (String?, String?) -> Void
+    let open: (ActivityRoute) -> Void
     @State private var expanded = false
+    @State private var changeOverview = ""
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var running: Int { group.items.filter { $0.state == "running" }.count }
     private var failed: Int { group.items.filter { $0.state == "failed" || $0.state == "declined" }.count }
-    private var current: Activity? { group.items.last(where: { $0.state == "running" }) ?? group.items.last }
     private var state: String { running > 0 ? "WORKING" : failed > 0 ? "FAILED" : group.items.allSatisfy { $0.state == "completed" } ? "READY" : "INACTIVE" }
-    private var tint: Color { if group.kind == .activity { return .secondary }; return group.kind == .terminal ? RelayPalette.terminal : group.kind == .mcp ? RelayPalette.tool : RelayPalette.file }
-    @State private var changeOverview = ""
     private var summary: String {
-        if group.kind == .activity {
-            var parts: [String] = []
-            if group.commandCount > 0 { parts.append(group.commandCount == 1 ? String(localized: "1 command", bundle: relayLocalizationBundle) : String(localized: "\(group.commandCount) commands", bundle: relayLocalizationBundle)) }
-            if group.toolCount > 0 { parts.append(group.toolCount == 1 ? String(localized: "1 operation", bundle: relayLocalizationBundle) : String(localized: "\(group.toolCount) operations", bundle: relayLocalizationBundle)) }
-            if !changeOverview.isEmpty { parts.append(changeOverview) }
-            if failed > 0 { parts.append(String(localized: "\(failed) failed", bundle: relayLocalizationBundle)) }
-            return parts.joined(separator: " · ")
-        }
-        var value = group.kind == .changes && !changeOverview.isEmpty ? changeOverview : toolCount(group)
-        if running > 0 { value += " · " + String(localized: "\(running) running", bundle: relayLocalizationBundle) }
-        if failed > 0 { value += " · " + String(localized: "\(failed) failed", bundle: relayLocalizationBundle) }
-        if state == "READY" { value += " · " + String(localized: "Completed", bundle: relayLocalizationBundle) }
-        return value
+        var parts: [String] = []
+        if group.commandCount > 0 { parts.append(group.commandCount == 1 ? String(localized: "1 command", bundle: relayLocalizationBundle) : String(localized: "\(group.commandCount) commands", bundle: relayLocalizationBundle)) }
+        if group.toolCount > 0 { parts.append(group.toolCount == 1 ? String(localized: "1 operation", bundle: relayLocalizationBundle) : String(localized: "\(group.toolCount) operations", bundle: relayLocalizationBundle)) }
+        if !changeOverview.isEmpty { parts.append(changeOverview) }
+        if parts.isEmpty { parts.append(toolCount(group)) }
+        if failed > 0 { parts.append(String(localized: "\(failed) failed", bundle: relayLocalizationBundle)) }
+        return parts.joined(separator: " · ").replacingOccurrences(of: " −", with: "\u{00a0}−")
     }
-    private var command: Activity? {
-        group.items.last(where: { $0.command != nil && $0.state == "running" }) ?? group.items.last(where: { $0.command != nil })
-    }
-    private var tool: Activity? {
-        group.items.last(where: { $0.toolName != nil && $0.state == "running" }) ?? group.items.last(where: { $0.toolName != nil })
-    }
-    private func operationPreview(_ item: Activity, icon: String, text: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Image(systemName: icon).frame(width: 16).foregroundStyle(.secondary)
-            Text(text).font(item.command == nil ? .caption : .caption.monospaced()).lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            if item.state == "running" || item.state == "failed" || item.state == "declined" {
-                Image(systemName: item.state == "running" ? "clock" : "exclamationmark.circle")
-                    .foregroundStyle(item.state == "running" ? RelayPalette.working : RelayPalette.failure)
-                    .accessibilityLabel(activityState(item.state))
-            }
-        }.font(.caption).foregroundStyle(.secondary)
+    private var preview: Activity? {
+        let operations = group.items.filter { $0.command != nil || $0.toolName != nil }
+        return operations.last(where: { $0.state == "running" }) ?? operations.last
     }
     var body: some View {
-        VStack(alignment: .leading, spacing: RelaySpacing.row) {
+        VStack(alignment: .leading, spacing: 2) {
             Button { withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { expanded.toggle() } } label: {
-                VStack(alignment: .leading, spacing: RelaySpacing.compact) {
-                    HStack(spacing: 10) {
-                        Image(systemName: toolIcon(group.kind)).font(.subheadline.weight(.medium)).foregroundStyle(tint)
-                            .frame(width: 24, height: 24)
-                        Text(group.kind == .activity ? summary : toolTitle(group.kind)).font(.caption.weight(.medium)).foregroundStyle(.secondary)
-                        Spacer(minLength: 4)
-                        if state != "INACTIVE" { SessionStatusMark(status: state).font(.caption) }
-                        Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
-                            .rotationEffect(.degrees(expanded ? 90 : 0))
-                    }
-                    if group.kind != .activity { Text(summary).font(.caption).foregroundStyle(.secondary).padding(.leading, 24)
-                        .contentTransition(.opacity)
-                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: state) }
-
-                }.foregroundStyle(.primary).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Image(systemName: toolIcon(group.kind)).foregroundStyle(.secondary).frame(width: 20)
+                    Text(summary).font(.footnote.weight(.medium)).foregroundStyle(.secondary).lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if state != "INACTIVE" { SessionStatusMark(status: state).font(.caption) }
+                    Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(expanded ? 90 : 0))
+                }.frame(minHeight: 44).contentShape(Rectangle())
             }.buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("tool." + group.id)
                 .accessibilityValue(expanded ? String(localized: "Details expanded", bundle: relayLocalizationBundle) : String(localized: "Details collapsed", bundle: relayLocalizationBundle))
-            if !expanded {
-                VStack(alignment: .leading, spacing: 8) {
-                    if let command { operationPreview(command, icon: "terminal", text: ActivityPreview.command(command.command ?? "")) }
-                    if let tool { operationPreview(tool, icon: "wrench.and.screwdriver", text: ActivityPreview.tool(tool)) }
-                    if !group.changedPaths.isEmpty {
-                        Button { open(group.changedPaths.count == 1 ? group.changedPaths.first : nil, nil) } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "doc.text").frame(width: 16)
-                                Text(group.changedPaths.prefix(2).map { URL(fileURLWithPath: $0).lastPathComponent }.joined(separator: ", ") + (group.changedPaths.count > 2 ? " +\(group.changedPaths.count - 2)" : ""))
-                                    .lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
-                                Image(systemName: "chevron.right").font(.caption2)
-                            }.font(.caption).foregroundStyle(.secondary).frame(minHeight: 44).contentShape(Rectangle())
-                        }.buttonStyle(.plain).accessibilityIdentifier(group.changedPaths.count == 1 ? "activity.file." + group.changedPaths[0] : "activity.files." + group.id)
-                    }
-                }.padding(.leading, 24)
-            }
-            if expanded, running > 0, let progress = current?.progress, !progress.isEmpty {
-                Text(progress).font(.caption).foregroundStyle(.secondary).lineLimit(3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityIdentifier("tool.progress." + group.id)
-            }
-            if !expanded, running > 0, group.kind == .terminal, let item = current, !item.commandOutput.isEmpty {
-                // A bounded tail is a live preview, not another scrolling terminal.
-                Text(item.commandOutput.suffix(600).split(separator: "\n", omittingEmptySubsequences: false).suffix(1).joined(separator: "\n"))
-                    .font(.caption2.monospaced()).foregroundStyle(.secondary).lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, 10).overlay(alignment: .leading) { Capsule().fill(tint.opacity(0.4)).frame(width: 2) }
-                    .accessibilityIdentifier("tool.live." + group.id)
-            }
             if expanded {
-                VStack(alignment: .leading, spacing: RelaySpacing.row) {
-                    ForEach(Array(group.items.suffix(5))) { item in
-                        Button { open(nil, item.id) } label: {
-                            HStack(alignment: .top, spacing: 10) {
-                                Image(systemName: item.command != nil ? "terminal" : item.toolName != nil ? "wrench.and.screwdriver" : "doc.text")
-                                    .foregroundStyle(.secondary).frame(width: 18)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(item.command.map(ActivityPreview.command) ?? (item.toolName != nil ? ActivityPreview.tool(item) : ChangeOverview.paths([item]).map { URL(fileURLWithPath: $0).lastPathComponent }.joined(separator: ", ")))
-                                        .font(item.command == nil ? .caption.weight(.medium) : .caption.monospaced()).lineLimit(2)
-                                    if let detail = ActivityPreview.detail(item), !detail.isEmpty {
-                                        Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
-                                    }
-                                }.frame(maxWidth: .infinity, alignment: .leading)
-                                if item.state == "failed" || item.state == "declined" { Image(systemName: "exclamationmark.circle.fill").foregroundStyle(RelayPalette.failure) }
-                                else if item.state == "running" { Image(systemName: "clock").foregroundStyle(.secondary) }
-                                Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
-                            }.font(.caption).foregroundStyle(.primary).padding(.vertical, 6)
-                                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
-                        }.buttonStyle(.plain).accessibilityIdentifier("activity.item." + item.id)
-                    }
-                    Button { open(nil, nil) } label: {
-                        HStack {
-                            Text(String(localized: "View all \(group.items.count) activities", bundle: relayLocalizationBundle))
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                        }.font(.caption).frame(minHeight: 44)
-                    }.accessibilityIdentifier("tool.details." + group.id)
-                }.padding(.leading, 24)
-                .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
+                if group.items.count > 5 {
+                    Text(String(localized: "Latest activities", bundle: relayLocalizationBundle)).font(.caption2).foregroundStyle(.tertiary).padding(.leading, 30)
+                }
+                ForEach(Array(group.items.suffix(5))) { item in
+                    Button { open(.operation(item.id)) } label: { ActivitySummaryRow(item: item) }
+                        .buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("activity.item." + item.id)
+                }
+                Button { open(.all) } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "list.bullet").frame(width: 20)
+                        Text(String(localized: "View all \(group.items.count) activities", bundle: relayLocalizationBundle))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "chevron.right").font(.caption2)
+                    }.font(.footnote).frame(minHeight: 44).contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityIdentifier("tool.details." + group.id)
+            } else {
+                if let preview {
+                    Button { open(.operation(preview.id)) } label: { ActivitySummaryRow(item: preview) }
+                        .buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("activity.preview." + preview.id)
+                }
+                if !group.changedPaths.isEmpty {
+                    Button { open(group.changedPaths.count == 1 ? .file(group.changedPaths[0]) : .files) } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "doc.text").frame(width: 20)
+                            Text(group.changedPaths.prefix(2).map { URL(fileURLWithPath: $0).lastPathComponent }.joined(separator: ", ") + (group.changedPaths.count > 2 ? " +\(group.changedPaths.count - 2)" : ""))
+                                .lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                            Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+                        }.font(.footnote).foregroundStyle(.secondary).frame(minHeight: 44).contentShape(Rectangle())
+                    }.buttonStyle(RelayRowPressStyle()).accessibilityIdentifier(group.changedPaths.count == 1 ? "activity.file." + group.changedPaths[0] : "activity.files." + group.id)
+                }
             }
-        }.padding(.vertical, RelaySpacing.compact)
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: state)
+        }.padding(.vertical, 4)
             .task(id: group.items.filter { $0.kind == "diff" || $0.kind == "fileChange" }) {
                 let items = group.items
                 let summary = await Task.detached { ChangeOverview.describe(items) }.value
@@ -134,72 +84,116 @@ struct ToolSummaryView: View {
     }
 }
 
+/// One shared alignment and bounded preview in the chat and aggregate list.
+private struct ActivitySummaryRow: View {
+    let item: Activity
+    private var title: String {
+        if let command = item.command { return ActivityPreview.command(command) }
+        if item.toolName != nil { return ActivityPreview.tool(item) }
+        let paths = ChangeOverview.paths([item])
+        return paths.isEmpty ? item.kind : paths.map { URL(fileURLWithPath: $0).lastPathComponent }.joined(separator: ", ")
+    }
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Image(systemName: item.command != nil ? "terminal" : item.toolName != nil ? "wrench.and.screwdriver" : "doc.text")
+                .foregroundStyle(.secondary).frame(width: 20)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(item.command == nil ? .footnote : .footnote.monospaced()).lineLimit(2)
+                if item.state == "running", let detail = ActivityPreview.detail(item), !detail.isEmpty {
+                    Text(detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            if item.state == "failed" || item.state == "declined" { Image(systemName: "exclamationmark.circle.fill").foregroundStyle(RelayPalette.failure).accessibilityLabel(activityState(item.state)) }
+            else if item.state == "running" { Image(systemName: "clock").foregroundStyle(RelayPalette.working).accessibilityLabel(activityState(item.state)) }
+            Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+        }.font(.caption2).foregroundStyle(.primary).padding(.vertical, 5)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
+    }
+}
+
 struct ToolDetailView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(RelayController.self) private var relay
     let group: TranscriptGroup
-    var focusedPath: String? = nil
-    var focusedItemID: String? = nil
-    private var liveGroup: TranscriptGroup { TranscriptGroup.make(relay.chat.items).first { $0.id == group.id } ?? group }
-    private var visibleItems: [Activity] { liveGroup.items.filter { focusedItemID == nil || $0.id == focusedItemID } }
+    var route: ActivityRoute = .all
     var body: some View {
         NavigationStack {
-            ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: RelaySpacing.row) {
-                    if focusedItemID == nil { HStack {
-                        Label(focusedPath ?? (focusedItemID != nil ? visibleItems.first.map { $0.toolName != nil ? ActivityPreview.tool($0) : String(localized: "Operation", bundle: relayLocalizationBundle) } ?? "" : (liveGroup.kind == .changes ? ChangeOverview.describe(liveGroup.items) : toolCount(liveGroup))), systemImage: focusedPath == nil ? toolIcon(group.kind) : "doc.text")
-                        Spacer()
-                        let running = visibleItems.filter { $0.state == "running" }.count
-                        if focusedPath == nil && running > 0 { Text(String(localized: "\(running) running", bundle: relayLocalizationBundle)).foregroundStyle(RelayPalette.working) }
-                    }.font(.caption.weight(.medium)).foregroundStyle(.secondary) }
-                    if focusedPath == nil && focusedItemID == nil && liveGroup.commandCount > 0 {
-                        let completed = liveGroup.items.filter { $0.state == "completed" }.count
-                        let failed = liveGroup.items.filter { $0.state == "failed" || $0.state == "declined" }.count
-                        HStack(spacing: RelaySpacing.page) {
-                            if completed > 0 { Label(String(localized: "\(completed) completed", bundle: relayLocalizationBundle), systemImage: "checkmark.circle") }
-                            if failed > 0 { Label(String(localized: "\(failed) failed", bundle: relayLocalizationBundle), systemImage: "xmark.circle").foregroundStyle(RelayPalette.failure) }
-                        }.font(.caption).foregroundStyle(.secondary)
-                    }
-                    if let focusedPath {
-                        ForEach(liveGroup.items.filter { ChangeOverview.paths([$0]).contains(focusedPath) }.suffix(1)) { item in
-                            if item.kind == "diff" { PatchView(patch: item.text, focusedPath: focusedPath) }
-                            else if let file = item.files?.first(where: { $0.path == focusedPath }) {
-                                if let patch = file.patch { PatchView(patch: patch, path: file.path) }
-                                else { Label(URL(fileURLWithPath: file.path).lastPathComponent, systemImage: "doc.text"); Text(fileChangeLabel(file.kind)).font(.caption).foregroundStyle(.secondary) }
-                            }
-                        }
-                    } else if liveGroup.kind == .changes {
-                        ForEach(visibleItems) { item in
-                            if item.kind == "diff" { PatchView(patch: item.text) }
-                            else { FileActivityDetail(item: item) }
-                        }
-                    } else {
-                    ForEach(visibleItems) { item in
-                        if item.kind == "fileChange" || item.kind == "diff" { FileActivityDetail(item: item).id(item.id) }
-                        else { ActivityDetailRow(item: item, initiallyExpanded: focusedItemID != nil || item.state == "running" || item.id == liveGroup.items.last?.id).id(item.id) }
-                        if item.id != visibleItems.last?.id { Divider() }
-                    }
-                    }
-                }.padding(RelaySpacing.page)
-            }.onAppear {
-                if focusedItemID == nil, liveGroup.items.count > 3, let target = liveGroup.items.first(where: { $0.state == "running" })?.id {
-                    DispatchQueue.main.async { proxy.scrollTo(target, anchor: .top) }
-                }
-            }
-            }.navigationTitle(focusedPath.map { URL(fileURLWithPath: $0).lastPathComponent } ?? (focusedItemID == nil ? toolTitle(group.kind) : String(localized: "Operation", bundle: relayLocalizationBundle))).navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    if focusedPath == nil && focusedItemID == nil { ToolbarItem(placement: .topBarLeading) {
-                        Menu {
-                            Button(String(localized: "Copy All Outputs", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") {
-                                UIPasteboard.general.string = liveGroup.items.map { $0.command != nil ? $0.commandOutput : $0.resultSummary ?? $0.text }.joined(separator: "\n\n")
-                            }
-                        } label: { Image(systemName: "doc.on.doc").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel(String(localized: "Copy Activity", bundle: relayLocalizationBundle))
-                    }
-                    }
-                    ToolbarItem(placement: .confirmationAction) { Button(String(localized: "Close", bundle: relayLocalizationBundle)) { dismiss() } }
-                }
+            ActivityDestinationView(group: group, route: route, close: { dismiss() })
         }
+    }
+}
+
+private struct ActivityDestinationView: View {
+    @Environment(RelayController.self) private var relay
+    let group: TranscriptGroup
+    let route: ActivityRoute
+    let close: () -> Void
+    private var liveGroup: TranscriptGroup { TranscriptGroup.make(relay.chat.items).first { $0.id == group.id } ?? group }
+    private var title: String {
+        switch route {
+        case .all: String(localized: "Activity", bundle: relayLocalizationBundle)
+        case .files: String(localized: "Changed files", bundle: relayLocalizationBundle)
+        case .file(let path): URL(fileURLWithPath: path).lastPathComponent
+        case .operation: String(localized: "Operation", bundle: relayLocalizationBundle)
+        }
+    }
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 8) {
+                switch route {
+                case .all:
+                    HStack(spacing: 12) {
+                        Text(String(localized: "\(liveGroup.items.count) activities", bundle: relayLocalizationBundle))
+                        Spacer()
+                        let failed = liveGroup.items.filter { $0.state == "failed" || $0.state == "declined" }.count
+                        if failed > 0 { Label(String(localized: "\(failed) failed", bundle: relayLocalizationBundle), systemImage: "exclamationmark.circle").foregroundStyle(RelayPalette.failure) }
+                    }.font(.caption).foregroundStyle(.secondary).padding(.bottom, 8)
+                    ForEach(liveGroup.items) { item in
+                        NavigationLink { ActivityDestinationView(group: group, route: .operation(item.id), close: close) } label: { ActivitySummaryRow(item: item) }
+                            .buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("activity.aggregate." + item.id)
+                    }
+                case .files:
+                    ForEach(liveGroup.changedPaths, id: \.self) { path in
+                        NavigationLink { ActivityDestinationView(group: group, route: .file(path), close: close) } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "doc.text").foregroundStyle(.secondary).frame(width: 20)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(URL(fileURLWithPath: path).lastPathComponent).font(.subheadline)
+                                    Text(path).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                                }.frame(maxWidth: .infinity, alignment: .leading)
+                                Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+                            }.frame(maxWidth: .infinity, minHeight: 44).padding(.vertical, 4).contentShape(Rectangle())
+                        }.buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("activity.path." + path)
+                    }
+                case .file(let path):
+                    Text(path).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                    ForEach(liveGroup.items.filter { ChangeOverview.paths([$0]).contains(path) }.suffix(1)) { item in
+                        if item.kind == "diff" { PatchView(patch: item.text, focusedPath: path, showHeader: false) }
+                        else if let file = item.files?.first(where: { $0.path == path }) {
+                            Text(fileChangeLabel(file.kind)).font(.caption).foregroundStyle(.secondary)
+                            if let patch = file.patch, !patch.isEmpty {
+                                if patch.contains("@@ ") { PatchView(patch: patch, path: path, showHeader: false) }
+                                else { CodeBlockView(code: patch, language: URL(fileURLWithPath: path).pathExtension) }
+                            } else { Text(String(localized: "No patch provided", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary) }
+                        }
+                    }
+                case .operation(let id):
+                    ForEach(liveGroup.items.filter { $0.id == id }) { item in
+                        if item.kind == "diff" || item.kind == "fileChange" { FileActivityDetail(item: item) }
+                        else { ActivityDetailRow(item: item, initiallyExpanded: true) }
+                    }
+                }
+            }.padding(20)
+        }.navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button(String(localized: "Close", bundle: relayLocalizationBundle), action: close) }
+                if route == .all { ToolbarItem(placement: .topBarLeading) {
+                    Menu {
+                        Button(String(localized: "Copy All Outputs", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") {
+                            UIPasteboard.general.string = liveGroup.items.map { $0.command != nil ? $0.commandOutput : $0.resultSummary ?? $0.text }.joined(separator: "\n\n")
+                        }
+                    } label: { Image(systemName: "doc.on.doc").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel(String(localized: "Copy Activity", bundle: relayLocalizationBundle))
+                } }
+            }
     }
 }
 

@@ -10,6 +10,8 @@ struct SessionView: View {
     @State private var images: [ImageInput] = []
     @State private var showPhotos = false
     @State private var questionDetails = false
+    @State private var questionDetent: PresentationDetent = .medium
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var loadingImages = 0
     @State private var steer = false
@@ -215,7 +217,7 @@ struct SessionView: View {
     }
     @ViewBuilder private func liveQuestionDock(_ session: RelaySession) -> some View {
         if let first = currentQuestions(session).first {
-            Button { questionDetails = true } label: {
+            Button { questionDetent = compactQuestion(session) ? .medium : .large; questionDetails = true } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "questionmark.bubble").foregroundStyle(.orange)
                     VStack(alignment: .leading, spacing: 2) {
@@ -227,6 +229,11 @@ struct SessionView: View {
                 }.frame(minHeight: 44).padding(.horizontal, 20).padding(.vertical, 4).contentShape(Rectangle())
             }.buttonStyle(.plain).accessibilityIdentifier("session.liveQuestion")
         }
+    }
+    private func compactQuestion(_ session: RelaySession) -> Bool {
+        let questions = currentQuestions(session).flatMap { $0.activity.questions ?? [] }
+        return !typeSize.isAccessibilitySize && questions.count == 1
+            && questions[0].title.count <= 280 && (questions[0].options?.count ?? 0) <= 3
     }
     private func liveQuestionSheet(_ session: RelaySession) -> some View {
         NavigationStack {
@@ -245,6 +252,10 @@ struct SessionView: View {
             }.navigationTitle(String(localized: "Live question", bundle: relayLocalizationBundle)).navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button(String(localized: "Close", bundle: relayLocalizationBundle)) { questionDetails = false } } }
         }
+        .presentationDetents(compactQuestion(session) ? [.medium, .large] : [.large], selection: $questionDetent)
+        .presentationDragIndicator(.visible)
+        .presentationBackground(.regularMaterial)
+        .onChange(of: compactQuestion(session)) { _, compact in if !compact { questionDetent = .large } }
     }
     private func prepareReply(_ answer: String, record: LiveQuestion, session: RelaySession) {
         guard editingQueue == nil, !submitting, machineOnline(session), session.turnId == record.turnID,
@@ -420,9 +431,8 @@ private struct SessionTranscript: View {
     let onQuestionReply: (String) -> Void
     private struct ActivitySelection: Identifiable {
         let group: TranscriptGroup
-        let path: String?
-        let itemID: String?
-        var id: String { group.id + "/" + (path ?? "") + "/" + (itemID ?? "") }
+        let route: ActivityRoute
+        var id: String { group.id + "/" + route.identity }
     }
     @State private var tools: ActivitySelection?
     @State private var scrolling = TranscriptScrollPolicy()
@@ -476,7 +486,7 @@ private struct SessionTranscript: View {
                                     ChatMessageView(activity: activity, images: relay.outbox.images(session: session.id, clientID: activity.clientId), liveQuestion: false, onQuestionReply: onQuestionReply).equatable()
                                 }
                             } else {
-                                ToolSummaryView(group: group) { path, itemID in tools = ActivitySelection(group: group, path: path, itemID: itemID) }
+                                ToolSummaryView(group: group) { route in tools = ActivitySelection(group: group, route: route) }
                             }
                         }
                         ForEach(relay.outbox.conversation(session: session.id)) { item in
@@ -544,7 +554,7 @@ private struct SessionTranscript: View {
                     }
                 }
             }
-        }.sheet(item: $tools) { ToolDetailView(group: $0.group, focusedPath: $0.path, focusedItemID: $0.itemID) }
+        }.sheet(item: $tools) { ToolDetailView(group: $0.group, route: $0.route) }
     }
 }
 
@@ -751,15 +761,16 @@ private struct SessionHeartbeat: View {
 struct WorkingText: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let text: String
+    var highlight: Color = .primary
     private var label: Text { Text(text) }
     var body: some View {
-        label.foregroundStyle(.secondary)
+        label.foregroundStyle(reduceMotion ? highlight : .secondary)
             .overlay {
                 if !reduceMotion {
                     GeometryReader { geometry in
                         TimelineView(.animation(minimumInterval: 1.0 / 24)) { context in
                             let phase = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3.4) / 3.4
-                            LinearGradient(colors: [.clear, Color.primary.opacity(0.85), .clear], startPoint: .leading, endPoint: .trailing)
+                            LinearGradient(colors: [.clear, highlight.opacity(0.95), .clear], startPoint: .leading, endPoint: .trailing)
                                 .frame(width: geometry.size.width * 0.75)
                                 .offset(x: geometry.size.width * (phase * 2 - 0.75))
                         }

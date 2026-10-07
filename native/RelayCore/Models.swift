@@ -131,7 +131,7 @@ public struct LiveActivity: Codable, Sendable, Equatable {
         case "terminal": return String(localized: "Terminal", bundle: relayLocalizationBundle)
         case "tool": return String(localized: "Tools", bundle: relayLocalizationBundle)
         case "file", "diff": return String(localized: "Changes", bundle: relayLocalizationBundle)
-        case "assistant": return String(localized: "Response", bundle: relayLocalizationBundle)
+        case "assistant": return String(localized: "Generating response…", bundle: relayLocalizationBundle)
         case "context_compaction": return String(localized: "Compacting context", bundle: relayLocalizationBundle)
         default: return String(localized: "Working", bundle: relayLocalizationBundle)
         }

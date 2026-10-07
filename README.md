@@ -26,7 +26,7 @@ controlling and continuing Codex sessions across multiple machines.
 
 ## Why Codex Relay
 
-- **Know what is happening now:** live responses, commands, tools, files and diffs.
+- **Know what is happening now:** compact Fleet activity; open a command, tool or changed file for its own detail.
 - **Respond when needed:** canonical decisions and clearly separate transient live questions.
 - **Continue work:** New Turn, a separate Follow-up queue and explicit current-turn Steer; attach photos or screenshots.
 - **Trust the state:** explicit Online, Syncing, Degraded and Offline; last-known work stays visibly stale.
@@ -38,6 +38,10 @@ controlling and continuing Codex sessions across multiple machines.
 
 [Watch the short native walkthrough](docs/assets/app/recordings/native-walkthrough.mp4)
 — actual simulator recording with sanitized example content.
+
+[Activity list](docs/assets/app/screenshots/activity.png) ·
+[Changed files](docs/assets/app/screenshots/changed-files.png) ·
+[Partial-height live question](docs/assets/app/screenshots/question-panel.png)
 
 ## How it works
 

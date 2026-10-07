@@ -2,6 +2,7 @@
 "%@ ms mean" = "%@ ms mean";
 "%@: choose an allowed value." = "%@: choose an allowed value.";
 "%@: enter a valid value of the required type." = "%@: enter a valid value of the required type.";
+"%lld activities" = "%lld activities";
 "%lld commands" = "%lld commands";
 "%lld completed" = "%lld completed";
 "%lld events" = "%lld events";
@@ -79,6 +80,7 @@
 "Cached input" = "Cached input";
 "Cancel" = "Cancel";
 "Change the work in progress…" = "Change the work in progress…";
+"Changed files" = "Changed files";
 "Changes" = "Changes";
 "Check outcome in Codex" = "Check outcome in Codex";
 "Checked" = "Checked";
@@ -251,6 +253,7 @@
 "Last snapshot" = "Last snapshot";
 "Last-known state" = "Last-known state";
 "Latest 3 operations" = "Latest 3 operations";
+"Latest activities" = "Latest activities";
 "Latest messages" = "Latest messages";
 "Latest output" = "Latest output";
 "Limit reached" = "Limit reached";
@@ -429,6 +432,7 @@
 "Samples" = "Samples";
 "Save queued message" = "Save queued message";
 "Schema unavailable: resolve in local Codex." = "Schema unavailable: resolve in local Codex.";
+"Search" = "Search";
 "Self-hosted installation" = "Self-hosted installation";
 "Self-hosted. Open source. Independent of OpenAI." = "Self-hosted. Open source. Independent of OpenAI.";
 "Send" = "Send";

@@ -219,13 +219,13 @@ struct NeedsYouView: View {
                 ForEach(requests) { request in
                     Button { relay.open(request.sessionId) } label: {
                         VStack(alignment: .leading, spacing: RelaySpacing.compact) {
-                            Text(relay.machines[request.machineId]?.name ?? request.machineId).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                            Text(relay.sessions[request.sessionId]?.title ?? String(localized: "Codex session", bundle: relayLocalizationBundle)).font(.body.weight(.semibold))
+                            Text(relay.sessions[request.sessionId]?.title ?? String(localized: "Codex session", bundle: relayLocalizationBundle)).font(.body.weight(.medium))
+                            Text(relay.machines[request.machineId]?.name ?? request.machineId).font(.caption).foregroundStyle(.secondary)
                             Label(request.kind == "user_input" ? String(localized: "Codex has a question", bundle: relayLocalizationBundle) : String(localized: "Approval requested", bundle: relayLocalizationBundle), systemImage: "exclamationmark.bubble")
-                                .font(.subheadline).foregroundStyle(.orange)
+                                .font(.caption).foregroundStyle(.orange)
                             if !relay.online || relay.machines[request.machineId]?.status != "ONLINE" { Text(relay.machineConnectionLabel(request.machineId)).font(.caption).foregroundStyle(.secondary) }
                         }.padding(.vertical, RelaySpacing.compact)
-                    }.buttonStyle(.plain).accessibilityIdentifier("request." + request.id)
+                    }.buttonStyle(.plain).listRowSeparator(.hidden).accessibilityIdentifier("request." + request.id)
                 }
                 }
             }
@@ -242,12 +242,12 @@ struct NeedsYouView: View {
                                     Text(question.observedAt, style: .relative)
                                 }.font(.caption).foregroundStyle(.secondary)
                             }.padding(.vertical, 4)
-                        }.buttonStyle(.plain).accessibilityIdentifier("live-question." + question.activity.id)
+                        }.buttonStyle(.plain).listRowSeparator(.hidden).accessibilityIdentifier("live-question." + question.activity.id)
                     }
                 } header: { Text(String(localized: "Live questions", bundle: relayLocalizationBundle)) }
                 footer: { Text(String(localized: "Observed during the current connection. These hints clear when work moves on or the connection is lost.", bundle: relayLocalizationBundle)) }
             }
-        }.listStyle(.insetGrouped)
+        }.listStyle(.plain).scrollContentBackground(.hidden).background(Color(uiColor: .systemBackground))
     }
 }
 struct PendingView: View {
@@ -505,7 +505,7 @@ struct LastKnownSession: View {
         relay.liveActivities = ["workstation~build": decode(["item_id": "example-command", "kind": "terminal", "label": "cargo test --workspace", "state": "running", "timestamp": stamp])]
         let request: PendingRequest = decode(["request_id": "example-request", "session_id": "laptop~decision", "machine_id": "laptop", "kind": "user_input", "description": "Which validation scope should I use?", "expires_at": "2099-01-01T00:00:00Z", "created_at": stamp, "can_approve": true, "questions": [["id": "scope", "header": "Validation", "question": "Which validation scope should I use?", "options": [["label": "Full suite", "description": "Run unit tests and integration checks."], ["label": "Focused checks", "description": "Run tests for the changed module."]]]]])
         relay.requests = [request.id: request]
-        relay.selected = ["conversation", "terminal", "tools", "diff", "live-question", "history-question", "compaction", "queue", "question-reply"].contains(surface) ? "workstation~build" : surface == "question" ? "laptop~decision" : ""
+        relay.selected = ["conversation", "terminal", "tools", "diff", "live-question", "history-question", "compaction", "queue", "question-reply", "activity", "changed-files", "activity-routing"].contains(surface) ? "workstation~build" : surface == "question" ? "laptop~decision" : ""
         relay.outbox = Outbox(); relay.chat = RecentChat()
         relay.chat.put(Activity(id: "example-user", kind: "userMessage", text: "Validate empty inputs, then run the workspace tests."))
         relay.chat.put(Activity(id: "example-response", kind: "agentMessage", text: "I added an **empty-input guard** and a regression test. The workspace suite is running."))
@@ -518,6 +518,11 @@ struct LastKnownSession: View {
         var file = Activity(id: "example-file", kind: "fileChange", text: "src/validation.rs")
         file.state = "completed"; file.files = decode([["path": "src/validation.rs", "kind": "modify", "patch": patch]])
         relay.chat.put(file)
+        if ["activity", "changed-files", "activity-routing"].contains(surface) {
+            var guide = Activity(id: "example-guide", kind: "fileChange", text: "docs/validation.md")
+            guide.state = "completed"; guide.files = decode([["path": "docs/validation.md", "kind": "add", "patch": "@@ -0,0 +1,2 @@\n+# Validation\n+Empty inputs return a typed error."]])
+            relay.chat.put(guide)
+        }
         if ["terminal", "tools", "diff"].contains(surface) {
             relay.chat = RecentChat(); relay.chat.put(surface == "terminal" ? command : surface == "tools" ? tool : file)
         }
@@ -571,7 +576,7 @@ struct LastKnownSession: View {
         Group {
             switch surface {
             case "fleet": RootView()
-            case "conversation", "question", "live-question", "history-question", "compaction", "queue", "question-reply": NavigationStack { SessionView() }
+            case "conversation", "question", "live-question", "history-question", "compaction", "queue", "question-reply", "activity-routing": NavigationStack { SessionView() }
             case "needs-you", "live-inbox": NavigationStack { NeedsYouView().navigationTitle("Needs You") }
             case "navigation": NavigationStack { RelayLibraryView(openHistory: {}) }
             case "machine-diagnostics": NavigationStack { MachineDiagnosticsView(id: "workstation") }
@@ -583,7 +588,13 @@ struct LastKnownSession: View {
             case "pairing": NavigationStack { PairingView().navigationTitle("Codex Relay").navigationBarTitleDisplayMode(.inline) }
             case "terminal", "tools", "diff":
                 let kind: TranscriptGroup.Kind = surface == "terminal" ? .terminal : surface == "tools" ? .mcp : .changes
-                if let group = TranscriptGroup.make(relay.chat.items).first(where: { $0.kind == kind }) { ToolDetailView(group: group) }
+                if let group = TranscriptGroup.make(relay.chat.items).first(where: { $0.kind == kind }), let item = group.items.first {
+                    ToolDetailView(group: group, route: surface == "diff" ? .file("src/validation.rs") : .operation(item.id))
+                }
+            case "activity", "changed-files":
+                if let group = TranscriptGroup.make(relay.chat.items).first(where: { $0.kind == .activity }) {
+                    ToolDetailView(group: group, route: surface == "changed-files" ? .files : .all)
+                }
             default: RootView()
             }
         }.environment(relay).preferredColorScheme(.dark)

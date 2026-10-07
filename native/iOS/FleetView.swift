@@ -24,7 +24,6 @@ enum RelayPalette {
 
 struct FleetView: View {
     @Environment(RelayController.self) private var relay
-    @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var filter: String
     @Binding var machine: String
@@ -46,39 +45,38 @@ struct FleetView: View {
     }
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 24) {
+            LazyVStack(alignment: .leading, spacing: 28) {
                 if search.isEmpty { fleetHeader }
                 if !browsingAll {
-                    sessionSection(String(localized: "Needs You", bundle: relayLocalizationBundle), symbol: "bubble.left.and.exclamationmark.bubble.right", sessions: sorted.filter { state($0) == "NEEDS_YOU" }, tint: RelayPalette.attention)
-                    sessionSection(String(localized: "Working", bundle: relayLocalizationBundle), symbol: "waveform.path", sessions: sorted.filter { state($0) == "WORKING" }, tint: .primary)
-                    sessionSection(String(localized: "Recent", bundle: relayLocalizationBundle), symbol: "clock", sessions: Array(sorted.filter { !["WORKING", "NEEDS_YOU"].contains(state($0)) }.prefix(6)), tint: .secondary)
+                    sessionSection(String(localized: "Needs You", bundle: relayLocalizationBundle), sessions: sorted.filter { state($0) == "NEEDS_YOU" }, tint: RelayPalette.attention)
+                    sessionSection(String(localized: "Working", bundle: relayLocalizationBundle), sessions: sorted.filter { state($0) == "WORKING" }.sorted { ($0.turnStarted ?? "", $0.id) > ($1.turnStarted ?? "", $1.id) }, tint: .primary)
+                    sessionSection(String(localized: "Recent", bundle: relayLocalizationBundle), sessions: Array(sorted.filter { !["WORKING", "NEEDS_YOU"].contains(state($0)) }.prefix(6)), tint: .secondary)
                     Button { filter = "HISTORY" } label: {
                         HStack {
                             Label(String(localized: "All sessions", bundle: relayLocalizationBundle), systemImage: "clock.arrow.circlepath")
                             Spacer()
                             Text("\(sorted.count)").monospacedDigit().foregroundStyle(.secondary)
                             Image(systemName: "chevron.right").font(.caption.weight(.semibold))
-                        }.font(.subheadline.weight(.medium)).padding(16)
-                            .background(RelayPalette.surface, in: RoundedRectangle(cornerRadius: 18))
+                        }.font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 12).padding(.horizontal, 4)
                     }.buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("fleet.history")
                 } else {
-                    sessionSection(filter == "HISTORY" || filter == "ALL" ? String(localized: "Sessions", bundle: relayLocalizationBundle) : statusLabel(filter), symbol: "line.3.horizontal", sessions: visible, tint: .secondary)
+                    sessionSection(filter == "HISTORY" || filter == "ALL" ? String(localized: "Sessions", bundle: relayLocalizationBundle) : statusLabel(filter), sessions: visible, tint: .secondary)
                     if visible.isEmpty { ContentUnavailableView.search(text: search) }
                     if filter == "HISTORY" || !search.isEmpty { catalogueControls }
                 }
-            }.padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 24)
+            }.padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField(String(localized: "Session, machine or project", bundle: relayLocalizationBundle), text: $search)
+                TextField(String(localized: "Search", bundle: relayLocalizationBundle), text: $search)
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                     .accessibilityIdentifier("fleet.search")
                 if !search.isEmpty { Button { search = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }.accessibilityLabel(String(localized: "Clear search", bundle: relayLocalizationBundle)).frame(minWidth: 44, minHeight: 44) }
-            }.padding(.horizontal, 16).frame(minHeight: 48).modifier(SearchChrome())
+            }.padding(.horizontal, 16).frame(minHeight: 44).modifier(SearchChrome())
                 .padding(.horizontal, RelaySpacing.page).padding(.vertical, 8)
         }
-        .background(RelayPalette.canvas)
+        .background(Color(uiColor: .systemBackground))
         .sheet(isPresented: $showingMachines) {
             NavigationStack {
                 MachinesView().toolbar { ToolbarItem(placement: .confirmationAction) { Button(String(localized: "Close", bundle: relayLocalizationBundle)) { showingMachines = false }.accessibilityIdentifier("machines.close") } }
@@ -103,20 +101,19 @@ struct FleetView: View {
             }.accessibilityIdentifier("fleet.connection")
         }
     }
-    @ViewBuilder private func sessionSection(_ title: String, symbol: String, sessions: [RelaySession], tint: Color) -> some View {
+    @ViewBuilder private func sessionSection(_ title: String, sessions: [RelaySession], tint: Color) -> some View {
         if !sessions.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
-                    Label(title, systemImage: symbol).foregroundStyle(tint)
+                    Text(title).foregroundStyle(tint)
                     Text("\(sessions.count)").foregroundStyle(.secondary).monospacedDigit()
                     Spacer()
-                }.font(.subheadline.weight(.semibold)).padding(.horizontal, 2).accessibilityAddTraits(.isHeader)
+                }.font(.footnote.weight(.medium)).padding(.horizontal, 4).accessibilityAddTraits(.isHeader)
                 VStack(spacing: 0) {
                     ForEach(sessions) { session in
                         FleetSessionRow(session: session)
-                        if session.id != sessions.last?.id { Divider().padding(.horizontal, RelaySpacing.page) }
                     }
-                }.background(RelayPalette.surface, in: RoundedRectangle(cornerRadius: 18))
+                }
             }
         }
     }
@@ -143,42 +140,44 @@ struct FleetView: View {
 
 struct FleetSessionRow: View {
     @Environment(RelayController.self) private var relay
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
     let session: RelaySession
     private var status: String { session.displayStatus(machine: relay.machines[session.machineId], connected: relay.online) }
     private var active: Bool { ["WORKING", "NEEDS_YOU"].contains(status) }
+    private var source: String { [relay.machines[session.machineId]?.name ?? session.machineId, session.project].filter { !$0.isEmpty }.joined(separator: " · ") }
+    private var showsState: Bool { status != "READY" }
+    private var lastKnown: Bool { ["OFFLINE", "SYNCING", "RECONNECTING", "DEGRADED"].contains(status) }
     var body: some View {
         Button { relay.open(session.id) } label: {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
-                        Text(relay.machines[session.machineId]?.name ?? session.machineId).fontWeight(.semibold)
-                        if !session.project.isEmpty { Text("/"); Text(session.project).lineLimit(1) }
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
-                    }.font(.caption).foregroundStyle(.secondary)
-                    Text(session.title).font(active ? .headline : .subheadline.weight(.medium)).lineLimit(status == "WORKING" ? 1 : 2).foregroundStyle(.primary)
-                    HStack(spacing: 6) {
-                        if status == "WORKING" {
-                            WorkingText(text: relay.liveActivities[session.id]?.fleetSummary ?? statusLabel(status))
-                                .lineLimit(1)
-                                .accessibilityLabel(statusLabel(status) + ", " + (relay.liveActivities[session.id]?.fleetSummary ?? ""))
-                            Spacer(minLength: 4)
-                            ElapsedLabel(start: session.turnStarted).monospacedDigit().foregroundStyle(.secondary)
-                        } else {
-                            SessionStatusMark(status: status)
-                            Text(status == "OFFLINE" ? relay.machineConnectionLabel(session.machineId) : statusLabel(status))
-                                .foregroundStyle(active ? RelayPalette.status(status) : .secondary)
-                            Spacer(minLength: 4)
-                        }
-                    }.font(.caption)
-                    if ["OFFLINE", "SYNCING", "RECONNECTING", "DEGRADED"].contains(status) {
-                        LastKnownSession(session: session, machine: relay.machines[session.machineId])
+            VStack(alignment: .leading, spacing: 5) {
+                if typeSize.isAccessibilitySize {
+                    Text(session.title).font(.body.weight(active ? .medium : .regular)).foregroundStyle(.primary)
+                    Text(source).font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("session.source." + session.id)
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text(session.title).font(.body.weight(active ? .medium : .regular)).lineLimit(1)
+                            .foregroundStyle(.primary).frame(maxWidth: .infinity, alignment: .leading)
+                        Text(source).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                            .minimumScaleFactor(0.9).frame(width: 120, alignment: .trailing)
+                            .accessibilityIdentifier("session.source." + session.id)
                     }
                 }
-            }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
-
-                .contentShape(RoundedRectangle(cornerRadius: 18))
+                if showsState { HStack(spacing: 6) {
+                    if status == "WORKING" {
+                        WorkingText(text: relay.liveActivities[session.id]?.fleetSummary ?? statusLabel(status), highlight: RelayPalette.working)
+                            .lineLimit(1).accessibilityLabel(statusLabel(status) + ", " + (relay.liveActivities[session.id]?.fleetSummary ?? ""))
+                        Spacer(minLength: 4)
+                        ElapsedLabel(start: session.turnStarted).monospacedDigit().foregroundStyle(.secondary)
+                    } else {
+                        SessionStatusMark(status: status)
+                        Text(status == "OFFLINE" ? relay.machineConnectionLabel(session.machineId) : statusLabel(status))
+                            .foregroundStyle(RelayPalette.status(status)).lineLimit(typeSize.isAccessibilitySize ? nil : 1)
+                        Spacer(minLength: 4)
+                    }
+                }.font(.caption) }
+                if lastKnown { LastKnownSession(session: session, machine: relay.machines[session.machineId]) }
+            }.padding(.horizontal, 4).padding(.vertical, showsState ? 14 : 18)
+                .frame(maxWidth: .infinity, alignment: .leading).contentShape(RoundedRectangle(cornerRadius: 12))
         }.buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("session." + session.id)
     }
 }

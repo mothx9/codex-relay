@@ -482,11 +482,15 @@ and the Xcode 26.6 compatibility correction `2c1e830`.
 - Local foreground alerts request both banner and Notification Center list
   presentation. Completed/failed notices are retained; obsolete attention notices
   can be retired. Badge changes do not clear delivered completion notices.
-- Fleet Working rows combine operation category and elapsed time in one line;
-  shell bodies and a repeated Working line are absent. A focused UI check confirms
+- Fleet, Needs You and the Relay menu use open lists and a shared quieter type
+  hierarchy. Session title leads, normal Recent rows omit Ready, and Working order
+  stays stable through activity updates.
+- Fleet Working rows use two lines with machine/project at the right above elapsed
+  time, a gray-to-green activity sweep and separate Recent sessions. Shell bodies
+  and a repeated Working line are absent. A focused UI check confirms
   that the command remains available after opening the session.
 - Native chrome, app icon, PWA icons and public branding now share Codex geometry;
-  the obsolete R mark is removed. Twenty sanitized product surfaces were captured.
+  the obsolete R mark is removed. Twenty-three sanitized product surfaces were captured.
   The refreshed 17.83-second walkthrough was reviewed across its full duration.
   Diagrams are transparent SVGs, including the bounded image-input path.
 
@@ -514,6 +518,44 @@ The Linux Agent synchronized in 398 ms, the GPU Agent in 445 ms, and all three
 Agents reached Online. These measurements describe that deployment, not an iPhone
 latency guarantee. Slow history now has a separate lane from serialized controls.
 The final signed native build is installed in place without re-pairing.
+
+### Final interface refinement — 2026-10-07
+
+Fleet is an open two-line work list: title left, machine/project right above
+elapsed time, with a gray-to-green activity sweep. Needs You stays orange;
+Recent and stale connections are separate. Accessibility sizes switch to a
+vertical identity layout. The source column has reserved width: visual review
+caught title expansion collapsing it, and the final UI check now requires the
+machine/project label to remain hittable.
+
+Activity has explicit aggregate, operation, files and file destinations. All
+inline children share the header's icon/text columns. Expansion replaces the
+preview, labels the bounded latest-five list, and links to a compact aggregate.
+Both collapsed and expanded operations open their own output. The multi-file
+preview opens only Changed files, and one file opens its patch; Close works at
+every depth. The six focused native checks passed for routing, expansion,
+compaction/file inspection, current question drafting, Fleet and administrative
+navigation. After the source-column adjustment, Fleet and expansion passed
+again on the final code. All 67 Swift tests and `make check` also passed.
+
+Short current live questions use medium/large material-sheet detents; long or
+multiple questions and accessibility sizes open large. The UI test checks that
+the short panel preserves visible context above it and prepares only one answer.
+Code blocks use the smaller footnote monospaced role. The iOS system family is
+retained; OpenAI Sans requires access to the official font portal and is not
+bundled or represented as installed.
+
+All 23 screenshots were regenerated after the final layout change and reviewed,
+including [aggregate Activity](../../assets/app/screenshots/activity.png),
+[Changed files](../../assets/app/screenshots/changed-files.png) and
+[partial-height question](../../assets/app/screenshots/question-panel.png).
+The actual 17.83-second recording was regenerated, checked with `ffprobe`, and
+reviewed across the full duration. Its frames show Fleet, conversation, anchored
+composer actions, a specific diff and Needs You, using sanitized examples.
+The transparent [inspection diagram](../../assets/architecture/activity-inspection.svg)
+and public navigation/install/status documentation match these routes.
+The signed final build is installed and launched in place on the physical iPhone;
+this does not substitute for the owner's final gesture/Lock Screen acceptance.
 
 ### One physical acceptance batch (Italian)
 

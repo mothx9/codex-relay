@@ -399,7 +399,7 @@ struct RelayLibraryView: View {
                 NavigationLink { DiagnosticsView() } label: { Label(String(localized: "Diagnostics", bundle: relayLocalizationBundle), systemImage: "waveform.path.ecg") }
                 NavigationLink { DevicesView() } label: { Label(String(localized: "Settings", bundle: relayLocalizationBundle), systemImage: "gearshape") }
             }
-        }.navigationTitle("Relay").navigationBarTitleDisplayMode(.inline)
+        }.listStyle(.plain).scrollContentBackground(.hidden).background(Color(uiColor: .systemBackground)).navigationTitle("Relay").navigationBarTitleDisplayMode(.inline)
     }
 }
 

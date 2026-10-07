@@ -148,6 +148,9 @@ import XCTest
         XCTAssertFalse(app.staticTexts["question.example-async.0"].exists)
         XCTAssertFalse(app.staticTexts["activity.agentMessage.example-async"].exists)
         app.buttons["session.liveQuestion"].tap()
+        let panel = app.navigationBars["Live question"]
+        XCTAssertTrue(panel.waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(panel.frame.minY, app.frame.height * 0.35, "A short question should preserve context above the sheet")
         app.buttons.containing(.staticText, identifier: "Full suite").firstMatch.tap()
         let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
         XCTAssertEqual(composer.value as? String, "Full suite")
@@ -169,6 +172,9 @@ import XCTest
         let row = app.buttons["session.workstation~build"]
         XCTAssertTrue(row.waitForExistence(timeout: 10))
         XCTAssertTrue(row.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Terminal")).firstMatch.exists)
+        let source = row.staticTexts["session.source.workstation~build"]
+        XCTAssertTrue(source.isHittable, "The title must not collapse the machine/project column")
+        XCTAssertEqual(source.label, "Workstation · compiler")
         XCTAssertFalse(row.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "cargo test")).firstMatch.exists)
         row.tap()
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "cargo test")).firstMatch.waitForExistence(timeout: 10))
@@ -386,6 +392,38 @@ import XCTest
         XCTAssertEqual(command.count, 1)
         XCTAssertTrue(app.buttons["activity.file.src/validation.rs"].exists)
     }
+    func testActivityFilesAndAggregateHaveDistinctDestinations() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--product-screenshot", "activity-routing", "-AppleLanguages", "(en)"]
+        app.launch()
+        let files = app.buttons["activity.files.terminal.example-command"]
+        XCTAssertTrue(files.waitForExistence(timeout: 10)); files.tap()
+        XCTAssertTrue(app.navigationBars["Changed files"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["activity.path.src/validation.rs"].exists)
+        XCTAssertTrue(app.buttons["activity.path.docs/validation.md"].exists)
+        XCTAssertFalse(app.staticTexts["cargo test --workspace"].isHittable)
+        app.buttons["activity.path.docs/validation.md"].tap()
+        XCTAssertTrue(app.navigationBars["validation.md"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["+Empty inputs return a typed error."].exists)
+        app.buttons["Close"].tap()
+        // Collapsed operations route to themselves, just like expanded operations.
+        app.buttons["activity.preview.example-command"].tap()
+        XCTAssertTrue(app.navigationBars["Operation"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Running integration checks")).firstMatch.exists)
+        XCTAssertFalse(app.buttons["file.detail.docs/validation.md"].isHittable)
+        app.buttons["Close"].tap()
+        app.buttons["tool.terminal.example-command"].tap()
+        app.buttons["tool.details.terminal.example-command"].tap()
+        XCTAssertTrue(app.navigationBars["Activity"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["activity.aggregate.example-command"].exists)
+        XCTAssertTrue(app.buttons["activity.aggregate.example-guide"].exists)
+        XCTAssertFalse(app.buttons["activity.output.example-command"].exists)
+        app.buttons["activity.aggregate.example-tool"].tap()
+        XCTAssertTrue(app.navigationBars["Operation"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["The validation API rejects empty input and returns a typed error. Source: local API reference."].exists)
+    }
+
     func testWholeMessageCopyFromLastParagraph() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -449,13 +487,17 @@ import XCTest
     func testPublicProductScreenshots() {
         continueAfterFailure = false
         let app = XCUIApplication()
-        for surface in ["fleet", "conversation", "needs-you", "question", "terminal", "tools", "diff", "machines", "account", "settings", "diagnostics", "pairing", "navigation", "machine-diagnostics", "live-question", "live-inbox", "notifications", "compaction", "queue", "question-reply"] {
-            app.launchArguments = ["--product-screenshot", surface, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        for surface in ["fleet", "conversation", "needs-you", "question", "terminal", "tools", "diff", "machines", "account", "settings", "diagnostics", "pairing", "navigation", "machine-diagnostics", "live-question", "live-inbox", "notifications", "compaction", "queue", "question-reply", "activity", "changed-files", "question-panel"] {
+            app.launchArguments = ["--product-screenshot", surface == "question-panel" ? "live-question" : surface, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
             app.launch()
             XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))
             if surface == "pairing" {
                 app.scrollViews.firstMatch.swipeDown()
                 XCTAssertTrue(app.staticTexts["Your Codex fleet.\nOn iPhone."].isHittable)
+            }
+            if surface == "question-panel" {
+                app.buttons["session.liveQuestion"].tap()
+                XCTAssertTrue(app.navigationBars["Live question"].waitForExistence(timeout: 5))
             }
             let screenshot = XCTAttachment(screenshot: app.screenshot())
             screenshot.name = "public-" + surface; screenshot.lifetime = .keepAlways; add(screenshot)
