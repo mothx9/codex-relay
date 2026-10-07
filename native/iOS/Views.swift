@@ -494,6 +494,9 @@ struct LastKnownSession: View {
         var file = Activity(id: "example-file", kind: "fileChange", text: "src/validation.rs")
         file.state = "completed"; file.files = decode([["path": "src/validation.rs", "kind": "modify", "patch": patch]])
         relay.chat.put(file)
+        if ["terminal", "tools", "diff"].contains(surface) {
+            relay.chat = RecentChat(); relay.chat.put(surface == "terminal" ? command : surface == "tools" ? tool : file)
+        }
         if surface == "conversation" {
             relay.chat.put(Activity(id: "example-code", kind: "agentMessage", text: "The guard keeps the failure explicit:\n\n```rust\nif input.is_empty() {\n    return Err(Error::EmptyInput);\n}\nrun_checks(input)?;\n```\n\nThe regression test has passed. Integration checks are still running."))
         }

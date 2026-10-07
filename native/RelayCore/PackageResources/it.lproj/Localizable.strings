@@ -135,6 +135,7 @@
 "Copy Patch" = "Copia patch";
 "Copy Path" = "Copia percorso";
 "Copy Previous Path" = "Copia percorso precedente";
+"Copy Session Link" = "Copia link della sessione";
 "Create a one-time code on the Hub host or from an authorized controller. It expires after 5 minutes." = "Crea un codice monouso sul computer del Hub o da un controller autorizzato. Scade dopo 5 minuti.";
 "Create one-time code" = "Crea codice monouso";
 "Created" = "Creato";
@@ -455,6 +456,7 @@
 "Token usage" = "Utilizzo token";
 "Too many active requests." = "Troppe richieste in corso.";
 "Too many attempts. Wait a minute." = "Troppi tentativi. Attendi un minuto.";
+"Tool" = "Strumento";
 "Total" = "Totale";
 "Turn duration" = "Durata del turno";
 "Unable to save access securely in Keychain." = "Impossibile proteggere l’accesso nel Portachiavi.";

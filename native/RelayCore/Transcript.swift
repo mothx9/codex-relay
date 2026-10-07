@@ -4,26 +4,32 @@ import Foundation
 /// reordering messages or inferring tool success from a turn/command ACK.
 public struct TranscriptGroup: Identifiable, Sendable {
     public enum Kind: String, Sendable { case message, terminal, mcp, changes, activity }
-    public let kind: Kind
     public var items: [Activity]
-    public var id: String { kind.rawValue + "." + (items.first?.id ?? "") }
-
+    public var kind: Kind {
+        let kinds = Set(items.map { Self.kind($0).rawValue })
+        return kinds.count == 1 ? Self.kind(items[0]) : .activity
+    }
+    // The first operation anchors identity even when subsequent kinds differ.
+    public var id: String { (items.first.map { Self.kind($0).rawValue } ?? "activity") + "." + (items.first?.id ?? "") }
+    private static func kind(_ activity: Activity) -> Kind {
+        switch activity.kind {
+        case "userMessage", "agentMessage", "delta": .message
+        case "commandExecution", "command_output": .terminal
+        case "mcpToolCall": .mcp
+        case "fileChange", "diff": .changes
+        default: .activity
+        }
+    }
+    public var commandCount: Int { items.filter { Self.kind($0) == .terminal }.count }
+    public var toolCount: Int { items.filter { Self.kind($0) == .mcp }.count }
+    public var changedPaths: [String] { ChangeOverview.paths(items) }
     public static func make(_ activities: [Activity]) -> [TranscriptGroup] {
         var groups: [TranscriptGroup] = []
         for activity in activities {
-            let kind: Kind
-            switch activity.kind {
-            case "userMessage", "agentMessage", "delta": kind = .message
-            case "commandExecution", "command_output": kind = .terminal
-            case "mcpToolCall": kind = .mcp
-            case "fileChange", "diff": kind = .changes
-            default: kind = .activity
-            }
-            if kind != .message, groups.last?.kind == kind {
+            if kind(activity) != .message, let prior = groups.last, prior.kind != .message,
+               prior.items.last?.turnId == activity.turnId {
                 groups[groups.count - 1].items.append(activity)
-            } else {
-                groups.append(TranscriptGroup(kind: kind, items: [activity]))
-            }
+            } else { groups.append(TranscriptGroup(items: [activity])) }
         }
         return groups
     }

@@ -90,24 +90,33 @@ struct SessionView: View {
                 let kind = editingQueue != nil ? "queue_update" : steer ? "steer" : session.defaultCommand
                 let available = machineOnline(session) && session.allows(kind) && (editingQueue != nil || ["READY", "WORKING"].contains(session.status))
                 let canSend = available && !submitting && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                HStack(alignment: .bottom, spacing: 6) {
+                HStack(alignment: .bottom, spacing: 4) {
                         Menu {
-                            Button(String(localized: "Session Info", bundle: relayLocalizationBundle), systemImage: "info.circle") { context = true }
+                            Section {
+                                Button(String(localized: "Copy Session Link", bundle: relayLocalizationBundle), systemImage: "link") {
+                                    var link = URLComponents(); link.scheme = "codex-relay"; link.host = "session"; link.path = "/" + session.id
+                                    UIPasteboard.general.url = link.url
+                                }
+                            }
                             if let last = relay.outbox.visible(session: session.id).last(where: { $0.phase == .queued && $0.queueEditable }) {
                                 Button(String(localized: "Edit Last Queued Message", bundle: relayLocalizationBundle), systemImage: "pencil") { beginQueueEdit(last) }
                                     .disabled(!machineOnline(session) || !session.allows("queue_update") || submitting)
                             }
+                            if machineOnline(session) && (steer || session.allows("steer")) {
                             Button(steer ? String(localized: "Back to follow-up", bundle: relayLocalizationBundle) : String(localized: "Steer Current Turn", bundle: relayLocalizationBundle), systemImage: "arrow.triangle.branch") {
                                 steer.toggle(); expectedTurn = session.turnId ?? ""; composing = true
                             }.disabled(editingQueue != nil || (!steer && (!machineOnline(session) || !session.allows("steer"))))
+                            }
+                            if machineOnline(session) && session.allows("interrupt") {
                             Button(String(localized: "Interrupt Turn", bundle: relayLocalizationBundle), systemImage: "stop.circle", role: .destructive) {
                                 interruptTurn = session.turnId ?? ""; interrupt = true
                             }.disabled(!machineOnline(session) || !session.allows("interrupt"))
-                        } label: { Image(systemName: "plus").frame(minWidth: 44, minHeight: 44) }
+                            }
+                        } label: { Image(systemName: "plus").font(.body.weight(.medium)).frame(minWidth: 44, minHeight: 44) }
                             .accessibilityLabel(String(localized: "Session actions", bundle: relayLocalizationBundle))
 
                     TextField(steer ? String(localized: "Change the work in progress…", bundle: relayLocalizationBundle) : session.status == "WORKING" ? String(localized: "Add a follow-up…", bundle: relayLocalizationBundle) : String(localized: "Message Codex…", bundle: relayLocalizationBundle), text: $draft, axis: .vertical)
-                        .font(.body).lineLimit(1...5).focused($composing).padding(.leading, 20).padding(.vertical, 16)
+                        .font(.body).lineLimit(1...5).focused($composing).padding(.vertical, 11)
                         .disabled(!available).accessibilityIdentifier("composer.text")
                     Button {
                         if let item = editingQueue {
@@ -127,7 +136,7 @@ struct SessionView: View {
                             .foregroundStyle(Color(uiColor: .systemBackground))
                             .frame(width: 44, height: 44).background(Color.primary.opacity(canSend ? 1 : 0.22), in: Circle())
                     }
-                    .buttonStyle(.plain).disabled(!canSend).padding(6)
+                    .buttonStyle(.plain).disabled(!canSend)
                     .accessibilityLabel(editingQueue != nil ? String(localized: "Save queued message", bundle: relayLocalizationBundle) : steer ? String(localized: "Send Steer", bundle: relayLocalizationBundle) : session.status == "WORKING" ? String(localized: "Send follow-up", bundle: relayLocalizationBundle) : String(localized: "Send", bundle: relayLocalizationBundle))
                     .accessibilityIdentifier("composer.send")
                     .contextMenu {
@@ -138,7 +147,7 @@ struct SessionView: View {
                         }
                     }
                     .accessibilityHint(session.status == "WORKING" ? String(localized: "Queue this message. Touch and hold to send immediately with Steer.", bundle: relayLocalizationBundle) : String(localized: "Send a new message", bundle: relayLocalizationBundle))
-                }.modifier(ComposerSurface())
+                }.padding(6).modifier(ComposerSurface())
             }
         }
     }

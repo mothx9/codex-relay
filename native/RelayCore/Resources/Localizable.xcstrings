@@ -4908,7 +4908,6 @@
       }
     },
     "1 command": {
-      "extractionState": "manual",
       "localizations": {
         "it": {
           "stringUnit": {
@@ -4930,7 +4929,6 @@
       }
     },
     "1 operation": {
-      "extractionState": "manual",
       "localizations": {
         "it": {
           "stringUnit": {
@@ -5578,6 +5576,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Utilizzo"
+          }
+        }
+      }
+    },
+    "Copy Session Link": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia link della sessione"
+          }
+        }
+      }
+    },
+    "Tool": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strumento"
           }
         }
       }

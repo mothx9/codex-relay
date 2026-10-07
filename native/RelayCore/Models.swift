@@ -126,6 +126,7 @@ public struct LiveActivity: Codable, Sendable, Equatable {
 }
 public struct Activity: Codable, Identifiable, Sendable, Equatable {
     public var id: String; public var kind: String; public var text: String; public var timestamp: String?; public var clientId: String?
+    public var turnId: String?
     public var questions: [AsyncQuestion]?; public var truncated: Bool?
     public var state: String?; public var command: String?; public var exitCode: Int?; public var durationMs: Int?
     public var progress: String?; public var resultSummary: String?

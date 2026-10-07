@@ -135,6 +135,7 @@
 "Copy Patch" = "Copy Patch";
 "Copy Path" = "Copy Path";
 "Copy Previous Path" = "Copy Previous Path";
+"Copy Session Link" = "Copy Session Link";
 "Create a one-time code on the Hub host or from an authorized controller. It expires after 5 minutes." = "Create a one-time code on the Hub host or from an authorized controller. It expires after 5 minutes.";
 "Create one-time code" = "Create one-time code";
 "Created" = "Created";
@@ -455,6 +456,7 @@
 "Token usage" = "Token usage";
 "Too many active requests." = "Too many active requests.";
 "Too many attempts. Wait a minute." = "Too many attempts. Wait a minute.";
+"Tool" = "Tool";
 "Total" = "Total";
 "Turn duration" = "Turn duration";
 "Unable to save access securely in Keychain." = "Unable to save access securely in Keychain.";

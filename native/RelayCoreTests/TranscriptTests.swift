@@ -38,10 +38,10 @@ final class TranscriptTests: XCTestCase {
             Activity(id: "cmd3", kind: "commandExecution", text: "ls")
         ]
         let groups = TranscriptGroup.make(items)
-        XCTAssertEqual(groups.map(\.kind), [.message, .terminal, .mcp, .message, .terminal])
-        XCTAssertEqual(groups.map { $0.items.count }, [1, 2, 1, 1, 1])
+        XCTAssertEqual(groups.map(\.kind), [.message, .activity, .message, .terminal])
+        XCTAssertEqual(groups.map { $0.items.count }, [1, 3, 1, 1])
         XCTAssertEqual(groups.flatMap(\.items).map(\.id), items.map(\.id))
-        XCTAssertEqual(groups[3].items.first?.clientId, "canonical-client")
+        XCTAssertEqual(groups[2].items.first?.clientId, "canonical-client")
     }
     func testStreamingAndCanonicalToolReplacementCountOnce() {
         var chat = RecentChat()
@@ -157,7 +157,7 @@ extension TranscriptTests {
         XCTAssertEqual(chat.items.last?.state, "completed")
         XCTAssertNil(chat.items.last?.progress)
         XCTAssertEqual(chat.items.last?.resultSummary, "Found documentation")
-        XCTAssertEqual(TranscriptGroup.make(chat.items).map(\.id), ["terminal.command", "mcp.tool"])
+        XCTAssertEqual(TranscriptGroup.make(chat.items).map(\.id), ["terminal.command"])
     }
 }
 
@@ -197,5 +197,23 @@ extension TranscriptTests {
         hints.observe(try liveQuestionEvent(), activeTurn: "turn", current: true)
         hints.reconcile(activeTurn: "turn", current: false)
         XCTAssertTrue(hints.itemIDs.isEmpty)
+    }
+}
+
+
+extension TranscriptTests {
+    func testMixedOperationsKeepAnchorAndRespectTurnBoundaries() {
+        var command = Activity(id: "c", kind: "commandExecution", text: "check"); command.turnId = "turn-a"
+        var file = Activity(id: "f", kind: "fileChange", text: ""); file.turnId = "turn-a"
+        file.files = [ChangedFile(path: "src/kernel.cu", kind: "modify", previousPath: nil, patch: nil)]
+        var next = Activity(id: "next", kind: "commandExecution", text: "check again"); next.turnId = "turn-b"
+        let first = TranscriptGroup.make([command])[0]
+        let groups = TranscriptGroup.make([command, file, next])
+        XCTAssertEqual(groups.count, 2)
+        XCTAssertEqual(first.id, groups[0].id)
+        XCTAssertEqual(groups[0].kind, .activity)
+        XCTAssertEqual(groups[0].changedPaths, ["src/kernel.cu"])
+        XCTAssertEqual(groups[0].commandCount, 1)
+        XCTAssertEqual(groups.flatMap(\.items).map(\.id), ["c", "f", "next"])
     }
 }

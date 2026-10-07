@@ -61,6 +61,13 @@ public enum PatchDocument {
 
 /// Prefer the latest canonical turn patch over overlapping per-item patches.
 public enum ChangeOverview {
+    public static func paths(_ items: [Activity]) -> [String] {
+        var paths = Set(items.flatMap { ($0.files ?? []).map(\.path) })
+        if let latest = items.last(where: { $0.kind == "diff" }) {
+            paths.formUnion(PatchDocument.parse(latest.text).map(\.path).filter { $0 != "Patch" })
+        }
+        return paths.sorted()
+    }
     private static func fileCount(_ count: Int) -> String {
         count == 1 ? String(localized: "1 file changed", bundle: relayLocalizationBundle) : String(localized: "\(count) files changed", bundle: relayLocalizationBundle)
     }

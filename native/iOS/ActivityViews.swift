@@ -9,9 +9,18 @@ struct ToolSummaryView: View {
     private var failed: Int { group.items.filter { $0.state == "failed" || $0.state == "declined" }.count }
     private var current: Activity? { group.items.last(where: { $0.state == "running" }) ?? group.items.last }
     private var state: String { running > 0 ? "WORKING" : failed > 0 ? "FAILED" : group.items.allSatisfy { $0.state == "completed" } ? "READY" : "INACTIVE" }
-    private var tint: Color { group.kind == .terminal ? RelayPalette.terminal : group.kind == .mcp ? RelayPalette.tool : RelayPalette.file }
+    private var tint: Color { if group.kind == .activity { return .secondary }; return group.kind == .terminal ? RelayPalette.terminal : group.kind == .mcp ? RelayPalette.tool : RelayPalette.file }
     @State private var changeOverview = ""
     private var summary: String {
+        if group.kind == .activity {
+            var parts: [String] = []
+            if group.commandCount > 0 { parts.append(group.commandCount == 1 ? String(localized: "1 command", bundle: relayLocalizationBundle) : String(localized: "\(group.commandCount) commands", bundle: relayLocalizationBundle)) }
+            if group.toolCount > 0 { parts.append(group.toolCount == 1 ? String(localized: "1 operation", bundle: relayLocalizationBundle) : String(localized: "\(group.toolCount) operations", bundle: relayLocalizationBundle)) }
+            if !changeOverview.isEmpty { parts.append(changeOverview) }
+            if running > 0 { parts.append(String(localized: "\(running) running", bundle: relayLocalizationBundle)) }
+            if failed > 0 { parts.append(String(localized: "\(failed) failed", bundle: relayLocalizationBundle)) }
+            return parts.joined(separator: " · ")
+        }
         var value = group.kind == .changes && !changeOverview.isEmpty ? changeOverview : toolCount(group)
         if running > 0 { value += " · " + String(localized: "\(running) running", bundle: relayLocalizationBundle) }
         if failed > 0 { value += " · " + String(localized: "\(failed) failed", bundle: relayLocalizationBundle) }
@@ -44,13 +53,18 @@ struct ToolSummaryView: View {
                         .contentTransition(.opacity)
                         .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: state)
                     if let preview {
-                        if current?.command != nil { CommandPreviewView(command: preview).lineLimit(expanded || running > 0 ? 2 : 1).padding(.leading, 34) }
+                        if current?.command != nil { CommandPreviewView(command: preview).lineLimit(1).padding(.leading, 34) }
                         else { Text(preview).font(.caption).foregroundStyle(.secondary).lineLimit(1).padding(.leading, 34) }
                     }
                 }.foregroundStyle(.primary).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
             }.buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("tool." + group.id)
                 .accessibilityValue(expanded ? String(localized: "Details expanded", bundle: relayLocalizationBundle) : String(localized: "Details collapsed", bundle: relayLocalizationBundle))
-            if running > 0, let progress = current?.progress, !progress.isEmpty {
+            if !group.changedPaths.isEmpty {
+                Text(group.changedPaths.prefix(3).map { URL(fileURLWithPath: $0).lastPathComponent }.joined(separator: ", ") + (group.changedPaths.count > 3 ? " +\(group.changedPaths.count - 3)" : ""))
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(2).padding(.leading, 34)
+                    .accessibilityIdentifier("activity.files." + group.id)
+            }
+            if expanded, running > 0, let progress = current?.progress, !progress.isEmpty {
                 Text(progress).font(.caption).foregroundStyle(.secondary).lineLimit(3)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityIdentifier("tool.progress." + group.id)
@@ -77,10 +91,9 @@ struct ToolSummaryView: View {
             }
         }.padding(RelaySpacing.row)
             .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(running > 0 ? tint.opacity(0.25) : Color.primary.opacity(0.04)))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.primary.opacity(0.04)))
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: state)
-            .task(id: group.kind == .changes ? group.items : []) {
-                guard group.kind == .changes else { return }
+            .task(id: group.items.filter { $0.kind == "diff" || $0.kind == "fileChange" }) {
                 let items = group.items
                 let summary = await Task.detached { ChangeOverview.describe(items) }.value
                 if !Task.isCancelled { changeOverview = summary }
@@ -104,7 +117,7 @@ struct ToolDetailView: View {
                         let running = liveGroup.items.filter { $0.state == "running" }.count
                         if running > 0 { Text(String(localized: "\(running) running", bundle: relayLocalizationBundle)).foregroundStyle(RelayPalette.working) }
                     }.font(.caption.weight(.medium)).foregroundStyle(.secondary)
-                    if group.kind == .terminal {
+                    if liveGroup.commandCount > 0 {
                         let completed = liveGroup.items.filter { $0.state == "completed" }.count
                         let failed = liveGroup.items.filter { $0.state == "failed" || $0.state == "declined" }.count
                         HStack(spacing: RelaySpacing.page) {
@@ -118,7 +131,7 @@ struct ToolDetailView: View {
                     }
                 }.padding(RelaySpacing.page)
             }.onAppear {
-                if liveGroup.items.count > 3, let target = liveGroup.items.first(where: { $0.state == "running" })?.id ?? liveGroup.items.last?.id {
+                if liveGroup.items.count > 3, let target = liveGroup.items.first(where: { $0.state == "running" })?.id {
                     DispatchQueue.main.async { proxy.scrollTo(target, anchor: .top) }
                 }
             }
@@ -152,7 +165,7 @@ private struct ActivityDetailRow: View {
         if item.kind == "diff" { return "Diff" }
         if let name = item.toolName { return name }
         if item.kind == "fileChange" { return String(localized: "File changes", bundle: relayLocalizationBundle) }
-        return String(localized: "Command", bundle: relayLocalizationBundle)
+        return item.kind == "mcpToolCall" ? String(localized: "Tool", bundle: relayLocalizationBundle) : String(localized: "Command", bundle: relayLocalizationBundle)
     }
     var body: some View {
         VStack(alignment: .leading, spacing: RelaySpacing.row) {
