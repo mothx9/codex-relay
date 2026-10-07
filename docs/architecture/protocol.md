@@ -55,7 +55,7 @@ user-visible labels. [Event audit](../development/validation/live-event-audit.md
 ## Commands, results and uncertainty
 
 Commands contain a unique `id`, semantic `kind`, session identity and optional
-turn/request/queue identity. New Turn, Follow-up, Steer, Interrupt, Answer,
+turn/request/queue identity. New Turn, Follow-up, Steer, Queue Steer, Interrupt, Answer,
 Attach, History and Catalogue are separate operations. Control requires current
 Online state and advertised capability; the adapter rechecks Codex state.
 
@@ -63,6 +63,19 @@ Follow-up creation/editing uses canonical queue and client identity. Queue edits
 include observed identity/revision, preserve the queue entry and never emulate
 editing by delete-and-resend. Codex's current queue update RPC does not offer an
 atomic cross-client content CAS; the UI must preserve attempted text on a race.
+
+The optional `can_steer_queue` capability enables `queue_steer` for a selected
+queued identity/revision and expected active turn. The Agent compares the full
+queued input (including images), then waits for an acknowledged
+`thread/queue/delete` before `turn/steer`, using the original input and client ID.
+These are two official mutations, not an atomic upstream operation. Another
+client can change the queue between the read and deletion; upstream does not
+provide a cross-client content CAS. An uncertain deletion never proceeds to Steer.
+`queue_removed` distinguishes an acknowledged removal followed by a rejected
+Steer, so the native outbox retains recoverable text/images rather than silently
+re-enqueueing them. Late queue snapshots cannot resurrect a confirmed removal.
+The rest of the queue is untouched. See the
+[official queue protocol](https://github.com/openai/codex/blob/main/codex-rs/app-server-protocol/src/protocol/common.rs).
 
 Results correlate command ID and include `ok`, `error_code`, `retryable`, and
 operation-specific payload. A successful ACK does not remove an optimistic

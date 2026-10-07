@@ -28,6 +28,8 @@ import UIKit
     private var issuedHistoryIDs: [String] = []
     var queueEditError: String?
     var queueEditingID: String?
+    var queueSteeringID: String?
+    private var queueSteerCommands: [String: String] = [:]
     private var queueWaiters: [String: CheckedContinuation<Bool, Never>] = [:]
     var outbox = Outbox()
     var selected: String = ""
@@ -186,7 +188,9 @@ import UIKit
                 chat.apply(event)
             }
         case "result":
-            guard let result = message.result else { return }; commands.remove(result.id); outbox.result(result)
+            guard let result = message.result else { return }; commands.remove(result.id)
+            if let clientID = queueSteerCommands.removeValue(forKey: result.id) { outbox.queueSteerResult(clientID, result: result) }
+            outbox.result(result)
             if let page = catalogueCommands.removeValue(forKey: result.id) {
                 catalogueLoading.remove(page.machine)
                 guard machines[page.machine]?.freshness?.epoch == page.epoch else { return }
@@ -339,7 +343,7 @@ import UIKit
         } catch { self.error = error.localizedDescription; return false }
     }
     func editQueued(_ item: Outgoing, text: String) async -> Bool {
-        guard queueEditingID == nil, let current, current.id == item.sessionId, online,
+        guard queueEditingID == nil, queueSteeringID == nil, let current, current.id == item.sessionId, online,
               machines[current.machineId]?.status == "ONLINE", current.allows("queue_update"),
               let present = outbox.items.first(where: { $0.id == item.id }), present.phase == .queued,
               present.queueId == item.queueId, present.queueRevision == item.queueRevision,
@@ -367,8 +371,30 @@ import UIKit
             }
         }
     }
+    func steerQueued(_ item: Outgoing, expectedTurn: String) async -> Bool {
+        guard queueSteeringID == nil, queueEditingID == nil, let current, current.id == item.sessionId,
+              online, machines[current.machineId]?.status == "ONLINE", current.fresh != false,
+              current.allows("queue_steer"), current.turnId == expectedTurn,
+              let present = outbox.items.first(where: { $0.id == item.id }), present.phase == .queued,
+              present.queueId == item.queueId, present.queueRevision == item.queueRevision,
+              let queueID = item.queueId, let revision = item.queueRevision else { return false }
+        queueSteeringID = item.id; queueEditError = nil
+        defer { queueSteeringID = nil }
+        let id = UUID().uuidString
+        queueSteerCommands[id] = item.id; outbox.beginQueueSteer(item.id, turn: expectedTurn)
+        return await withCheckedContinuation { continuation in
+            queueWaiters[id] = continuation
+            Task {
+                let sent = await sendCommand(["id": id, "kind": "queue_steer", "session_id": item.sessionId,
+                    "queue_id": queueID, "queue_client_id": item.id, "queue_revision": revision, "turn_id": expectedTurn])
+                if !sent { finishQueueEditUnknown(id) }
+                else { try? await Task.sleep(for: .seconds(35)); finishQueueEditUnknown(id) }
+            }
+        }
+    }
     private func finishQueueEditUnknown(_ id: String) {
         guard let waiter = queueWaiters.removeValue(forKey: id) else { return }
+        if let clientID = queueSteerCommands.removeValue(forKey: id) { outbox.queueSteerUnknown(clientID) }
         queueEditError = String(localized: "Unknown outcome. Check the Codex queue before retrying; your text is retained.", bundle: relayLocalizationBundle)
         waiter.resume(returning: false)
     }

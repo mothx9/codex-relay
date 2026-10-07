@@ -79,6 +79,7 @@ public struct Machine: Codable, Identifiable, Sendable {
     }
 }
 public struct Capabilities: Codable, Sendable {
+	public var canSteerQueue: Bool?
     public var canSendImages: Bool?
     public var canEditQueue: Bool?
     public var canSend: Bool; public var canFollowUp: Bool; public var canSteer: Bool; public var canInterrupt: Bool; public var canAnswer: Bool
@@ -107,6 +108,7 @@ public struct RelaySession: Codable, Identifiable, Sendable {
         if readOnly { return false }
         switch kind {
         case "queue_update": return canEditQueueAvailable
+        case "queue_steer": return status == "WORKING" && !(turnId ?? "").isEmpty && capabilities.canSteer && capabilities.canSteerQueue == true
         case "new_turn": return status == "READY" && capabilities.canSend
         case "follow_up": return status == "WORKING" && capabilities.canFollowUp
         case "steer": return status == "WORKING" && !(turnId ?? "").isEmpty && capabilities.canSteer
@@ -198,6 +200,7 @@ public struct RelayEvent: Decodable, Sendable {
     public let timestamp: String?; public let followUps: [FollowUp]?
 }
 public struct CommandResult: Decodable, Sendable {
+    public let queueRemoved: Bool?
     public let queueId: String?
     public let machineId: String?; public let catalogueCursor: String?; public let sessions: [RelaySession]?
     public let id: String; public let ok: Bool; public let error: String?; public let errorCode: String?; public let sessionId: String?

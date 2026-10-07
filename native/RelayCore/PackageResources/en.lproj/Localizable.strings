@@ -48,6 +48,7 @@
 "Activity" = "Activity";
 "Add a follow-up…" = "Add a follow-up…";
 "Add a machine" = "Add a machine";
+"Add attachments" = "Add attachments";
 "Add machine" = "Add machine";
 "Add photos" = "Add photos";
 "Adds this option to your draft. Review before sending." = "Adds this option to your draft. Review before sending.";
@@ -84,6 +85,7 @@
 "Changes" = "Changes";
 "Check outcome in Codex" = "Check outcome in Codex";
 "Checked" = "Checked";
+"Choose a reply or write your own." = "Choose a reply or write your own.";
 "Choose an option to prepare a message. This is not a pending approval." = "Choose an option to prepare a message. This is not a pending approval.";
 "Choose…" = "Choose…";
 "Clear search" = "Clear search";
@@ -394,6 +396,7 @@
 "Removing…" = "Removing…";
 "Renamed" = "Renamed";
 "Reply" = "Reply";
+"Reply to current turn" = "Reply to current turn";
 "Reply using the live question above the composer." = "Reply using the live question above the composer.";
 "Reported by" = "Reported by";
 "Reported credit balance. Codex does not specify a unit; this is not a currency amount." = "Reported credit balance. Codex does not specify a unit; this is not a currency amount.";
@@ -444,6 +447,7 @@
 "Send as new turn" = "Send as new turn";
 "Send failed" = "Send failed";
 "Send follow-up" = "Send follow-up";
+"Send queued message to current turn" = "Send queued message to current turn";
 "Send test notification" = "Send test notification";
 "Send to current turn" = "Send to current turn";
 "Sending response…" = "Sending response…";

@@ -73,6 +73,7 @@ type Session struct {
 	Capabilities   Capabilities `json:"capabilities"`
 }
 type Capabilities struct {
+	CanSteerQueue bool `json:"can_steer_queue,omitempty"`
 	CanSendImages bool `json:"can_send_images,omitempty"`
 	CanEditQueue  bool `json:"can_edit_queue"`
 	CanSend       bool `json:"can_send"`
@@ -227,6 +228,7 @@ type Command struct {
 	Content         json.RawMessage     `json:"content,omitempty"`
 }
 type Result struct {
+	QueueRemoved    bool       `json:"queue_removed,omitempty"`
 	MachineID       string     `json:"machine_id,omitempty"`
 	CatalogueCursor string     `json:"catalogue_cursor,omitempty"`
 	Sessions        []Session  `json:"sessions,omitempty"`

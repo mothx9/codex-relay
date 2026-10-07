@@ -3,6 +3,7 @@ package protocol
 const (
 	NewTurn               = "new_turn"
 	QueueUpdate           = "queue_update"
+	QueueSteer            = "queue_steer"
 	FollowUpCommand       = "follow_up"
 	Steer                 = "steer"
 	Answer                = "answer"
@@ -92,6 +93,16 @@ func CheckControl(s Session, c Command) string {
 			return TurnChanged
 		}
 		if s.Status != Working || s.TurnID == "" || c.TurnID == "" || !s.Capabilities.CanSteer {
+			return NotSteerable
+		}
+	case QueueSteer:
+		if !s.Capabilities.CanSteerQueue {
+			return FollowUpUnavailable
+		}
+		if c.TurnID != s.TurnID {
+			return TurnChanged
+		}
+		if s.Status != Working || s.TurnID == "" || !s.Capabilities.CanSteer {
 			return NotSteerable
 		}
 	case Interrupt:

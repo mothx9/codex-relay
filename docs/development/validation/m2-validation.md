@@ -569,7 +569,8 @@ pairing e non usare turni di lavoro reali per prove distruttive.
 3. Espandi un gruppo Activity e tocca una singola operazione: il dettaglio deve
    riguardare quella operazione. Apri anche un file; scroll e tastiera non devono
    riportarti forzatamente in fondo.
-4. In un turno isolato, verifica Next up e Steer; confronta ordine e consumo con
+4. In un turno isolato, invia per mettere il messaggio in Next up, poi tocca
+   Steer su quel messaggio per usarlo nel turno corrente; confronta ordine e consumo con
    lo stesso thread nel client Codex. Il messaggio in coda non è un messaggio già
    eseguito. Per una domanda live usa Reply vicino al composer: prepara soltanto
    la bozza; inviala solo se vuoi davvero modificare quel turno.
@@ -586,3 +587,59 @@ isolamento delle letture e mancata resurrezione dalla cronologia. Le prove su
 fixture, le due prove Codex isolate e l'accettazione fisica restano distinte.
 L'accettazione fisica precedente non certifica automaticamente questa build.
 Remote APNs resta esclusivamente il gate Apple descritto nello stato prodotto.
+
+### Compact Fleet and canonical queue promotion — 2026-10-07
+
+The current Fleet is a dense hybrid: Working and Needs You use subtle rounded
+glass surfaces, while Recent stays flat and Inactive is attenuated. Working is
+an explicit green execution state, followed by a secondary current activity,
+for example `Working · Terminal`. Machine/project uses the natural footnote
+size without shrinking; titles can use two lines when needed. All rows share
+the same columns and tighter spacing. Session activity keeps opaque semantic
+cards and distinct aggregate, operation and file routes.
+
+The composer + menu now contains only Add photos. During work, Send queues the
+draft. A direct Steer action on a canonical Next up item promotes that item to
+the active turn; hardware Escape is registered for the first queued item. The
+empty working composer exposes Stop. Draft typing stays enabled through loss
+of control availability; only submission is disabled. The live-question inbox
+shows machine/project and a Reply affordance, without the technical footer.
+
+Promotion reads and checks the canonical queue revision, acknowledges deletion
+of only the selected entry, then steers its original input and client identity.
+These are two upstream mutations, not an atomic queue compare-and-swap.
+Unknown deletion never steers or retries automatically. Removed input remains
+recoverable if Steer fails, and late queue snapshots cannot resurrect known
+removed/canonical identities.
+
+Go formatting/vet/race checks, 9 web checks, 8 installer checks, localization and
+documentation checks passed. All 69 Swift tests passed. Eight focused native UI
+checks passed for Fleet, direct queued Steer/attachment-only +, offline draft
+typing after the first character, Photos, live-question reply, queue separation,
+expansion and distinct activity destinations.
+Four checks passed again after the final availability guard and preview alignment:
+anchored composer/keyboard, direct queued Steer, Fleet source visibility and the
+partial-height live-question reply.
+
+A separate native test on a disposable real Codex thread queued two inputs,
+promoted the second, and observed the first in the next turn. Independent
+`thread/read` inspection confirmed three owned turns: the promoted user item
+appeared exactly once in the original active turn, the other queued input in a
+different turn, and all user identities were unique. The test passed in 97.3
+seconds and the disposable thread was archived. Hardware-keyboard Escape was
+not physically tested; the proof used the direct touch action.
+
+The reference Hub and all three Agents were upgraded to `0.1.0-rc.5+m2.9`.
+SQLite backups, service/credential hashes and shared Codex daemons were
+preserved. Exon and Spark synchronized in 403 ms and 375 ms, respectively, and
+returned Online within 659 ms of restart. The macOS Agent's in-place restart
+took 365 ms, and the native real-Codex control test passed through it. These
+deployment samples are not an iPhone latency guarantee.
+
+All 23 sanitized screenshots and the 18.40-second simulator walkthrough were
+refreshed after the final layout changes and reviewed across their full content.
+The README, navigation, setup, protocol and transparent
+Follow-up diagram describe the same controls. The signed iPhone build succeeds,
+but its installation attempt failed because CoreDevice reports the phone as
+unavailable. Physical acceptance of this build remains pending; the earlier
+installed build does not certify these new controls.

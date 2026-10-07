@@ -22,6 +22,9 @@ func TestControlPreconditions(t *testing.T) {
 		{"queue editing requires capability", Session{Status: Working}, Command{Kind: QueueUpdate}, FollowUpUnavailable},
 		{"queue editing supported while ready", Session{Status: Ready, Capabilities: Capabilities{CanEditQueue: true}}, Command{Kind: QueueUpdate}, ""},
 		{"read only cannot edit queue", Session{ReadOnly: true, Capabilities: Capabilities{CanEditQueue: true}}, Command{Kind: QueueUpdate}, SessionReadOnly},
+		{"legacy queue cannot promote", working, Command{Kind: QueueSteer, TurnID: "active"}, FollowUpUnavailable},
+		{"promotion rejects stale turn", Session{Status: Working, TurnID: "active", Capabilities: Capabilities{CanSteer: true, CanSteerQueue: true}}, Command{Kind: QueueSteer, TurnID: "old"}, TurnChanged},
+		{"promotion requires working turn", Session{Status: Ready, Capabilities: Capabilities{CanSteerQueue: true}}, Command{Kind: QueueSteer}, NotSteerable},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := CheckControl(tc.session, tc.command); got != tc.want {

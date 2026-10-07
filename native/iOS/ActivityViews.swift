@@ -75,7 +75,8 @@ struct ToolSummaryView: View {
                     }.buttonStyle(RelayRowPressStyle()).accessibilityIdentifier(group.changedPaths.count == 1 ? "activity.file." + group.changedPaths[0] : "activity.files." + group.id)
                 }
             }
-        }.padding(.vertical, 4)
+        }.padding(.horizontal, 12).padding(.vertical, 4)
+            .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
             .task(id: group.items.filter { $0.kind == "diff" || $0.kind == "fileChange" }) {
                 let items = group.items
                 let summary = await Task.detached { ChangeOverview.describe(items) }.value

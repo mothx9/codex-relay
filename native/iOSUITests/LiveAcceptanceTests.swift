@@ -54,21 +54,21 @@ import XCTest
         app.launch()
         let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
         XCTAssertTrue(composer.waitForExistence(timeout: 10))
-        let send = app.buttons["composer.send"]
-        XCTAssertLessThanOrEqual(send.frame.height, 48)
+        XCTAssertLessThanOrEqual(app.buttons["composer.stop"].frame.height, 48)
         let before = composer.frame
-        app.buttons["Session actions"].tap()
-        XCTAssertTrue(app.buttons["Steer Current Turn"].waitForExistence(timeout: 5))
+        app.buttons["composer.attach"].tap()
+        XCTAssertTrue(app.buttons["Add photos"].waitForExistence(timeout: 5))
         XCTAssertTrue(composer.isHittable)
         XCTAssertEqual(composer.frame.minY, before.minY, accuracy: 2)
         XCTAssertFalse(app.buttons["Copy Session Link"].exists)
         let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Compact composer with persistent action panel"; capture.lifetime = .keepAlways; add(capture)
-        app.buttons["Steer Current Turn"].tap()
+        app.buttons["composer.attach"].tap()
         composer.tap(); composer.typeText("Keep the draft.")
-        XCTAssertEqual(send.label, "Send Steer")
-        app.buttons["Session actions"].tap()
+        XCTAssertEqual(app.buttons["composer.send"].label, "Send follow-up")
+        app.buttons["composer.attach"].tap()
         XCTAssertTrue(composer.isHittable); XCTAssertTrue(app.keyboards.firstMatch.exists)
-        XCTAssertTrue(app.buttons["Send to current turn"].exists)
+        XCTAssertTrue(app.buttons["Add photos"].exists)
+        XCTAssertFalse(app.buttons["Steer Current Turn"].exists)
         XCTAssertEqual(composer.value as? String, "Keep the draft.")
     }
     func testIsolatedChatComposerAndToolDetails() {
@@ -83,10 +83,10 @@ import XCTest
         let queued = app.staticTexts["FOLLOW-UP · QUEUED"]
         wait(10) { queued.isHittable }
         XCTAssertLessThanOrEqual(queued.frame.maxY, composer.frame.minY, "queued=\(queued.frame) composer=\(composer.frame) type=\(composer.elementType.rawValue)")
+        XCTAssertTrue(app.buttons["composer.stop"].exists)
+        composer.tap(); composer.typeText("Mantieni il testo corrente.")
         let send = app.buttons["composer.send"]
         XCTAssertEqual(send.label, "Send follow-up")
-        XCTAssertFalse(send.isEnabled)
-        composer.tap(); composer.typeText("Mantieni il testo corrente.")
         XCTAssertTrue(send.isEnabled); XCTAssertTrue(send.isHittable)
         XCTAssertFalse(app.buttons["composer.dismissKeyboard"].exists)
         app.scrollViews["session.transcript"].swipeDown()
@@ -131,8 +131,8 @@ import XCTest
         XCTAssertFalse(app.tabBars.firstMatch.isHittable)
         app.buttons["Session Info"].tap()
         XCTAssertTrue(app.staticTexts["Thread"].waitForExistence(timeout: 5)); app.buttons["Close"].tap()
-        app.buttons["Session actions"].tap()
-        XCTAssertTrue(app.buttons["Steer Current Turn"].waitForExistence(timeout: 5))
+        app.buttons["composer.attach"].tap()
+        XCTAssertTrue(app.buttons["Add photos"].waitForExistence(timeout: 5))
         // Menu inspection only; no mutation of this real workload.
         app.terminate()
     }
@@ -164,6 +164,30 @@ import XCTest
         XCTAssertFalse(app.staticTexts["Asked during this live turn"].exists)
         XCTAssertFalse(app.buttons.containing(.staticText, identifier: "Full suite").firstMatch.exists)
         XCTAssertFalse(app.buttons["Respond"].exists)
+    }
+    func testDraftRemainsEditableWhenLiveControlIsUnavailable() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--product-screenshot", "draft-offline", "-AppleLanguages", "(en)"]
+        app.launch()
+        let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
+        XCTAssertTrue(composer.waitForExistence(timeout: 10)); XCTAssertTrue(composer.isEnabled)
+        composer.tap(); composer.typeText("S"); composer.typeText("till writing while offline")
+        XCTAssertEqual(composer.value as? String, "Still writing while offline")
+        XCTAssertFalse(app.buttons["composer.send"].isEnabled)
+    }
+    func testQueuedSteerIsDirectAndPlusContainsOnlyAttachments() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--product-screenshot", "queue", "-AppleLanguages", "(en)"]
+        app.launch()
+        XCTAssertTrue(app.buttons["queue.steer.follow-next"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["queue.steer.follow-next"].isHittable)
+        app.buttons["composer.attach"].tap()
+        XCTAssertTrue(app.buttons["Add photos"].exists)
+        XCTAssertFalse(app.buttons["Steer Current Turn"].exists)
+        XCTAssertFalse(app.otherElements["composer.attachmentsMenu"].buttons["Interrupt Turn"].exists)
+        XCTAssertFalse(app.buttons["Edit Last Queued Message"].exists)
+        app.buttons["composer.attach"].tap()
+        XCTAssertTrue(app.buttons["composer.stop"].exists)
     }
     func testFleetWorkingUsesOneCategoryLineWithoutCommandBody() {
         let app = XCUIApplication()
@@ -281,7 +305,7 @@ import XCTest
         XCTAssertTrue(search.waitForExistence(timeout: 20)); search.tap(); search.typeText(config.sessionTitle)
         let session = app.buttons["session." + config.sessionID]
         XCTAssertTrue(session.waitForExistence(timeout: 20)); session.tap()
-        XCTAssertTrue(app.buttons["Session actions"].waitForExistence(timeout: 15)); app.buttons["Session actions"].tap()
+        XCTAssertTrue(app.buttons["composer.attach"].waitForExistence(timeout: 15)); app.buttons["composer.attach"].tap()
         XCTAssertTrue(app.buttons["Add photos"].waitForExistence(timeout: 5)); app.buttons["Add photos"].tap()
         let photo = app.images.matching(identifier: "PXGGridLayout-Info").firstMatch
         XCTAssertTrue(photo.waitForExistence(timeout: 15)); photo.tap(); app.navigationBars["Photos"].buttons["Done"].tap()
@@ -309,7 +333,7 @@ import XCTest
         let send = app.buttons["composer.send"]
         wait(15) { send.label == "Send" }
         composer.tap(); composer.typeText("Run only sleep 70, then say WAIT_FINISHED. No other tools or files."); send.tap()
-        wait(30) { send.label == "Send follow-up" }
+        wait(30) { app.buttons["composer.stop"].exists }
         let marker = String(UUID().uuidString.prefix(8))
         let queued = "In the next turn reply only QUEUE_" + marker + ". No tools."
         composer.tap(); composer.typeText(queued); send.tap()
@@ -317,11 +341,12 @@ import XCTest
         let transcript = app.scrollViews["session.transcript"]
         XCTAssertFalse(transcript.staticTexts[queued].exists)
         let steer = "For the current turn finish with CURRENT_" + marker + ". Keep the next turn queued."
-        composer.tap(); composer.typeText(steer)
-        app.buttons["Session actions"].tap(); app.buttons["Send to current turn"].tap()
+        composer.tap(); composer.typeText(steer); send.tap()
+        wait(15) { app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'queue.steer.'")).count == 2 }
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'queue.steer.'")).element(boundBy: 1).tap()
         wait(30) { transcript.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.userMessage.' AND label == %@", steer)).count == 1 }
         XCTAssertFalse(transcript.staticTexts[queued].exists)
-        XCTAssertTrue(app.staticTexts["FOLLOW-UP · QUEUED"].exists)
+        XCTAssertEqual(app.staticTexts.matching(identifier: "FOLLOW-UP · QUEUED").count, 1)
         let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Real current-turn control with separate canonical queue"; capture.lifetime = .keepAlways; add(capture)
         wait(120) { transcript.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.agentMessage.' AND label CONTAINS %@", "CURRENT_" + marker)).firstMatch.exists }
         wait(120) { transcript.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.agentMessage.' AND label CONTAINS %@", "QUEUE_" + marker)).firstMatch.exists }
@@ -335,8 +360,8 @@ import XCTest
         let app = XCUIApplication()
         app.launchArguments = ["--product-screenshot", "conversation", "-AppleLanguages", "(en)"]
         app.launch()
-        XCTAssertTrue(app.buttons["Session actions"].waitForExistence(timeout: 10))
-        app.buttons["Session actions"].tap()
+        XCTAssertTrue(app.buttons["composer.attach"].waitForExistence(timeout: 10))
+        app.buttons["composer.attach"].tap()
         app.buttons["Add photos"].tap()
         let photo = app.images.matching(identifier: "PXGGridLayout-Info").firstMatch
         XCTAssertTrue(photo.waitForExistence(timeout: 15)); photo.tap()
@@ -344,7 +369,7 @@ import XCTest
         XCTAssertTrue(app.buttons["Remove image"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons["composer.send"].isEnabled)
         app.buttons["Remove image"].tap()
-        XCTAssertFalse(app.buttons["composer.send"].isEnabled)
+        XCTAssertTrue(app.buttons["composer.stop"].exists)
         let capture = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); capture.name = "Native photo picker"; capture.lifetime = .keepAlways; add(capture)
     }
 
@@ -467,12 +492,14 @@ import XCTest
         let start = XCTAttachment(screenshot: app.screenshot()); start.name = "Public walkthrough start"; start.lifetime = .keepAlways; add(start)
         RunLoop.current.run(until: Date().addingTimeInterval(2))
         app.buttons["session.workstation~build"].tap()
-        XCTAssertTrue(app.buttons["Session actions"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["composer.attach"].waitForExistence(timeout: 5))
         RunLoop.current.run(until: Date().addingTimeInterval(2))
-        app.buttons["Session actions"].tap()
-        XCTAssertTrue(app.buttons["Steer Current Turn"].exists)
+        app.buttons["composer.attach"].tap()
+        XCTAssertTrue(app.buttons["Add photos"].exists)
+        XCTAssertFalse(app.buttons["Steer Current Turn"].exists)
+        XCTAssertFalse(app.otherElements["composer.attachmentsMenu"].buttons["Interrupt Turn"].exists)
         RunLoop.current.run(until: Date().addingTimeInterval(2))
-        app.buttons["Session actions"].tap()
+        app.buttons["composer.attach"].tap()
         let file = app.buttons["activity.file.src/validation.rs"]
         if !file.isHittable { app.scrollViews["session.transcript"].swipeDown() }
         XCTAssertTrue(file.isHittable); file.tap()
@@ -666,13 +693,12 @@ import XCTest
         XCTAssertTrue(live.waitForExistence(timeout: 120), "Output must be visible while its command is running")
         XCTAssertTrue(live.label.contains("RELAY_PROGRESS_"))
         let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Actual output before command completion"; capture.lifetime = .keepAlways; add(capture)
-        XCTAssertEqual(app.buttons["composer.send"].label, "Send follow-up")
+        XCTAssertTrue(app.buttons["composer.stop"].exists)
         let marker = "RELAY_QUEUE_" + UUID().uuidString.prefix(8)
         let original = "Reply " + marker + "_ORIGINAL without tools."
         composer.tap(); composer.typeText(original); app.buttons["composer.send"].tap()
         XCTAssertTrue(app.staticTexts["FOLLOW-UP · QUEUED"].waitForExistence(timeout: 15))
-        app.buttons["Session actions"].tap()
-        let edit = app.buttons["Edit Last Queued Message"]
+        let edit = app.buttons["Edit queued message"].firstMatch
         XCTAssertTrue(edit.waitForExistence(timeout: 5)); XCTAssertTrue(edit.isEnabled); edit.tap()
         XCTAssertEqual(composer.value as? String, original)
         composer.tap(); composer.typeText(" Reply " + marker + "_EDITED instead.")
@@ -697,15 +723,14 @@ import XCTest
         let row = app.buttons["session." + config.sessionID]
         XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
         let send = app.buttons["composer.send"]
-        wait(30) { send.label == "Send follow-up" }
-        app.buttons["Session actions"].tap()
-        let steer = app.buttons["Steer Current Turn"]
-        XCTAssertTrue(steer.waitForExistence(timeout: 5)); XCTAssertTrue(steer.isEnabled); steer.tap()
+        wait(30) { app.buttons["composer.stop"].exists }
         let marker = "RELAY_STEER_" + UUID().uuidString.prefix(8)
         let text = "For this current turn, finish with exactly " + marker + ". Do not queue another turn."
         let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
         composer.tap(); composer.typeText(text)
-        XCTAssertEqual(send.label, "Send Steer"); send.tap()
+        XCTAssertEqual(send.label, "Send follow-up"); send.tap()
+        let steer = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "queue.steer.")).firstMatch
+        XCTAssertTrue(steer.waitForExistence(timeout: 15)); wait(15) { steer.isEnabled }; steer.tap()
         let canonical = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.userMessage.' AND label == %@", text))
         wait(60) { canonical.count == 1 }
         let response = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.agentMessage.' AND label CONTAINS %@", marker))
@@ -969,16 +994,10 @@ import XCTest
         XCTAssertTrue(session.waitForExistence(timeout: 15)); session.tap()
         let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
         XCTAssertTrue(composer.waitForExistence(timeout: 15)); XCTAssertTrue(composer.isHittable)
-        app.buttons["Session actions"].tap()
-        let steer = app.buttons["Steer Current Turn"]
-        XCTAssertTrue(steer.waitForExistence(timeout: 5))
-        if steer.isEnabled {
-            steer.tap()
-            XCTAssertTrue(app.buttons["composer.send"].label == "Send Steer")
-            app.buttons["Cancel"].tap()
-        } else {
-            app.buttons["Session actions"].tap()
-        }
+        app.buttons["composer.attach"].tap()
+        XCTAssertTrue(app.buttons["Add photos"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Steer Current Turn"].exists)
+        app.buttons["composer.attach"].tap()
         let older = app.buttons["history.older"]
         let transcript = app.scrollViews["session.transcript"]
         wait(15) { older.exists && transcript.frame.height > 100 }

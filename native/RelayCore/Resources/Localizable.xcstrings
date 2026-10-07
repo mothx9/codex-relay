@@ -6274,6 +6274,70 @@
           }
         }
       }
+    },
+    "Add attachments": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add attachments"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungi allegati"
+          }
+        }
+      }
+    },
+    "Send queued message to current turn": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send queued message to current turn"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia il messaggio in coda al turno corrente"
+          }
+        }
+      }
+    },
+    "Reply to current turn": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reply to current turn"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rispondi al turno corrente"
+          }
+        }
+      }
+    },
+    "Choose a reply or write your own.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a reply or write your own."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli una risposta o scrivine una."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

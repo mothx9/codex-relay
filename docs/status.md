@@ -5,19 +5,25 @@ engineering evidence; they do not override this page or claim a public release.
 
 ## Release and distribution
 
-The source candidate is **0.1.0-rc.5**. The reference Hub uses `0.1.0-rc.5+m2.8` (updated web branding);
-Agents use `0.1.0-rc.5+m2.7`. No final v0.1.0 is published by this productization pass.
+The source candidate is **0.1.0-rc.5**. The reference Hub and all three Agents use
+`0.1.0-rc.5+m2.9`, including canonical queue promotion. No final v0.1.0 is
+published by this productization pass.
 Build the candidate from source with `make build`; use `--binary` with the
 installer. The legacy default download is an older published RC, not current main.
 
 The latest wave adds explicit context-compaction status, compact mixed activity
 groups, direct file diffs, remaining-capacity quota windows and connected-client
 local banners with machine/session/turn context and a slimmer persistent composer.
-Fleet now uses open two-line Working rows with a green activity sweep, stable
-ordering and separate Recent sessions. Activity inspection distinguishes its
+Fleet uses compact mini-surfaces for Working/Needs You and a flat Recent index.
+Green execution state is separate from the current activity; source text and
+spacing are balanced. Send queues work, and a direct Next up Steer button (or
+physical-keyboard Escape) promotes the selected canonical input without creating
+a second message. The + menu contains attachments only. Activity inspection distinguishes its
 compact aggregate, individual operation and changed-file list. Short live
 questions open in a partial-height material sheet. Sanitized screenshots and a
-recorded walkthrough document the current native views.
+recorded walkthrough document the current native views. The m2.9 signed iPhone
+build is ready; its installation is pending because the device is currently
+unavailable to the Mac. The previously installed build remains separate evidence.
 
 The native app supports iOS 17+, English/Italian, Dynamic Type and Reduce Motion.
 Liquid Glass uses a material fallback on older iOS. Installation currently

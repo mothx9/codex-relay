@@ -1,16 +1,17 @@
 import Foundation
 public enum DeliveryPhase: String, Sendable { case unconfirmed = "UNCONFIRMED", local = "LOCAL", sending = "SENDING", queued = "QUEUED", dispatched = "DISPATCHED", materialized = "MATERIALIZED", accepted = "ACCEPTED", steering = "STEERING", applied = "APPLIED", failed = "FAILED" }
 public struct Outgoing: Identifiable, Sendable {
-    public let id: String; public let sessionId: String; public let kind: String; public var text: String; public var phase: DeliveryPhase = .local
+    public let id: String; public let sessionId: String; public var kind: String; public var text: String; public var phase: DeliveryPhase = .local
     public var images: [ImageInput] = []; public var imageCount = 0
     public var queuePosition: Int?; public var queueId: String?; public var queueRevision: String?; public var queueEditable = false
-    public var error: String?; public var errorCode: String?; public let expectedTurn: String?; public let created: Date
+    public var error: String?; public var errorCode: String?; public var expectedTurn: String?; public let created: Date
 }
 public struct Outbox: Sendable {
     public private(set) var items: [Outgoing] = []
     // Canonical items can arrive before their queue snapshot or command result.
     // Remember identities, never text, so a late queue read cannot resurrect them.
     private var canonical: [(session: String, client: String)] = []
+    private var removedQueue: [(session: String, client: String)] = []
     public init() {}
     public mutating func add(id: String = UUID().uuidString, session: String, kind: String, text: String, images: [ImageInput] = [], expectedTurn: String? = nil, now: Date = Date()) throws -> String {
         if items.contains(where: { $0.id == id }) { return id }
@@ -27,6 +28,27 @@ public struct Outbox: Sendable {
         return id
     }
     public mutating func sending(_ id: String) { update(id) { $0.phase = $0.kind == "steer" ? .steering : .sending } }
+    public mutating func beginQueueSteer(_ id: String, turn: String) {
+        update(id) { if $0.phase == .queued { $0.phase = .steering; $0.expectedTurn = turn; $0.error = nil; $0.errorCode = nil } }
+    }
+    public mutating func queueSteerUnknown(_ id: String) {
+        update(id) { if $0.phase != .materialized { $0.phase = .unconfirmed; $0.queueEditable = false; $0.errorCode = "UNKNOWN_OUTCOME"; $0.error = String(localized: "Unknown outcome. Check Codex before resending.", bundle: relayLocalizationBundle) } }
+    }
+    public mutating func queueSteerResult(_ id: String, result: CommandResult) {
+        if result.queueRemoved == true, let item = items.first(where: { $0.id == id }) {
+            removedQueue.append((item.sessionId, id))
+            if removedQueue.count > 512 { removedQueue.removeFirst(removedQueue.count - 512) }
+        }
+        update(id) {
+            guard $0.phase != .materialized else { return }
+            if result.queueRemoved == true {
+                $0.kind = "steer"; $0.phase = result.ok ? .applied : .failed; $0.queueEditable = false
+            } else if result.errorCode == "UNKNOWN_OUTCOME" {
+                $0.phase = .unconfirmed; $0.queueEditable = false
+            } else if $0.phase == .steering { $0.phase = .queued }
+            $0.error = result.error; $0.errorCode = result.errorCode
+        }
+    }
     public mutating func result(_ result: CommandResult) {
         update(result.id) {
             if [.materialized, .dispatched, .unconfirmed].contains($0.phase) || ($0.phase == .queued && !result.ok) { return }
@@ -57,11 +79,11 @@ public struct Outbox: Sendable {
             items[index].phase = .unconfirmed; items[index].queueEditable = false
         }
         for (position, entry) in entries.enumerated() {
-            guard !entry.clientId.isEmpty, !canonical.contains(where: { $0.session == session && $0.client == entry.clientId }) else { continue }
+            guard !entry.clientId.isEmpty, !canonical.contains(where: { $0.session == session && $0.client == entry.clientId }), !removedQueue.contains(where: { $0.session == session && $0.client == entry.clientId }) else { continue }
             let text = entry.text ?? ""
             guard !text.isEmpty || (entry.imageCount ?? 0) > 0 else { continue }
             if !items.contains(where: { $0.id == entry.clientId }) { _ = try? add(id: entry.clientId, session: session, kind: "follow_up", text: text) }
-            update(entry.clientId) { if $0.sessionId == session && ![.materialized, .dispatched].contains($0.phase) {
+            update(entry.clientId) { if $0.sessionId == session && ![.materialized, .dispatched, .steering].contains($0.phase) {
                 $0.imageCount = entry.imageCount ?? $0.images.count
                 $0.phase = .queued; $0.queuePosition = position; $0.text = text; $0.queueId = entry.id; $0.queueRevision = entry.revision; $0.queueEditable = entry.editable == true
                 $0.error = nil; $0.errorCode = nil

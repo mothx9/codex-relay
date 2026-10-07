@@ -27,9 +27,14 @@ do not require re-pairing and must not erase this enrollment.
 Open **Relay menu → Machines → Add a machine**, generate an Agent code and follow
 the Linux/macOS setup guide on that machine. Run Codex normally. Fleet prioritizes
 Needs You and current work. A Ready session sends a New Turn; a Working session
-normally queues a Follow-up. Steer is a separate current-turn action.
+normally queues a Follow-up. To send that queued message to the current turn,
+tap **Steer** beside it in Next up (or Escape with a physical keyboard). The
+selected entry leaves the queue; other entries keep their order. Stop is the
+composer button when the draft is empty; `+` is reserved for attachments.
 
-Working rows keep activity and elapsed time together, with a green text sweep.
+Working rows keep the green execution state separate from the quieter activity
+category, beside elapsed time. Working and Needs You have subtle mini-surfaces;
+Recent stays flat. Source metadata is larger and row spacing is tighter.
 Machine/project appears to the right of the title; Recent work is a separate list.
 Orange means a current decision needs you, while stale/offline work stays explicit.
 
@@ -38,6 +43,10 @@ or tool opens its own output. A single file opens its patch; a multi-file previe
 opens only the changed-file list. **View all activities** opens the compact list
 for that group, rather than expanding every output. See the
 [inspection paths](../architecture/native-navigation.md).
+
+Attach photos using **+ → Add photos**, or drop an image into the conversation.
+Review/remove previews before sending. You can keep writing a draft even while
+control is temporarily unavailable.
 
 A current **Live question → Reply** opens options near the composer. Short
 questions use a partial-height sheet you can drag larger. Choosing an option

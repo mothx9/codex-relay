@@ -15,7 +15,7 @@ func TestQueueEditResultCarriesCanonicalQueueWithoutWaitingForEvent(t *testing.T
 	defer h.Close()
 	peer := &protocol.Peer{Send: make(chan protocol.Message, 1), Done: make(chan struct{})}
 	op := &operator{peer: peer, session: "m~t"}
-	for _, kind := range []string{protocol.QueueUpdate, "history", protocol.Steer} {
+	for _, kind := range []string{protocol.QueueUpdate, protocol.QueueSteer, "history", protocol.Steer} {
 		id := protocol.ID()
 		h.flights[id] = flight{operator: op, machine: "m", session: "m~t", kind: kind}
 		h.result("m", protocol.Result{ID: id, OK: true, FollowUps: []protocol.FollowUp{{ID: "q", ClientID: "client", Text: "edited", Revision: "new", Editable: true}}})

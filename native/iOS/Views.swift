@@ -234,10 +234,20 @@ struct NeedsYouView: View {
                     ForEach(relay.liveQuestions.records) { question in
                         Button { relay.open(question.sessionID) } label: {
                             VStack(alignment: .leading, spacing: 6) {
-                                Text(relay.sessions[question.sessionID]?.title ?? String(localized: "Codex session", bundle: relayLocalizationBundle)).font(.subheadline.weight(.semibold))
-                                Text(question.activity.questions?.first?.title ?? "").font(.subheadline).lineLimit(3)
+                                HStack(alignment: .firstTextBaseline) {
+                                    Text(relay.sessions[question.sessionID]?.title ?? String(localized: "Codex session", bundle: relayLocalizationBundle)).font(.body.weight(.medium)).lineLimit(1)
+                                    Spacer(minLength: 8)
+                                    Text(String(localized: "Reply", bundle: relayLocalizationBundle)).font(.subheadline.weight(.medium)).foregroundStyle(Color.accentColor)
+                                    Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                                }
+                                if let session = relay.sessions[question.sessionID] {
+                                    Text([relay.machines[session.machineId]?.name ?? session.machineId, session.project].filter { !$0.isEmpty }.joined(separator: " · "))
+                                        .font(.footnote).foregroundStyle(.secondary)
+                                }
+                                ChatMarkdown(text: question.activity.questions?.first?.title ?? "", identifier: "inbox.question." + question.activity.id)
+                                    .environment(\.markdownProseFont, .subheadline).lineLimit(3)
                                 HStack {
-                                    Label(String(localized: "Live question", bundle: relayLocalizationBundle), systemImage: "bubble.left")
+                                    Label(String(localized: "Live question", bundle: relayLocalizationBundle), systemImage: "questionmark.bubble").foregroundStyle(RelayPalette.attention)
                                     Spacer()
                                     Text(question.observedAt, style: .relative)
                                 }.font(.caption).foregroundStyle(.secondary)
@@ -245,7 +255,6 @@ struct NeedsYouView: View {
                         }.buttonStyle(.plain).listRowSeparator(.hidden).accessibilityIdentifier("live-question." + question.activity.id)
                     }
                 } header: { Text(String(localized: "Live questions", bundle: relayLocalizationBundle)) }
-                footer: { Text(String(localized: "Observed during the current connection. These hints clear when work moves on or the connection is lost.", bundle: relayLocalizationBundle)) }
             }
         }.listStyle(.plain).scrollContentBackground(.hidden).background(Color(uiColor: .systemBackground))
     }
@@ -499,13 +508,13 @@ struct LastKnownSession: View {
         let sessionSpecs = [("laptop", "decision", "Validate the release", "relay", "NEEDS_YOU"), ("workstation", "build", "Harden input validation", "compiler", "WORKING"), ("laptop", "docs", "Update installation guide", "relay", "READY"), ("node", "kernel", "Check CUDA kernels", "compute", "WORKING")]
         let sessions: [RelaySession] = sessionSpecs.enumerated().map { index, spec in
             let (machine, thread, title, project, status) = spec
-            return decode(["id": machine + "~" + thread, "machine_id": machine, "thread_id": thread, "title": title, "project": project, "cwd": "/workspace/" + project, "branch": "main", "status": status, "updated_at": ISO8601DateFormatter().string(from: now.addingTimeInterval(Double(-index * 60))), "turn_id": "example-turn", "turn_started": ISO8601DateFormatter().string(from: now.addingTimeInterval(-267)), "read_only": false, "capabilities": ["can_send": true, "can_send_images": true, "can_follow_up": true, "can_steer": true, "can_interrupt": true, "can_answer": true]])
+            return decode(["id": machine + "~" + thread, "machine_id": machine, "thread_id": thread, "title": title, "project": project, "cwd": "/workspace/" + project, "branch": "main", "status": status, "updated_at": ISO8601DateFormatter().string(from: now.addingTimeInterval(Double(-index * 60))), "turn_id": "example-turn", "turn_started": ISO8601DateFormatter().string(from: now.addingTimeInterval(-267)), "read_only": false, "capabilities": ["can_send": true, "can_send_images": true, "can_follow_up": true, "can_steer": true, "can_steer_queue": true, "can_interrupt": true, "can_answer": true]])
         }
         relay.sessions = Dictionary(uniqueKeysWithValues: sessions.map { ($0.id, $0) })
         relay.liveActivities = ["workstation~build": decode(["item_id": "example-command", "kind": "terminal", "label": "cargo test --workspace", "state": "running", "timestamp": stamp])]
         let request: PendingRequest = decode(["request_id": "example-request", "session_id": "laptop~decision", "machine_id": "laptop", "kind": "user_input", "description": "Which validation scope should I use?", "expires_at": "2099-01-01T00:00:00Z", "created_at": stamp, "can_approve": true, "questions": [["id": "scope", "header": "Validation", "question": "Which validation scope should I use?", "options": [["label": "Full suite", "description": "Run unit tests and integration checks."], ["label": "Focused checks", "description": "Run tests for the changed module."]]]]])
         relay.requests = [request.id: request]
-        relay.selected = ["conversation", "terminal", "tools", "diff", "live-question", "history-question", "compaction", "queue", "question-reply", "activity", "changed-files", "activity-routing"].contains(surface) ? "workstation~build" : surface == "question" ? "laptop~decision" : ""
+        relay.selected = ["conversation", "terminal", "tools", "diff", "live-question", "history-question", "compaction", "queue", "question-reply", "activity", "changed-files", "activity-routing", "draft-offline"].contains(surface) ? "workstation~build" : surface == "question" ? "laptop~decision" : ""
         relay.outbox = Outbox(); relay.chat = RecentChat()
         relay.chat.put(Activity(id: "example-user", kind: "userMessage", text: "Validate empty inputs, then run the workspace tests."))
         relay.chat.put(Activity(id: "example-response", kind: "agentMessage", text: "I added an **empty-input guard** and a regression test. The workspace suite is running."))
@@ -564,7 +573,7 @@ struct LastKnownSession: View {
         relay.diagnostics = decode(["hub_version": "0.1.0-rc.5", "protocol_version": 1, "transport": "HTTPS / WSS", "database": "reachable", "machines": []])
         relay.diagnosticsUpdatedAt = now
         if surface == "notifications" { relay.notificationsEnabled = true; relay.notificationAllowed = true; relay.notificationPermission = "Allowed" }
-        relay.connection = "Connected"; relay.online = true
+        relay.connection = "Connected"; relay.online = surface != "draft-offline"
         return relay
     }
 }
@@ -576,8 +585,8 @@ struct LastKnownSession: View {
         Group {
             switch surface {
             case "fleet": RootView()
-            case "conversation", "question", "live-question", "history-question", "compaction", "queue", "question-reply", "activity-routing": NavigationStack { SessionView() }
-            case "needs-you", "live-inbox": NavigationStack { NeedsYouView().navigationTitle("Needs You") }
+            case "conversation", "question", "live-question", "history-question", "compaction", "queue", "question-reply", "activity-routing", "draft-offline": NavigationStack { SessionView() }
+            case "needs-you", "live-inbox": NavigationStack { NeedsYouView().navigationTitle("Needs You").navigationBarTitleDisplayMode(.inline) }
             case "navigation": NavigationStack { RelayLibraryView(openHistory: {}) }
             case "machine-diagnostics": NavigationStack { MachineDiagnosticsView(id: "workstation") }
             case "machines": NavigationStack { MachinesView() }

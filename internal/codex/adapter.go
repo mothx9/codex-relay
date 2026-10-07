@@ -106,6 +106,7 @@ func (a *Adapter) capabilities(s protocol.Session) protocol.Session {
 	s.Capabilities.CanSend = s.Status == protocol.Ready
 	s.Capabilities.CanFollowUp = s.Status == protocol.Working && a.queue
 	s.Capabilities.CanSteer = s.Status == protocol.Working && s.TurnID != ""
+	s.Capabilities.CanSteerQueue = a.queue && s.Capabilities.CanSteer
 	s.Capabilities.CanInterrupt = (s.Status == protocol.Working || s.Status == protocol.NeedsYou) && s.TurnID != ""
 	return s
 }

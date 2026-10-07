@@ -404,12 +404,12 @@ func (h *Hub) route(o *operator, c protocol.Command) {
 	c.ThreadID = s.ThreadID
 	switch c.Kind {
 	case "history", "attach", "catalogue":
-	case protocol.QueueUpdate, protocol.NewTurn, protocol.Steer, protocol.FollowUpCommand, protocol.Interrupt:
+	case protocol.QueueUpdate, protocol.QueueSteer, protocol.NewTurn, protocol.Steer, protocol.FollowUpCommand, protocol.Interrupt:
 		if code := protocol.CheckControl(s, c); code != "" {
 			fail(code)
 			return
 		}
-		if (c.Kind == protocol.NewTurn || c.Kind == protocol.Steer || c.Kind == protocol.FollowUpCommand || c.Kind == protocol.QueueUpdate) && strings.TrimSpace(c.Text) == "" {
+		if (c.Kind == protocol.NewTurn || c.Kind == protocol.Steer || c.Kind == protocol.FollowUpCommand || c.Kind == protocol.QueueUpdate) && strings.TrimSpace(c.Text) == "" && len(c.Images) == 0 {
 			fail(protocol.CodexRejected)
 			return
 		}
@@ -469,7 +469,7 @@ func (h *Hub) result(machine string, r protocol.Result) {
 	} else {
 		r.History = nil
 		r.HistoryCursor = ""
-		if f.kind != protocol.QueueUpdate {
+		if f.kind != protocol.QueueUpdate && f.kind != protocol.QueueSteer {
 			r.FollowUps = nil
 		}
 	}

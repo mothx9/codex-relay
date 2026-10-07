@@ -23,6 +23,40 @@ final class ControlTests: XCTestCase {
         XCTAssertEqual(online.connectionLabel(hubConnected: false), "Hub not connected")
         XCTAssertEqual(offline.connectionLabel(hubConnected: true, access: "REVOKED"), "Relay access revoked")
     }
+    func testQueuedPromotionKeepsIdentityImagesAndRejectsLateQueueResurrection() throws {
+        var box = Outbox()
+        let image = ImageInput(data: Data([1, 2, 3]))
+        _ = try box.add(id: "selected", session: "m~t", kind: "follow_up", text: "now", images: [image])
+        let selected: FollowUp = try decode(#"{"id":"queue","client_id":"selected","text":"now","revision":"one","image_count":1}"#)
+        let later: FollowUp = try decode(#"{"id":"later-queue","client_id":"later","text":"later","revision":"two"}"#)
+        box.queue(session: "m~t", entries: [selected, later])
+        box.beginQueueSteer("selected", turn: "active")
+        box.queue(session: "m~t", entries: [selected, later])
+        XCTAssertEqual(box.items.first?.phase, .steering)
+        let result: CommandResult = try decode(#"{"id":"operation","ok":true,"queue_removed":true}"#)
+        box.queueSteerResult("selected", result: result)
+        box.queue(session: "m~t", entries: [selected, later])
+        XCTAssertEqual(box.pending(session: "m~t").map(\.id), ["later"])
+        XCTAssertEqual(box.conversation(session: "m~t").map(\.id), ["selected"])
+        XCTAssertEqual(box.images(session: "m~t", clientID: "selected"), [image])
+        box.materialize(session: "m~t", activity: Activity(id: "canonical", kind: "userMessage", text: "now", clientId: "selected"))
+        box.queueSteerResult("selected", result: result)
+        box.queue(session: "m~t", entries: [selected, later])
+        XCTAssertTrue(box.conversation(session: "m~t").isEmpty)
+        XCTAssertEqual(box.items.filter { $0.id == "selected" }.count, 1)
+    }
+    func testRemovedQueueFailureRetainsTextAndUncertainDeleteNeverResends() throws {
+        for removed in [false, true] {
+            var box = Outbox()
+            let queued: FollowUp = try decode(#"{"id":"queue","client_id":"client","text":"keep text","revision":"one"}"#)
+            box.queue(session: "m~t", entries: [queued]); box.beginQueueSteer("client", turn: "active")
+            let result: CommandResult = try decode(removed ? #"{"id":"op","ok":false,"queue_removed":true,"error_code":"TURN_CHANGED","error":"turn changed"}"# : #"{"id":"op","ok":false,"error_code":"UNKNOWN_OUTCOME","error":"unknown"}"#)
+            box.queueSteerResult("client", result: result)
+            XCTAssertEqual(box.items.first?.text, "keep text")
+            XCTAssertEqual(box.items.first?.phase, removed ? .failed : .unconfirmed)
+            XCTAssertEqual(box.items.first?.kind, removed ? "steer" : "follow_up")
+        }
+    }
     func testQueueAckDoesNotCompleteAndCanonicalIdentityReconciles() throws {
         var box = Outbox(); let id = try box.add(id: "client", session: "m~t", kind: "follow_up", text: "later")
         XCTAssertEqual(box.items[0].phase, .local); box.sending(id); XCTAssertEqual(box.items[0].phase, .sending)

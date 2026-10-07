@@ -338,6 +338,11 @@ func (a *Adapter) Execute(ctx context.Context, c protocol.Command) protocol.Resu
 			return protocol.Failure(c, protocol.CodexRejected)
 		}
 		return a.editQueue(ctx, c)
+	case protocol.QueueSteer:
+		if code := protocol.CheckControl(s, c); code != "" {
+			return protocol.Failure(c, code)
+		}
+		return a.steerQueue(ctx, c)
 	case protocol.NewTurn, protocol.Steer, protocol.FollowUpCommand, protocol.Interrupt:
 		if code := protocol.CheckControl(s, c); code != "" {
 			return protocol.Failure(c, code)

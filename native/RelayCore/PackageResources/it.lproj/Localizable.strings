@@ -48,6 +48,7 @@
 "Activity" = "Attività";
 "Add a follow-up…" = "Aggiungi un follow-up…";
 "Add a machine" = "Aggiungi una macchina";
+"Add attachments" = "Aggiungi allegati";
 "Add machine" = "Aggiungi macchina";
 "Add photos" = "Aggiungi foto";
 "Adds this option to your draft. Review before sending." = "Aggiunge questa opzione alla bozza. Controllala prima di inviare.";
@@ -84,6 +85,7 @@
 "Changes" = "Modifiche";
 "Check outcome in Codex" = "Esito da verificare in Codex";
 "Checked" = "Verificato";
+"Choose a reply or write your own." = "Scegli una risposta o scrivine una.";
 "Choose an option to prepare a message. This is not a pending approval." = "Scegli un’opzione per preparare un messaggio. Non è un’approvazione in attesa.";
 "Choose…" = "Seleziona…";
 "Clear search" = "Cancella ricerca";
@@ -394,6 +396,7 @@
 "Removing…" = "Rimozione…";
 "Renamed" = "Rinominato";
 "Reply" = "Rispondi";
+"Reply to current turn" = "Rispondi al turno corrente";
 "Reply using the live question above the composer." = "Rispondi dalla domanda live sopra il campo di scrittura.";
 "Reported by" = "Dati forniti da";
 "Reported credit balance. Codex does not specify a unit; this is not a currency amount." = "Saldo crediti riportato. Codex non specifica un’unità; non è un importo in valuta.";
@@ -444,6 +447,7 @@
 "Send as new turn" = "Invia come nuovo turno";
 "Send failed" = "Invio fallito";
 "Send follow-up" = "Invia follow-up";
+"Send queued message to current turn" = "Invia il messaggio in coda al turno corrente";
 "Send test notification" = "Invia notifica di test";
 "Send to current turn" = "Invia al turno corrente";
 "Sending response…" = "Invio della risposta…";

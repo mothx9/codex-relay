@@ -6,10 +6,18 @@ required physical notification delivery, is complete.
 
 ## Unreleased — M2 productization
 
+- Compact hybrid Fleet: light glass emphasis for active rows, flat Recent, larger
+  source metadata and an explicit Working state separate from activity.
+- Direct queued-message Steer with preserved input/client identity; `+` contains
+  attachments only, and an empty working composer offers Stop.
+- Draft remains editable without live control; Live Questions show source context,
+  clear reply access and formatted text without transport-lifecycle prose.
+- Opaque semantic Activity cards retain individual operation/file routes.
+
 - Open Fleet, Needs You and Relay menu lists with title-first hierarchy, quiet
   Recent rows and stable Working order during live updates.
 - Two-line Working rows align machine/project above elapsed time and show a
-  gray-to-green active category sweep;
+  green execution-state sweep beside the secondary activity category;
   current live questions have one composer-side reply home without transcript copies.
 - Consistent activity alignment and distinct routes for one operation, changed files
   and the compact aggregate; short live questions use a partial-height sheet.

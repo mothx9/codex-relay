@@ -34,17 +34,21 @@ Diagnostics links to Machines, while per-machine measurements live in its detail
 A healthy Fleet has no permanent connected/count banner. Connection exceptions
 produce one actionable warning leading to Machines. At ordinary text sizes a
 Working row has two lines: title and machine/project, then activity category and
-elapsed time. Terminal, Changes, Tools, response generation and context compaction
-use a gray-to-green text sweep. Reduce Motion shows steady green. Full shell
+elapsed time. The state stays explicit as `● Working`, with a green sweep. The current activity
+(Terminal, Changes, Tools, response generation or context compaction) follows in
+secondary text, separated by a dot. Reduce Motion shows steady green. Full shell
 bodies stay in the session; completed activity never masquerades as a running
 operation. Needs You stays orange, failures red, and stale connectivity explicit.
 Accessibility text sizes use a vertical layout so identity remains readable.
 
-Sections use open rows on the system canvas, with quiet headings and separate
-Working and Recent lists. Working order follows turn-start identity rather than
+Working and Needs You use compact, subtle glass surfaces; Recent remains a flat
+index on the system canvas. Inactive titles are attenuated. Source metadata uses
+the 13-point footnote role, closer to 17-point titles, without a fixed-width
+column or shrinking the type. Long titles may wrap once. Rows keep 44-point hit
+targets with 10-point vertical padding and smaller section gaps. Working order follows turn-start identity rather than
 every live timestamp update. Recent rows omit a repeated Ready label. Needs You
-and the Relay menu use the same title-first open-list hierarchy. Glass belongs to
-search, navigation and composer controls, not to opaque conversation content.
+and the Relay menu use the same title-first open-list hierarchy. Glass belongs to active Fleet emphasis and controls. Activity groups inside the
+conversation have quiet opaque cards that contain their own semantic children.
 
 Consecutive command/tool/file activity in the same turn shares one stable inline
 group between conversational messages. The header and its children use one icon
@@ -73,10 +77,14 @@ streaming, keyboard changes and drag inertia never imply permission to force-scr
 [Machine diagnostics](../assets/app/screenshots/machine-diagnostics.png)
 
 The composer is one material surface with integrated 44-point controls. Session
-Info belongs to the header; Steer/Interrupt remain in an anchored composer action
-panel. The composer and keyboard remain visible when it opens. Copy Session Link
-and duplicate send actions are absent; queued-message editing appears only when
-supported. The panel clears when the current turn or connection changes. A compact
+Info belongs to the header. The `+` panel contains attachments only. During work,
+Send queues the input in Next up; its direct Steer button moves the selected
+canonical entry into the current turn, preserving its client identity. Escape on
+a physical keyboard targets the first queued entry. Stop replaces the empty send
+button; queue editing remains on each queued row. The composer and keyboard stay
+visible when the attachment panel opens. The field remains editable while offline
+or when control is unavailable; only sending is gated. A live-question answer is
+prepared as an explicit current-turn reply, without a separate `+` mode switch. A compact
 neutral Working text sweep respects Reduce Motion and does not animate transcript
 updates. Context compaction replaces the Working label only while a real current
 compaction item is running; the last command is not repeated below the heartbeat.

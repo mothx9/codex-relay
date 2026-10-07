@@ -24,7 +24,23 @@ func (a *Adapter) disableQueue() {
 	}
 }
 
-func (a *Adapter) nativeQueue(ctx context.Context, threadID string) ([]protocol.FollowUp, error) {
+type queuedSubmission struct {
+	ID       string            `json:"id"`
+	ClientID string            `json:"clientUserMessageId"`
+	Input    []json.RawMessage `json:"input"`
+}
+
+func queueRevision(input []json.RawMessage) string {
+	// Normalize JSON formatting and key order before comparing the full input,
+	// including images and text elements, rather than only its text preview.
+	var normalized any
+	raw, _ := json.Marshal(input)
+	_ = json.Unmarshal(raw, &normalized)
+	raw, _ = json.Marshal(normalized)
+	return fmt.Sprintf("%x", sha256.Sum256(raw))
+}
+
+func (a *Adapter) readQueue(ctx context.Context, threadID string) ([]queuedSubmission, error) {
 	a.mu.Lock()
 	supported := a.queue
 	a.mu.Unlock()
@@ -40,25 +56,36 @@ func (a *Adapter) nativeQueue(ctx context.Context, threadID string) ([]protocol.
 		return nil, err
 	}
 	var result struct {
-		Data []struct {
-			ID       string `json:"id"`
-			ClientID string `json:"clientUserMessageId"`
-			Input    []struct {
-				Type     string            `json:"type"`
-				Text     string            `json:"text"`
-				Elements []json.RawMessage `json:"text_elements"`
-			} `json:"input"`
-		} `json:"data"`
+		Data []queuedSubmission `json:"data"`
 	}
 	if err := json.Unmarshal(raw, &result); err != nil {
 		return nil, err
 	}
+	return result.Data, nil
+}
+
+func (a *Adapter) nativeQueue(ctx context.Context, threadID string) ([]protocol.FollowUp, error) {
+	entries, err := a.readQueue(ctx, threadID)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]protocol.FollowUp, 0, 50)
 	bytes := 0
-	for _, q := range result.Data {
+	for _, q := range entries {
 		text := ""
 		imageCount := 0
-		for _, input := range q.Input {
+		editable := q.ClientID != "" && len(q.Input) == 1
+		for _, raw := range q.Input {
+			var input struct {
+				Type     string            `json:"type"`
+				Text     string            `json:"text"`
+				Elements []json.RawMessage `json:"text_elements"`
+			}
+			if json.Unmarshal(raw, &input) != nil {
+				editable = false
+				continue
+			}
+			editable = editable && input.Type == "text" && len(input.Elements) == 0 && len(input.Text) <= protocol.MaxText
 			if input.Type == "image" || input.Type == "localImage" {
 				imageCount++
 			}
@@ -71,10 +98,60 @@ func (a *Adapter) nativeQueue(ctx context.Context, threadID string) ([]protocol.
 			break
 		}
 		bytes += len(text)
-		editable := q.ClientID != "" && len(q.Input) == 1 && q.Input[0].Type == "text" && len(q.Input[0].Elements) == 0 && len(q.Input[0].Text) <= protocol.MaxText
-		out = append(out, protocol.FollowUp{ImageCount: imageCount, ID: q.ID, ClientID: q.ClientID, Text: text, Editable: editable, Revision: fmt.Sprintf("%x", sha256.Sum256([]byte(text)))})
+		out = append(out, protocol.FollowUp{ImageCount: imageCount, ID: q.ID, ClientID: q.ClientID, Text: text, Editable: editable, Revision: queueRevision(q.Input)})
 	}
 	return out, nil
+}
+
+// Promote exactly one canonical queued item. Deletion must be acknowledged before
+// steering; reuse its original input and client ID. Never re-add or auto-retry.
+// A turn change after removal returns a recoverable failure to the controller.
+func (a *Adapter) steerQueue(ctx context.Context, c protocol.Command) protocol.Result {
+	entries, err := a.readQueue(ctx, c.ThreadID)
+	if err != nil {
+		return protocol.Failure(c, a.errorCode(c, err))
+	}
+	var selected *queuedSubmission
+	for i := range entries {
+		q := &entries[i]
+		if q.ID == c.QueueID && q.ClientID == c.QueueClientID && q.ClientID != "" && queueRevision(q.Input) == c.QueueRevision {
+			selected = q
+			break
+		}
+	}
+	if selected == nil {
+		return protocol.Failure(c, protocol.QueueChanged)
+	}
+	// Recheck metadata after the read, before touching the native queue.
+	a.mu.Lock()
+	s := a.sessions[c.ThreadID]
+	a.mu.Unlock()
+	if code := protocol.CheckControl(s, c); code != "" {
+		return protocol.Failure(c, code)
+	}
+	raw, err := a.rpc(ctx, "thread/queue/delete", map[string]any{"threadId": c.ThreadID, "queuedSubmissionId": c.QueueID})
+	if err != nil {
+		return protocol.Failure(c, a.errorCode(c, err))
+	}
+	var deletion struct {
+		Deleted bool `json:"deleted"`
+	}
+	if json.Unmarshal(raw, &deletion) != nil {
+		return protocol.Failure(c, protocol.UnknownOutcome)
+	}
+	if !deletion.Deleted {
+		return protocol.Failure(c, protocol.QueueChanged)
+	}
+	_, err = a.rpc(ctx, "turn/steer", map[string]any{"threadId": c.ThreadID, "expectedTurnId": c.TurnID, "clientUserMessageId": selected.ClientID, "input": selected.Input})
+	result := protocol.Result{ID: c.ID, SessionID: c.SessionID, OK: true, QueueID: c.QueueID, QueueRemoved: true}
+	if err != nil {
+		steerCommand := c
+		steerCommand.Kind = protocol.Steer
+		result = protocol.Failure(c, a.errorCode(steerCommand, err))
+		result.QueueRemoved = true
+	}
+	result.FollowUps, _ = a.nativeQueue(ctx, c.ThreadID)
+	return result
 }
 
 // Queue notifications contain only threadId. One bounded worker reads the official

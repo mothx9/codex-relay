@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shared semantic roles; content remains opaque, glass is reserved for controls.
+/// Shared semantic roles; active Fleet rows use quiet glass, activity content is opaque.
 enum RelayPalette {
     static let surface = Color(uiColor: .secondarySystemGroupedBackground)
     static let canvas = Color(uiColor: .systemGroupedBackground)
@@ -45,7 +45,7 @@ struct FleetView: View {
     }
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 28) {
+            LazyVStack(alignment: .leading, spacing: 18) {
                 if search.isEmpty { fleetHeader }
                 if !browsingAll {
                     sessionSection(String(localized: "Needs You", bundle: relayLocalizationBundle), sessions: sorted.filter { state($0) == "NEEDS_YOU" }, tint: RelayPalette.attention)
@@ -64,7 +64,7 @@ struct FleetView: View {
                     if visible.isEmpty { ContentUnavailableView.search(text: search) }
                     if filter == "HISTORY" || !search.isEmpty { catalogueControls }
                 }
-            }.padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 24)
+            }.padding(.horizontal, RelaySpacing.page).padding(.top, 4).padding(.bottom, 16)
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             HStack(spacing: 8) {
@@ -103,13 +103,13 @@ struct FleetView: View {
     }
     @ViewBuilder private func sessionSection(_ title: String, sessions: [RelaySession], tint: Color) -> some View {
         if !sessions.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     Text(title).foregroundStyle(tint)
                     Text("\(sessions.count)").foregroundStyle(.secondary).monospacedDigit()
                     Spacer()
-                }.font(.footnote.weight(.medium)).padding(.horizontal, 4).accessibilityAddTraits(.isHeader)
-                VStack(spacing: 0) {
+                }.font(.footnote.weight(.semibold)).padding(.horizontal, 12).accessibilityAddTraits(.isHeader)
+                VStack(spacing: sessions.contains(where: { ["WORKING", "NEEDS_YOU"].contains(state($0)) }) ? 6 : 0) {
                     ForEach(sessions) { session in
                         FleetSessionRow(session: session)
                     }
@@ -149,23 +149,27 @@ struct FleetSessionRow: View {
     private var lastKnown: Bool { ["OFFLINE", "SYNCING", "RECONNECTING", "DEGRADED"].contains(status) }
     var body: some View {
         Button { relay.open(session.id) } label: {
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
                 if typeSize.isAccessibilitySize {
-                    Text(session.title).font(.body.weight(active ? .medium : .regular)).foregroundStyle(.primary)
-                    Text(source).font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("session.source." + session.id)
+                    Text(session.title).font(.body.weight(active ? .medium : .regular)).foregroundStyle(status == "INACTIVE" ? .secondary : .primary)
+                    Text(source).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("session.source." + session.id)
                 } else {
-                    HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        Text(session.title).font(.body.weight(active ? .medium : .regular)).lineLimit(1)
-                            .foregroundStyle(.primary).frame(maxWidth: .infinity, alignment: .leading)
-                        Text(source).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                            .minimumScaleFactor(0.9).frame(width: 120, alignment: .trailing)
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text(session.title).font(.body.weight(active ? .medium : .regular)).lineLimit(2)
+                            .foregroundStyle(status == "INACTIVE" ? .secondary : .primary).frame(maxWidth: .infinity, alignment: .leading)
+                        Text(source).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
+                            .layoutPriority(1)
                             .accessibilityIdentifier("session.source." + session.id)
                     }
                 }
                 if showsState { HStack(spacing: 6) {
                     if status == "WORKING" {
-                        WorkingText(text: relay.liveActivities[session.id]?.fleetSummary ?? statusLabel(status), highlight: RelayPalette.working)
-                            .lineLimit(1).accessibilityLabel(statusLabel(status) + ", " + (relay.liveActivities[session.id]?.fleetSummary ?? ""))
+                        Circle().fill(RelayPalette.working).frame(width: 5, height: 5).accessibilityHidden(true)
+                        WorkingText(text: statusLabel(status), highlight: RelayPalette.working, resting: RelayPalette.working.opacity(0.8)).fixedSize()
+                        if let category = relay.liveActivities[session.id]?.fleetSummary, category != statusLabel(status) {
+                            Text("·").foregroundStyle(.secondary)
+                            Text(category).foregroundStyle(.secondary).lineLimit(1)
+                        }
                         Spacer(minLength: 4)
                         ElapsedLabel(start: session.turnStarted).monospacedDigit().foregroundStyle(.secondary)
                     } else {
@@ -174,11 +178,22 @@ struct FleetSessionRow: View {
                             .foregroundStyle(RelayPalette.status(status)).lineLimit(typeSize.isAccessibilitySize ? nil : 1)
                         Spacer(minLength: 4)
                     }
-                }.font(.caption) }
+                }.font(.footnote) }
                 if lastKnown { LastKnownSession(session: session, machine: relay.machines[session.machineId]) }
-            }.padding(.horizontal, 4).padding(.vertical, showsState ? 14 : 18)
+            }.padding(.horizontal, 12).padding(.vertical, 10).frame(minHeight: 44)
                 .frame(maxWidth: .infinity, alignment: .leading).contentShape(RoundedRectangle(cornerRadius: 12))
+                .modifier(FleetRowSurface(emphasized: active))
         }.buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("session." + session.id)
+    }
+}
+
+private struct FleetRowSurface: ViewModifier {
+    let emphasized: Bool
+    @ViewBuilder func body(content: Content) -> some View {
+        if emphasized {
+            if #available(iOS 26.0, *) { content.glassEffect(.clear, in: RoundedRectangle(cornerRadius: 14)) }
+            else { content.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14)) }
+        } else { content }
     }
 }
 

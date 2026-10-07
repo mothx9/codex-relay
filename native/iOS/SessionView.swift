@@ -134,7 +134,7 @@ struct SessionView: View {
                     }
                 } else if steer {
                     HStack {
-                        Label(String(localized: "Steer · send to the current turn now", bundle: relayLocalizationBundle), systemImage: "arrow.triangle.branch").font(.caption).foregroundStyle(.orange)
+                        Label(String(localized: "Reply to current turn", bundle: relayLocalizationBundle), systemImage: "arrow.triangle.branch").font(.caption).foregroundStyle(.orange)
                         Spacer()
                         Button(String(localized: "Cancel", bundle: relayLocalizationBundle)) { steer = false }.font(.caption)
                     }
@@ -146,6 +146,7 @@ struct SessionView: View {
                 let kind = editingQueue != nil ? "queue_update" : steer ? "steer" : session.defaultCommand
                 let available = machineOnline(session) && session.allows(kind) && (editingQueue != nil || ["READY", "WORKING"].contains(session.status))
                 let canSend = available && !submitting && loadingImages == 0 && (!draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !images.isEmpty) && (images.isEmpty || session.capabilities.canSendImages == true)
+                let showStop = editingQueue == nil && !steer && draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && images.isEmpty && loadingImages == 0 && session.allows("interrupt")
                 if !images.isEmpty {
                     HStack(spacing: 8) {
                         ForEach(images) { image in
@@ -169,14 +170,16 @@ struct SessionView: View {
                             .frame(width: 44, height: 44).contentShape(Rectangle())
                     }.buttonStyle(.plain)
                         .disabled(!hasComposerActions(session))
-                        .accessibilityLabel(String(localized: "Session actions", bundle: relayLocalizationBundle))
+                        .accessibilityLabel(String(localized: "Add attachments", bundle: relayLocalizationBundle))
+                        .accessibilityIdentifier("composer.attach")
                         .accessibilityValue(actionsOpen ? String(localized: "Expanded", bundle: relayLocalizationBundle) : String(localized: "Collapsed", bundle: relayLocalizationBundle))
 
                     TextField(steer ? String(localized: "Change the work in progress…", bundle: relayLocalizationBundle) : session.status == "WORKING" ? String(localized: "Add a follow-up…", bundle: relayLocalizationBundle) : String(localized: "Message Codex…", bundle: relayLocalizationBundle), text: $draft, axis: .vertical)
                         .font(.body).lineLimit(1...5).focused($composing).padding(.vertical, 8)
-                        .disabled(!available).accessibilityIdentifier("composer.text")
+                        .accessibilityIdentifier("composer.text")
                     Button {
-                        if let item = editingQueue {
+                        if showStop { interruptTurn = session.turnId ?? ""; interrupt = true }
+                        else if let item = editingQueue {
                             submitting = true
                             let text = draft
                             Task {
@@ -189,15 +192,14 @@ struct SessionView: View {
                             }
                         } else { sendDraft(session, kind: kind, targetTurn: steer ? expectedTurn : nil) }
                     } label: {
-                        Image(systemName: editingQueue != nil ? "checkmark" : "arrow.up").font(.body.weight(.semibold))
+                        Image(systemName: showStop ? "stop.fill" : editingQueue != nil ? "checkmark" : "arrow.up").font(showStop ? .footnote : .body.weight(.semibold))
                             .foregroundStyle(Color(uiColor: .systemBackground))
-                            .frame(width: 32, height: 32).background(Color.primary.opacity(canSend ? 1 : 0.15), in: Circle())
+                            .frame(width: 32, height: 32).background(Color.primary.opacity(canSend || showStop ? 1 : 0.15), in: Circle())
                             .frame(width: 44, height: 44).contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain).disabled(!canSend)
-                    .accessibilityLabel(editingQueue != nil ? String(localized: "Save queued message", bundle: relayLocalizationBundle) : steer ? String(localized: "Send Steer", bundle: relayLocalizationBundle) : session.status == "WORKING" ? String(localized: "Send follow-up", bundle: relayLocalizationBundle) : String(localized: "Send", bundle: relayLocalizationBundle))
-                    .accessibilityIdentifier("composer.send")
-                    .accessibilityHint(String(localized: "Send a new message", bundle: relayLocalizationBundle))
+                    .buttonStyle(.plain).disabled(showStop ? !machineOnline(session) || submitting : !canSend)
+                    .accessibilityLabel(showStop ? String(localized: "Interrupt Turn", bundle: relayLocalizationBundle) : editingQueue != nil ? String(localized: "Save queued message", bundle: relayLocalizationBundle) : steer ? String(localized: "Send Steer", bundle: relayLocalizationBundle) : session.status == "WORKING" ? String(localized: "Send follow-up", bundle: relayLocalizationBundle) : String(localized: "Send", bundle: relayLocalizationBundle))
+                    .accessibilityIdentifier(showStop ? "composer.stop" : "composer.send")
                 }.padding(.horizontal, 2).modifier(ComposerSurface())
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { composerHeight = $0 }
                     .overlay(alignment: .bottomLeading) {
@@ -247,7 +249,7 @@ struct SessionView: View {
                             }
                         }
                     }
-                    Text(String(localized: "Prepare a reply, then send it to the current turn. This live question is not a pending approval.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
+                    Text(String(localized: "Choose a reply or write your own.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
                 }.padding(20)
             }.navigationTitle(String(localized: "Live question", bundle: relayLocalizationBundle)).navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button(String(localized: "Close", bundle: relayLocalizationBundle)) { questionDetails = false } } }
@@ -282,9 +284,19 @@ struct SessionView: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(item.text).font(.subheadline).lineLimit(2)
                                     if item.imageCount > 0 { Label(String(localized: "\(item.imageCount) images", bundle: relayLocalizationBundle), systemImage: "photo").font(.caption) }
-                                    Text(item.phase == .queued ? "FOLLOW-UP · QUEUED" : item.phase == .unconfirmed ? String(localized: "No longer queued · check conversation", bundle: relayLocalizationBundle) : item.phase == .failed ? item.error ?? "Send failed" : "Sending…")
+                                    Text(item.phase == .queued ? "FOLLOW-UP · QUEUED" : item.phase == .unconfirmed ? item.error ?? String(localized: "No longer queued · check conversation", bundle: relayLocalizationBundle) : item.phase == .failed ? item.error ?? "Send failed" : "Sending…")
                                         .font(.caption2).foregroundStyle(item.phase == .failed ? RelayPalette.failure : .secondary)
+                                    if item.phase == .queued, let error = item.error { Text(error).font(.caption).foregroundStyle(RelayPalette.failure) }
                                 }.frame(maxWidth: .infinity, alignment: .leading)
+                                if item.phase == .queued && session.allows("queue_steer"), let turn = session.turnId {
+                                    Button { steerQueued(item, session: session, turn: turn) } label: {
+                                        Label("Steer", systemImage: "arrow.turn.up.right").font(.footnote.weight(.medium)).frame(minHeight: 44)
+                                    }.buttonStyle(.plain)
+                                        .disabled(!machineOnline(session) || item.queueId == nil || item.queueRevision == nil || submitting || editingQueue != nil || relay.queueSteeringID != nil || actionsOpen)
+                                        .accessibilityLabel(String(localized: "Send queued message to current turn", bundle: relayLocalizationBundle))
+                                        .accessibilityIdentifier("queue.steer." + item.id)
+                                        .keyboardShortcut(item.id == pending.first(where: { $0.phase == .queued })?.id ? KeyboardShortcut(.escape, modifiers: []) : nil)
+                                }
                                 if item.phase == .queued && item.queueEditable {
                                     Button { beginQueueEdit(item) } label: { Image(systemName: "pencil").frame(width: 44, height: 44) }
                                         .disabled(!machineOnline(session) || !session.allows("queue_update"))
@@ -300,8 +312,7 @@ struct SessionView: View {
     }
 
     private func hasComposerActions(_ session: RelaySession) -> Bool {
-        machineOnline(session) && (session.capabilities.canSendImages == true || session.allows("steer") || session.allows("interrupt") ||
-            (session.allows("queue_update") && relay.outbox.visible(session: session.id).contains { $0.phase == .queued && $0.queueEditable }))
+        machineOnline(session) && session.capabilities.canSendImages == true
     }
 
     private func composerActions(_ session: RelaySession) -> some View {
@@ -311,36 +322,21 @@ struct SessionView: View {
                     Label(String(localized: "Add photos", bundle: relayLocalizationBundle), systemImage: "photo")
                         .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 44)
                 }.disabled(editingQueue != nil || submitting || images.count + loadingImages >= ImageInput.maxCount)
-                Divider()
-            }
-            if machineOnline(session) && session.allows("steer") {
-                Button {
-                    actionsOpen = false
-                    if !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !images.isEmpty {
-                        sendDraft(session, kind: "steer", targetTurn: session.turnId)
-                    } else { steer.toggle(); expectedTurn = session.turnId ?? ""; composing = true }
-                } label: {
-                    Label(!draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !images.isEmpty ? String(localized: "Send to current turn", bundle: relayLocalizationBundle) : steer ? String(localized: "Back to follow-up", bundle: relayLocalizationBundle) : String(localized: "Steer Current Turn", bundle: relayLocalizationBundle), systemImage: "arrow.triangle.branch")
-                        .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 44)
-                }.disabled(editingQueue != nil || submitting || loadingImages > 0)
-            }
-            if machineOnline(session) && session.allows("queue_update"), let last = relay.outbox.visible(session: session.id).last(where: { $0.phase == .queued && $0.queueEditable }) {
-                Button { actionsOpen = false; beginQueueEdit(last) } label: {
-                    Label(String(localized: "Edit Last Queued Message", bundle: relayLocalizationBundle), systemImage: "pencil")
-                        .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 44)
-                }.disabled(submitting)
-            }
-            if machineOnline(session) && session.allows("interrupt") {
-                Divider()
-                Button(role: .destructive) { actionsOpen = false; interruptTurn = session.turnId ?? ""; interrupt = true } label: {
-                    Label(String(localized: "Interrupt Turn", bundle: relayLocalizationBundle), systemImage: "stop.circle").foregroundStyle(RelayPalette.failure)
-                        .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 44)
-                }
             }
         }.font(.subheadline).buttonStyle(.plain).padding(.horizontal, 16).padding(.vertical, 6)
             .frame(width: 270).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
             .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(.primary.opacity(0.08)))
             .shadow(color: .black.opacity(0.15), radius: 16, y: 4)
+            .accessibilityElement(children: .contain).accessibilityIdentifier("composer.attachmentsMenu")
+    }
+
+    private func steerQueued(_ item: Outgoing, session: RelaySession, turn: String) {
+        guard !submitting, editingQueue == nil else { return }
+        submitting = true
+        Task {
+            defer { submitting = false }
+            if await relay.steerQueued(item, expectedTurn: turn) { scrollRequest += 1 }
+        }
     }
 
     private func beginQueueEdit(_ item: Outgoing) {
@@ -762,9 +758,10 @@ struct WorkingText: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let text: String
     var highlight: Color = .primary
+    var resting: Color = .secondary
     private var label: Text { Text(text) }
     var body: some View {
-        label.foregroundStyle(reduceMotion ? highlight : .secondary)
+        label.foregroundStyle(reduceMotion ? highlight : resting)
             .overlay {
                 if !reduceMotion {
                     GeometryReader { geometry in

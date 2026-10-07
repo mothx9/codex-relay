@@ -26,15 +26,15 @@ controlling and continuing Codex sessions across multiple machines.
 
 ## Why Codex Relay
 
-- **Know what is happening now:** compact Fleet activity; open a command, tool or changed file for its own detail.
+- **Know what is happening now:** live Fleet rows stand out from Recent; execution state stays separate from current activity.
 - **Respond when needed:** canonical decisions and clearly separate transient live questions.
-- **Continue work:** New Turn, a separate Follow-up queue and explicit current-turn Steer; attach photos or screenshots.
+- **Continue work:** send a Follow-up, then tap its Steer action to use it in the current turn; attach photos or screenshots with +.
 - **Trust the state:** explicit Online, Syncing, Degraded and Offline; last-known work stays visibly stale.
 - **Understand your fleet:** machines, runtime account usage, controllers and redacted diagnostics.
 - **Stay informed:** native local alerts while connected; remote APNs with your Apple setup.
 - **Keep control:** your Hub, your machines, local Codex login, no Relay cloud account.
 
-<p align="center"><a href="docs/assets/app/recordings/native-walkthrough.mp4"><img src="docs/assets/app/recordings/native-walkthrough.gif" width="280" alt="Recorded iPhone walkthrough: Fleet, conversation, current-turn actions, file diff and Needs You"></a></p>
+<p align="center"><a href="docs/assets/app/recordings/native-walkthrough.mp4"><img src="docs/assets/app/recordings/native-walkthrough.gif" width="280" alt="Recorded iPhone walkthrough: Fleet, conversation, photo menu, file diff and Needs You"></a></p>
 
 [Watch the short native walkthrough](docs/assets/app/recordings/native-walkthrough.mp4)
 — actual simulator recording with sanitized example content.
