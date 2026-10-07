@@ -13,6 +13,7 @@ import XCTest
         let copyItemID: String?
         let copyText: String?
         let expectEmptyInbox: Bool?
+        let activityGroupID: String?
     }
     private func wait(_ seconds: TimeInterval = 30, _ condition: @escaping () -> Bool) {
         let predicate = NSPredicate { _, _ in condition() }
@@ -20,7 +21,7 @@ import XCTest
     }
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
         for _ in 0..<25 {
-            if element.isHittable { return }
+            if element.exists && element.isHittable { return }
             app.swipeUp()
         }
         XCTAssertTrue(element.isHittable)
@@ -464,6 +465,32 @@ import XCTest
         let image = XCTAttachment(screenshot: app.screenshot()); image.name = "Owned current-turn Steer canonical response"; image.lifetime = .keepAlways; add(image)
         app.terminate()
     }
+    func testOwnedMixedActivityGrouping() throws {
+        guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Owned activity only") }
+        let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
+        guard config.sendTurn, config.sessionTitle == "Relay grouped activity acceptance", let groupID = config.activityGroupID else { throw XCTSkip("Owned activity only") }
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launch()
+        let search = app.textFields["fleet.search"]
+        XCTAssertTrue(search.waitForExistence(timeout: 15)); search.tap(); search.typeText(config.sessionTitle)
+        let row = app.buttons["session." + config.sessionID]
+        XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
+        let group = app.buttons["tool." + groupID]
+        XCTAssertTrue(group.waitForExistence(timeout: 20))
+        let transcript = app.scrollViews["session.transcript"]
+        for _ in 0..<8 { if group.isHittable { break }; transcript.swipeDown() }
+        XCTAssertTrue(group.label.contains("2 commands")); XCTAssertTrue(group.label.contains("2 files changed"))
+        let file = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.file.' AND label == 'first.txt'")).firstMatch
+        XCTAssertTrue(file.exists)
+        let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.name = "Real grouped command file command file"; screenshot.lifetime = .keepAlways; add(screenshot)
+        group.tap(); app.buttons["tool.details." + groupID].tap()
+        XCTAssertTrue(app.navigationBars["Activity"].waitForExistence(timeout: 10))
+        let first = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'file.detail.' AND label CONTAINS 'first.txt'")).firstMatch
+        reveal(first, in: app); XCTAssertTrue(first.exists)
+        app.buttons["Close"].tap()
+        file.tap(); XCTAssertTrue(app.navigationBars["first.txt"].waitForExistence(timeout: 5))
+    }
+
     func testOwnedToolAndFilePresentation() throws {
         guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires owned tool/file validation.") }
         let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
@@ -476,18 +503,25 @@ import XCTest
         XCTAssertTrue(row.waitForExistence(timeout: 15)); row.tap()
         let transcript = app.scrollViews["session.transcript"]
         XCTAssertTrue(transcript.waitForExistence(timeout: 15))
-        for kind in ["mcp", "changes"] {
-            let matches = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "tool." + kind + "."))
-            wait(20) { matches.count > 0 }
-            let card = matches.allElementsBoundByIndex.last!
+        let cards = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'tool.' AND NOT identifier BEGINSWITH 'tool.details.' AND NOT identifier BEGINSWITH 'tool.live.' AND NOT identifier BEGINSWITH 'tool.progress.'"))
+        wait(20) { cards.count > 0 }
+        var sawTool = false, sawFile = false
+        for id in cards.allElementsBoundByIndex.map(\.identifier) {
+            let card = app.buttons[id]
             for _ in 0..<12 { if card.isHittable { break }; transcript.swipeDown() }
             XCTAssertTrue(card.isHittable); card.tap()
-            app.buttons["tool.details." + card.identifier.dropFirst(5)].tap()
-            let detail = XCTAttachment(screenshot: app.screenshot()); detail.name = "Live owned " + kind; detail.lifetime = .keepAlways; add(detail)
-            if kind == "mcp" { XCTAssertTrue(app.staticTexts["list_api_endpoints"].exists) }
-            else { XCTAssertTrue(app.staticTexts.matching(identifier: "validation-marker.txt").firstMatch.exists) }
+            app.buttons["tool.details." + id.dropFirst(5)].tap()
+            let tool = app.staticTexts["list_api_endpoints"]
+            let file = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'file.detail.' AND label CONTAINS 'validation-marker.txt'")).firstMatch
+            for _ in 0..<8 {
+                sawTool = sawTool || tool.exists; sawFile = sawFile || file.exists
+                if sawTool && sawFile { break }; app.swipeUp()
+            }
+            let detail = XCTAttachment(screenshot: app.screenshot()); detail.name = "Live owned operational detail"; detail.lifetime = .keepAlways; add(detail)
             app.buttons["Close"].tap()
+            if sawTool && sawFile { break }
         }
+        XCTAssertTrue(sawTool); XCTAssertTrue(sawFile)
         app.terminate()
     }
     func testOwnedPendingRequestAcrossSurfacesAndResolveElsewhere() throws {
@@ -517,6 +551,7 @@ import XCTest
         wait(10) { !inbox.exists }
         app.buttons["navigation.relay"].tap()
         app.buttons["Diagnostics"].tap()
+        XCTAssertTrue(app.navigationBars["Diagnostics"].waitForExistence(timeout: 10))
         for id in ["diagnostics.transport", "diagnostics.reducer"] {
             let timing = app.descendants(matching: .any).matching(identifier: id).firstMatch
             XCTAssertTrue(timing.waitForExistence(timeout: 5))
@@ -610,17 +645,22 @@ import XCTest
         XCTAssertTrue(app.buttons["Diagnostics"].waitForExistence(timeout: 10))
         let settings = XCTAttachment(screenshot: app.screenshot()); settings.name = "Live Settings"; settings.lifetime = .keepAlways; add(settings)
         app.buttons["Diagnostics"].tap()
+        XCTAssertTrue(app.navigationBars["Diagnostics"].waitForExistence(timeout: 10))
         for id in ["diagnostics.transport", "diagnostics.reducer"] {
             let row = app.descendants(matching: .any).matching(identifier: id).firstMatch
             reveal(row, in: app)
             XCTAssertTrue(row.exists)
-            print("M1_NATIVE_TIMING", id, row.label, row.value ?? "")
         }
         app.navigationBars.buttons.firstMatch.tap()
         app.buttons["Settings"].tap()
         app.buttons["Notifications"].tap()
+        XCTAssertTrue(app.staticTexts["Local alerts"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Remote push"].exists)
+        let details = app.buttons["Delivery details"]; reveal(details, in: app); details.tap()
         XCTAssertTrue(app.staticTexts["iOS permission"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Relay registration"].exists)
+        let registration = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Relay registration")).firstMatch
+        reveal(registration, in: app)
+        XCTAssertTrue(registration.exists)
         let notifications = XCTAttachment(screenshot: app.screenshot()); notifications.name = "Live notification capability"; notifications.lifetime = .keepAlways; add(notifications)
     }
     func testLiveReadingPositionSurvivesSmallScroll() throws {
