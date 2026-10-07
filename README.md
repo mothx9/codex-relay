@@ -1,14 +1,30 @@
-<p align="center"><img src="docs/assets/app/mark.svg" width="72" alt="Codex Relay mark"></p>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/app/readme-dark.svg">
+    <img src="docs/assets/app/readme-light.svg" width="380" alt="Codex Relay">
+  </picture>
+</p>
 
-# Codex Relay
+<p align="center">
+  <a href="#quick-start"><img src="https://img.shields.io/badge/Go_%2F_Swift-707780?style=flat&amp;label=languages&amp;labelColor=30363d" alt="Languages: Go / Swift"></a>
+  <a href="docs/setup/iphone.md"><img src="https://img.shields.io/badge/iOS_17%2B-707780?style=flat&amp;label=native&amp;labelColor=30363d" alt="Native: iOS 17+"></a>
+  <a href="docs/status.md"><img src="https://img.shields.io/badge/0.1.0--rc.5-707780?style=flat&amp;label=status&amp;labelColor=30363d" alt="Status: 0.1.0-rc.5"></a>
+  <a href="https://github.com/mothx9/codex-relay/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://img.shields.io/github/actions/workflow/status/mothx9/codex-relay/ci.yml?branch=main&amp;label=CI&amp;style=flat&amp;labelColor=30363d" alt="CI on main"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/Apache--2.0-707780?style=flat&amp;label=license&amp;labelColor=30363d" alt="License: Apache-2.0"></a>
+</p>
 
 **Your Codex fleet, on iPhone.** A self-hosted control plane for observing,
 controlling and continuing Codex sessions across multiple machines.
+
+[Quick Start](#quick-start) · [Documentation](docs/README.md) ·
+[Architecture](docs/architecture/overview.md) · [Current status](docs/status.md)
 
 <p align="center">
 <img src="docs/assets/app/screenshots/fleet.png" width="260" alt="Fleet prioritizes Needs You and live work">
 <img src="docs/assets/app/screenshots/conversation.png" width="260" alt="Conversation with live activity and sticky composer">
 </p>
+
+## Why Codex Relay
 
 - **Know what is happening now:** live responses, commands, tools, files and diffs.
 - **Respond when needed:** canonical decisions and clearly separate transient live questions.

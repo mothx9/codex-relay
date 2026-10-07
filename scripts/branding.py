@@ -4,6 +4,8 @@ import json
 import pathlib
 import shutil
 import subprocess
+import copy
+import xml.etree.ElementTree as ET
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "docs/assets/app/mark.svg"
@@ -14,7 +16,23 @@ def render(source, output, width, height):
     subprocess.run(["rsvg-convert", "-w", str(width), "-h", str(height), "-o", str(output), str(source)], check=True)
 
 
+def readme_lockups():
+    ns = "http://www.w3.org/2000/svg"
+    ET.register_namespace("", ns)
+    source = ET.parse(ROOT / "docs/assets/app/codex-app-icon.svg").getroot()
+    for theme, color in (("light", "#17191c"), ("dark", "#f0f2f3")):
+        root = ET.Element("{" + ns + "}svg", {"width": "460", "height": "96", "viewBox": "0 0 460 96", "role": "img", "aria-labelledby": "title"})
+        ET.SubElement(root, "{" + ns + "}title", {"id": "title"}).text = "Codex Relay"
+        mark = ET.SubElement(root, "{" + ns + "}g", {"transform": "translate(0 6) scale(3.5)"})
+        for path in source.findall("{" + ns + "}path"):
+            path = copy.deepcopy(path); path.set("fill", color); mark.append(path)
+        ET.SubElement(root, "{" + ns + "}text", {"x": "104", "y": "65", "fill": color,
+            "font-family": "Helvetica,Arial,sans-serif", "font-size": "51", "font-weight": "600", "letter-spacing": "-1.5"}).text = "Codex Relay"
+        ET.ElementTree(root).write(ROOT / f"docs/assets/app/readme-{theme}.svg", encoding="unicode")
+
+
 def main():
+    readme_lockups()
     if not shutil.which("rsvg-convert"):
         raise SystemExit("Install librsvg (macOS: brew install librsvg), then rerun.")
     ICON.mkdir(parents=True, exist_ok=True)
