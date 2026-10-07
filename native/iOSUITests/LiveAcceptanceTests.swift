@@ -300,6 +300,10 @@ import XCTest
             app.launchArguments = ["--product-screenshot", surface, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
             app.launch()
             XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))
+            if surface == "pairing" {
+                app.scrollViews.firstMatch.swipeDown()
+                XCTAssertTrue(app.staticTexts["Your Codex fleet.\nOn iPhone."].isHittable)
+            }
             let screenshot = XCTAttachment(screenshot: app.screenshot())
             screenshot.name = "public-" + surface; screenshot.lifetime = .keepAlways; add(screenshot)
             if surface == "question" {

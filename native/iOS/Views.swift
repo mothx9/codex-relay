@@ -116,13 +116,13 @@ struct PairingView: View {
                 }
                 DisclosureGroup(String(localized: "Need to set up a Hub?", bundle: relayLocalizationBundle)) {
                     VStack(alignment: .leading, spacing: RelaySpacing.row) {
-                        Text(String(localized: "Install Relay on an always-on host with an HTTPS address, then create your iPhone pairing code. After pairing, add machines from Settings.", bundle: relayLocalizationBundle)).font(.footnote)
+                        Text(String(localized: "Install Relay on an always-on host with an HTTPS address, then create your iPhone pairing code. After pairing, add machines from Relay → Machines.", bundle: relayLocalizationBundle)).font(.footnote)
                         Link(String(localized: "Installation guide", bundle: relayLocalizationBundle), destination: URL(string: "https://github.com/mothx9/codex-relay#quick-start")!)
                     }.padding(.vertical, RelaySpacing.small)
                 }
                 Text(String(localized: "Access is stored in this iPhone’s Keychain. Your Codex login stays on your machines. Never enter a Hub admin token here.", bundle: relayLocalizationBundle)).font(.footnote).foregroundStyle(.secondary)
             }.padding(RelaySpacing.page)
-        }.scrollDismissesKeyboard(.interactively)
+        }.defaultScrollAnchor(.top).scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom) {
                 Button {
                     Task { await relay.pair(url: url, code: code); if relay.credential != nil { code = "" } }

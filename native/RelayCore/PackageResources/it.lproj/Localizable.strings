@@ -228,7 +228,7 @@
 "Inactive" = "Inattiva";
 "Included usage" = "Utilizzo incluso";
 "Input" = "Input";
-"Install Relay on an always-on host with an HTTPS address, then create your iPhone pairing code. After pairing, add machines from Settings." = "Installa Relay su un computer sempre acceso con un indirizzo HTTPS, poi crea il codice per l’iPhone. Dopo l’abbinamento, aggiungi le macchine dalle Impostazioni.";
+"Install Relay on an always-on host with an HTTPS address, then create your iPhone pairing code. After pairing, add machines from Relay → Machines." = "Installa Relay su un host sempre acceso con un indirizzo HTTPS, poi crea il codice di abbinamento per iPhone. Dopo l’abbinamento, aggiungi le macchine da Relay → Macchine.";
 "Installation guide" = "Guida all’installazione";
 "Interrupt" = "Interrompi";
 "Interrupt Turn" = "Interrompi turno";
