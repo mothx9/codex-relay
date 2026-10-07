@@ -10,6 +10,7 @@ enum RelaySpacing {
 struct RootView: View {
     @Environment(RelayController.self) private var relay
     @State private var destination = 0
+    @State private var library = false
     @State private var fleetSearch = ""
     @State private var fleetFilter = "ALL"
     @State private var fleetMachine = ""
@@ -22,9 +23,12 @@ struct RootView: View {
                         FleetView(filter: $fleetFilter, machine: $fleetMachine, search: $fleetSearch).tabItem { Label("Fleet", systemImage: "square.grid.2x2") }.tag(0)
                         NeedsYouView().tabItem { Label(String(localized: "Needs You", bundle: relayLocalizationBundle), systemImage: "bubble.left.and.exclamationmark.bubble.right") }
                             .badge(relay.requests.count).tag(1)
-                        DevicesView().tabItem { Label(String(localized: "Settings", bundle: relayLocalizationBundle), systemImage: "gearshape") }.tag(2)
                     }
                     .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button { library = true } label: { Image(systemName: "sidebar.left").frame(minWidth: 44, minHeight: 44) }
+                                .accessibilityLabel(String(localized: "Relay menu", bundle: relayLocalizationBundle)).accessibilityIdentifier("navigation.relay")
+                        }
                         ToolbarItem(placement: .principal) { Text(destination == 0 ? "Codex Relay" : destination == 1 ? String(localized: "Needs You", bundle: relayLocalizationBundle) : String(localized: "Settings", bundle: relayLocalizationBundle)).font(.headline) }
                         if destination == 0 {
                             ToolbarItem(placement: .topBarTrailing) {
@@ -49,6 +53,13 @@ struct RootView: View {
                         SessionView()
                     }
                 }
+            }
+        }
+        .sheet(isPresented: $library) {
+            NavigationStack {
+                RelayLibraryView {
+                    library = false; destination = 0; fleetFilter = "HISTORY"; fleetSearch = ""; fleetMachine = ""
+                }.toolbar { ToolbarItem(placement: .confirmationAction) { Button(String(localized: "Close", bundle: relayLocalizationBundle)) { library = false } } }
             }
         }
         .onChange(of: relay.returnToFleet) { _, _ in destination = 0 }
@@ -506,6 +517,8 @@ struct LastKnownSession: View {
             case "fleet": RootView()
             case "conversation", "question": NavigationStack { SessionView() }
             case "needs-you": NavigationStack { NeedsYouView().navigationTitle("Needs You") }
+            case "navigation": NavigationStack { RelayLibraryView(openHistory: {}) }
+            case "machine-diagnostics": NavigationStack { MachineDiagnosticsView(id: "workstation") }
             case "machines": NavigationStack { MachinesView() }
             case "account": NavigationStack { AccountDetailView(id: "example-account") }
             case "settings": NavigationStack { DevicesView() }

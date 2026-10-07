@@ -5401,6 +5401,106 @@
           }
         }
       }
+    },
+    "Relay menu": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menu Relay"
+          }
+        }
+      }
+    },
+    "Browse": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esplora"
+          }
+        }
+      }
+    },
+    "Manage": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gestisci"
+          }
+        }
+      }
+    },
+    "System health": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stato del sistema"
+          }
+        }
+      }
+    },
+    "Machine diagnostics": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diagnostica macchina"
+          }
+        }
+      }
+    },
+    "Used on": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilizzato su"
+          }
+        }
+      }
+    },
+    "Data details": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dettagli dei dati"
+          }
+        }
+      }
+    },
+    "%lld machines": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld macchine"
+          }
+        }
+      }
+    },
+    "%lld machines need attention": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld macchine richiedono attenzione"
+          }
+        }
+      }
+    },
+    "Reported credit balance. Codex does not specify a unit; this is not a currency amount.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saldo crediti riportato. Codex non specifica un’unità; non è un importo in valuta."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

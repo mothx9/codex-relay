@@ -9,7 +9,7 @@ struct AccountsView: View {
                     NavigationLink { AccountDetailView(id: entry.id) } label: {
                         VStack(alignment: .leading, spacing: RelaySpacing.compact) {
                             Text(entry.account.email ?? entry.account.kind).font(.body.weight(.medium))
-                            Text([entry.account.plan, "\(entry.machines.count) machines", entry.fresh && relay.online ? String(localized: "Current", bundle: relayLocalizationBundle) : String(localized: "Last known", bundle: relayLocalizationBundle)].compactMap { $0 }.joined(separator: " · "))
+                            Text([entry.account.plan, "\(entry.machines.count) machines", entry.fresh && relay.online ? nil : String(localized: "Last known", bundle: relayLocalizationBundle)].compactMap { $0 }.joined(separator: " · "))
                                 .font(.caption).foregroundStyle(.secondary)
                         }.padding(.vertical, RelaySpacing.small)
                     }.accessibilityIdentifier("account." + entry.id)
@@ -34,7 +34,7 @@ struct AccountDetailView: View {
                 Section {
                     Text(entry.account.email ?? entry.account.kind).font(.title3.weight(.semibold)).textSelection(.enabled)
                     if let plan = entry.account.plan, !plan.isEmpty { LabeledContent(String(localized: "Plan", bundle: relayLocalizationBundle), value: plan.capitalized) }
-                    LabeledContent(String(localized: "Data", bundle: relayLocalizationBundle), value: entry.fresh && relay.online ? String(localized: "Current", bundle: relayLocalizationBundle) : String(localized: "Last known", bundle: relayLocalizationBundle))
+                    if !entry.fresh || !relay.online { Label(String(localized: "Last known", bundle: relayLocalizationBundle), systemImage: "clock").foregroundStyle(.secondary) }
                     if let date = RelayDate.parse(entry.updatedAt) { LabeledContent(String(localized: "Updated", bundle: relayLocalizationBundle)) { Text(date, style: .relative) } }
                 }
                 ForEach(entry.account.usageBuckets, id: \.0) { key, bucket in
@@ -43,7 +43,7 @@ struct AccountDetailView: View {
                         if let window = bucket.primary { UsageWindowView(window: window) }
                         if let window = bucket.secondary { UsageWindowView(window: window) }
                         if let credits = bucket.credits {
-                            LabeledContent(String(localized: "Credits", bundle: relayLocalizationBundle), value: credits.unlimited ? String(localized: "Unlimited", bundle: relayLocalizationBundle) : credits.displayBalance ?? (credits.hasCredits ? String(localized: "Available", bundle: relayLocalizationBundle) : String(localized: "None available", bundle: relayLocalizationBundle)))
+                            LabeledContent(String(localized: "Credits", bundle: relayLocalizationBundle), value: credits.unlimited ? String(localized: "Unlimited", bundle: relayLocalizationBundle) : (credits.hasCredits ? String(localized: "Available", bundle: relayLocalizationBundle) : String(localized: "None available", bundle: relayLocalizationBundle)))
                         }
                         if let limit = bucket.individualLimit {
                             LabeledContent(String(localized: "Spend limit", bundle: relayLocalizationBundle), value: limit.limit)
@@ -51,7 +51,7 @@ struct AccountDetailView: View {
                             LabeledContent(String(localized: "Remaining", bundle: relayLocalizationBundle), value: "\(limit.remainingPercent)%")
                             LabeledContent(String(localized: "Resets", bundle: relayLocalizationBundle)) { Text(Date(timeIntervalSince1970: Double(limit.resetsAt)), style: .date) }
                         }
-                        if let reached = bucket.spendControlReached { LabeledContent(String(localized: "Spend control", bundle: relayLocalizationBundle), value: reached ? String(localized: "Limit reached", bundle: relayLocalizationBundle) : String(localized: "Within limit", bundle: relayLocalizationBundle)) }
+                        if bucket.spendControlReached == true { Label(String(localized: "Limit reached", bundle: relayLocalizationBundle), systemImage: "exclamationmark.triangle").foregroundStyle(RelayPalette.attention) }
                         if let reached = bucket.rateLimitReachedType, !reached.isEmpty { LabeledContent(String(localized: "Limit state", bundle: relayLocalizationBundle), value: reached) }
                     }
                 }
@@ -70,17 +70,23 @@ struct AccountDetailView: View {
                         }
                     }
                 }
-                Section(String(localized: "Machines", bundle: relayLocalizationBundle)) {
-                    ForEach(entry.machines, id: \.self) { machine in
-                        NavigationLink { MachineSettingsView(id: machine) } label: {
-                            LabeledContent(relay.machines[machine]?.name ?? machine, value: relay.machineConnectionLabel(machine))
-                        }
+                Section {
+                    NavigationLink { MachinesView(machineIDs: Set(entry.machines)) } label: {
+                        LabeledContent(String(localized: "Used on", bundle: relayLocalizationBundle), value: String(localized: "\(entry.machines.count) machines", bundle: relayLocalizationBundle))
                     }
                 }
                 Section {
-                    LabeledContent(String(localized: "Reported by", bundle: relayLocalizationBundle), value: relay.machines[entry.sourceMachine]?.name ?? entry.sourceMachine)
-                    if entry.identityBasis == "email" { Text(String(localized: "Grouped by the email Codex reports; an account identifier was unavailable.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary) }
-                    Text(String(localized: "Usage windows and balances are reported by Codex. Missing values are not estimated.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
+                    DisclosureGroup(String(localized: "Data details", bundle: relayLocalizationBundle)) {
+                        LabeledContent(String(localized: "Reported by", bundle: relayLocalizationBundle), value: relay.machines[entry.sourceMachine]?.name ?? entry.sourceMachine)
+                        ForEach(entry.account.usageBuckets, id: \.0) { key, bucket in
+                            if let balance = bucket.credits?.displayBalance {
+                                LabeledContent(bucket.limitName ?? key, value: balance).textSelection(.enabled)
+                                Text(String(localized: "Reported credit balance. Codex does not specify a unit; this is not a currency amount.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        if entry.identityBasis == "email" { Text(String(localized: "Grouped by the email Codex reports; an account identifier was unavailable.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary) }
+                        Text(String(localized: "Usage windows and balances are reported by Codex. Missing values are not estimated.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             } else { ContentUnavailableView(String(localized: "Account no longer reported", bundle: relayLocalizationBundle), systemImage: "person.crop.circle.badge.questionmark") }
         }.navigationTitle(String(localized: "Codex Account", bundle: relayLocalizationBundle)).navigationBarTitleDisplayMode(.inline)

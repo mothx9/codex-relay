@@ -9,6 +9,8 @@
 "%lld items" = "%lld elementi";
 "%lld items loaded" = "%lld elementi caricati";
 "%lld lines" = "%lld righe";
+"%lld machines" = "%lld macchine";
+"%lld machines need attention" = "%lld macchine richiedono attenzione";
 "%lld needs you · %lld working" = "%lld da rispondere · %lld in corso";
 "%lld operations" = "%lld operazioni";
 "%lld running" = "%lld in corso";
@@ -62,6 +64,7 @@
 "Available" = "Disponibile";
 "Back to follow-up" = "Torna al follow-up";
 "Branch" = "Branch";
+"Browse" = "Esplora";
 "Cache write input" = "Input scrittura cache";
 "Cached input" = "Input in cache";
 "Cancel" = "Annulla";
@@ -137,6 +140,7 @@
 "Current" = "Aggiornato";
 "Custom answer" = "Risposta libera";
 "Data" = "Dati";
+"Data details" = "Dettagli dei dati";
 "Database" = "Database";
 "Decisions and approvals from your machines will appear here." = "Le decisioni e le approvazioni delle tue macchine appariranno qui.";
 "Declined" = "Rifiutato";
@@ -237,9 +241,11 @@
 "Machine" = "Macchina";
 "Machine Agent" = "Agent macchina";
 "Machine ID" = "ID macchina";
+"Machine diagnostics" = "Diagnostica macchina";
 "Machine state unavailable" = "Stato macchina non disponibile";
 "Machine unavailable" = "Macchina non disponibile";
 "Machines" = "Macchine";
+"Manage" = "Gestisci";
 "Message Codex…" = "Scrivi a Codex…";
 "Message actions" = "Azioni del messaggio";
 "Messages can be sent after reconnecting." = "I messaggi potranno essere inviati dopo la riconnessione.";
@@ -326,6 +332,7 @@
 "Reject" = "Rifiuta";
 "Relay access revoked" = "Accesso Relay revocato";
 "Relay connected" = "Relay collegato";
+"Relay menu" = "Menu Relay";
 "Relay not connected" = "Relay non connesso";
 "Relay paused" = "Relay in pausa";
 "Relay protocol" = "Protocollo Relay";
@@ -343,6 +350,7 @@
 "Removing…" = "Rimozione…";
 "Renamed" = "Rinominato";
 "Reported by" = "Dati forniti da";
+"Reported credit balance. Codex does not specify a unit; this is not a currency amount." = "Saldo crediti riportato. Codex non specifica un’unità; non è un importo in valuta.";
 "Requested permissions · this turn only" = "Permessi richiesti · soltanto per questo turno";
 "Requesting permission…" = "Richiesta permesso…";
 "Reset credit" = "Credito di ripristino";
@@ -414,6 +422,7 @@
 "Steer · send to the current turn now" = "Steer · invia subito al turno corrente";
 "Supervise and continue Codex across your machines from iPhone." = "Segui e continua Codex sulle tue macchine dall’iPhone.";
 "Syncing with Codex…" = "Sincronizzazione Codex…";
+"System health" = "Stato del sistema";
 "Temporary" = "Temporaneo";
 "Terminal" = "Terminale";
 "Test queued. Confirm receipt on this iPhone; queue acceptance is not delivery." = "Test in coda. Verifica la ricezione su questo iPhone: l’accettazione in coda non conferma la consegna.";
@@ -450,6 +459,7 @@
 "Usage window" = "Finestra di utilizzo";
 "Usage windows and balances are reported by Codex. Missing values are not estimated." = "Finestre di utilizzo e saldi sono forniti da Codex. I valori mancanti non vengono stimati.";
 "Used" = "Utilizzati";
+"Used on" = "Utilizzato su";
 "VERIFY OUTCOME" = "ESITO DA VERIFICARE";
 "Version" = "Versione";
 "Waiting for output…" = "In attesa di output…";

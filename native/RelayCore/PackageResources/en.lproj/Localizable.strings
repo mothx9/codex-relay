@@ -9,6 +9,8 @@
 "%lld items" = "%lld items";
 "%lld items loaded" = "%lld items loaded";
 "%lld lines" = "%lld lines";
+"%lld machines" = "%lld machines";
+"%lld machines need attention" = "%lld machines need attention";
 "%lld needs you · %lld working" = "%lld needs you · %lld working";
 "%lld operations" = "%lld operations";
 "%lld running" = "%lld running";
@@ -62,6 +64,7 @@
 "Available" = "Available";
 "Back to follow-up" = "Back to follow-up";
 "Branch" = "Branch";
+"Browse" = "Browse";
 "Cache write input" = "Cache write input";
 "Cached input" = "Cached input";
 "Cancel" = "Cancel";
@@ -137,6 +140,7 @@
 "Current" = "Current";
 "Custom answer" = "Custom answer";
 "Data" = "Data";
+"Data details" = "Data details";
 "Database" = "Database";
 "Decisions and approvals from your machines will appear here." = "Decisions and approvals from your machines will appear here.";
 "Declined" = "Declined";
@@ -237,9 +241,11 @@
 "Machine" = "Machine";
 "Machine Agent" = "Machine Agent";
 "Machine ID" = "Machine ID";
+"Machine diagnostics" = "Machine diagnostics";
 "Machine state unavailable" = "Machine state unavailable";
 "Machine unavailable" = "Machine unavailable";
 "Machines" = "Machines";
+"Manage" = "Manage";
 "Message Codex…" = "Message Codex…";
 "Message actions" = "Message actions";
 "Messages can be sent after reconnecting." = "Messages can be sent after reconnecting.";
@@ -326,6 +332,7 @@
 "Reject" = "Reject";
 "Relay access revoked" = "Relay access revoked";
 "Relay connected" = "Relay connected";
+"Relay menu" = "Relay menu";
 "Relay not connected" = "Relay not connected";
 "Relay paused" = "Relay paused";
 "Relay protocol" = "Relay protocol";
@@ -343,6 +350,7 @@
 "Removing…" = "Removing…";
 "Renamed" = "Renamed";
 "Reported by" = "Reported by";
+"Reported credit balance. Codex does not specify a unit; this is not a currency amount." = "Reported credit balance. Codex does not specify a unit; this is not a currency amount.";
 "Requested permissions · this turn only" = "Requested permissions · this turn only";
 "Requesting permission…" = "Requesting permission…";
 "Reset credit" = "Reset credit";
@@ -414,6 +422,7 @@
 "Steer · send to the current turn now" = "Steer · send to the current turn now";
 "Supervise and continue Codex across your machines from iPhone." = "Supervise and continue Codex across your machines from iPhone.";
 "Syncing with Codex…" = "Syncing with Codex…";
+"System health" = "System health";
 "Temporary" = "Temporary";
 "Terminal" = "Terminal";
 "Test queued. Confirm receipt on this iPhone; queue acceptance is not delivery." = "Test queued. Confirm receipt on this iPhone; queue acceptance is not delivery.";
@@ -450,6 +459,7 @@
 "Usage window" = "Usage window";
 "Usage windows and balances are reported by Codex. Missing values are not estimated." = "Usage windows and balances are reported by Codex. Missing values are not estimated.";
 "Used" = "Used";
+"Used on" = "Used on";
 "VERIFY OUTCOME" = "VERIFY OUTCOME";
 "Version" = "Version";
 "Waiting for output…" = "Waiting for output…";

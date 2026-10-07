@@ -8,13 +8,9 @@ struct DevicesView: View {
                 NavigationLink { HubDetailsView() } label: {
                     Label { VStack(alignment: .leading, spacing: RelaySpacing.small) {
                         Text(String(localized: "Your Relay", bundle: relayLocalizationBundle))
-                        Text(relay.online ? String(localized: "Connected to your Hub", bundle: relayLocalizationBundle) : String(localized: "Hub not connected", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
+                        if !relay.online { Text(String(localized: "Hub not connected", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary) }
                     } } icon: { Image(systemName: "network") }
                 }.accessibilityIdentifier("settings.hub")
-            }
-            Section("Fleet") {
-                NavigationLink { MachinesView() } label: { Label(String(localized: "Machines", bundle: relayLocalizationBundle), systemImage: "desktopcomputer") }
-                NavigationLink { AccountsView() } label: { Label(String(localized: "Codex Accounts", bundle: relayLocalizationBundle), systemImage: "person.crop.circle") }
             }
             Section(String(localized: "This iPhone", bundle: relayLocalizationBundle)) {
                 NavigationLink { NotificationSettingsView() } label: { Label(String(localized: "Notifications", bundle: relayLocalizationBundle), systemImage: "bell.badge") }
@@ -24,15 +20,16 @@ struct DevicesView: View {
                 NavigationLink { DiagnosticsView() } label: { Label(String(localized: "Diagnostics", bundle: relayLocalizationBundle), systemImage: "waveform.path.ecg") }
                 NavigationLink { AboutView() } label: { Label(String(localized: "About Codex Relay", bundle: relayLocalizationBundle), systemImage: "info.circle") }
             }
-        }.navigationTitle(String(localized: "Settings", bundle: relayLocalizationBundle)).task { await relay.loadDevices() }
+        }.navigationTitle(String(localized: "Settings", bundle: relayLocalizationBundle)).navigationBarTitleDisplayMode(.inline).task { await relay.loadDevices() }
     }
 }
 
 struct MachinesView: View {
+    var machineIDs: Set<String>? = nil
     @Environment(RelayController.self) private var relay
     var body: some View {
         List {
-            ForEach(relay.machines.values.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) { machine in
+            ForEach(relay.machines.values.filter { machineIDs == nil || machineIDs!.contains($0.id) }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) { machine in
                 NavigationLink { MachineSettingsView(id: machine.id) } label: {
                     HStack(spacing: RelaySpacing.row) {
                         Image(systemName: "desktopcomputer").foregroundStyle(.secondary)
@@ -112,13 +109,8 @@ struct MachineSettingsView: View {
                         }
                     } else if let account = machine.account { LabeledContent(String(localized: "Codex account", bundle: relayLocalizationBundle), value: account.email ?? account.kind) }
                 }
-                if let freshness = machine.freshness {
-                    Section(String(localized: "Freshness", bundle: relayLocalizationBundle)) {
-                        DateFact(title: String(localized: "Last heartbeat", bundle: relayLocalizationBundle), value: freshness.lastHeartbeat)
-                        DateFact(title: String(localized: "Last event", bundle: relayLocalizationBundle), value: freshness.lastEvent)
-                        DateFact(title: String(localized: "Last snapshot", bundle: relayLocalizationBundle), value: freshness.lastSnapshot)
-                        DisclosureGroup(String(localized: "Connection diagnostics", bundle: relayLocalizationBundle)) { FreshnessRows(freshness: freshness) }
-                    }
+                Section {
+                    NavigationLink(String(localized: "Machine diagnostics", bundle: relayLocalizationBundle)) { MachineDiagnosticsView(id: id) }
                 }
                 if let device {
                     Section {
@@ -158,7 +150,7 @@ private struct DateFact: View {
         }
     }
 }
-private struct FreshnessRows: View {
+struct FreshnessRows: View {
     let freshness: MachineFreshness
     var body: some View {
         if let protocolVersion = freshness.protocolVersion { LabeledContent(String(localized: "Relay protocol", bundle: relayLocalizationBundle), value: "\(protocolVersion)") }
@@ -175,7 +167,7 @@ private struct FreshnessRows: View {
     }
 }
 
-private struct ControllersView: View {
+struct ControllersView: View {
     @Environment(RelayController.self) private var relay
     @State private var localSignOut = false
     @State private var revokeAccess = false
@@ -327,21 +319,24 @@ struct DiagnosticsView: View {
                 if let updated = relay.diagnosticsUpdatedAt { LabeledContent(String(localized: "Checked", bundle: relayLocalizationBundle)) { Text(updated, style: .relative) } }
                 SettingsFeedback(id: "diagnostics")
             }
+            Section(String(localized: "System health", bundle: relayLocalizationBundle)) {
+                NavigationLink { MachinesView() } label: {
+                    LabeledContent(String(localized: "Machines", bundle: relayLocalizationBundle), value: "\(relay.machines.count)")
+                }
+                LabeledContent(String(localized: "Pending requests", bundle: relayLocalizationBundle), value: "\(relay.requests.count)")
+                if let registry = relay.registry { LabeledContent(String(localized: "Controllers", bundle: relayLocalizationBundle), value: "\(registry.operators.count)") }
+                if let diagnostics = relay.diagnostics {
+                    LabeledContent(String(localized: "Reconnects", bundle: relayLocalizationBundle), value: "\(diagnostics.machines.reduce(0) { $0 + ($1.freshness.reconnectCount ?? 0) })")
+                }
+                LabeledContent(String(localized: "Hub APNs", bundle: relayLocalizationBundle), value: relay.nativePushAvailable ? String(localized: "Configured", bundle: relayLocalizationBundle) : String(localized: "Not configured", bundle: relayLocalizationBundle))
+                let unavailable = relay.machines.values.filter { $0.status != "ONLINE" }.count
+                if unavailable > 0 { Label(String(localized: "\(unavailable) machines need attention", bundle: relayLocalizationBundle), systemImage: "exclamationmark.circle").foregroundStyle(RelayPalette.attention) }
+            }
             Section(String(localized: "Observed latency", bundle: relayLocalizationBundle)) {
                 LabeledContent(String(localized: "Samples", bundle: relayLocalizationBundle), value: "\(relay.receiptTiming.samples)")
                 LabeledContent("Hub → iPhone", value: relay.receiptTiming.clockSkew ? String(localized: "Clocks not comparable", bundle: relayLocalizationBundle) : relay.receiptTiming.samples == 0 ? String(localized: "No samples", bundle: relayLocalizationBundle) : String(format: "%.1f ms", relay.receiptTiming.hubToNativeMs)).accessibilityIdentifier("diagnostics.transport")
                 LabeledContent(String(localized: "State reducer", bundle: relayLocalizationBundle), value: String(format: "%.1f ms", relay.receiptTiming.reducerMs)).accessibilityIdentifier("diagnostics.reducer")
                 Text(String(localized: "Cross-host estimates include clock offset. These values do not measure model execution or rendering.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
-            }
-            ForEach(relay.diagnostics?.machines ?? []) { machine in
-                Section(relay.machines[machine.id]?.name ?? String(localized: "Machine", bundle: relayLocalizationBundle)) {
-                    LabeledContent(String(localized: "Snapshot state", bundle: relayLocalizationBundle), value: statusLabel(machine.state))
-                    LabeledContent(String(localized: "Known sessions", bundle: relayLocalizationBundle), value: "\(machine.sessions)")
-                    LabeledContent(String(localized: "Hot sessions", bundle: relayLocalizationBundle), value: "\(machine.hot)")
-                    LabeledContent(String(localized: "Pending requests", bundle: relayLocalizationBundle), value: "\(machine.pending)")
-                    if let age = machine.snapshotAgeMs { LabeledContent(String(localized: "Snapshot age at check", bundle: relayLocalizationBundle), value: "\(age / 1000) s") }
-                    DisclosureGroup(String(localized: "Details", bundle: relayLocalizationBundle)) { FreshnessRows(freshness: machine.freshness) }
-                }
             }
             Section {
                 Button(copied ? String(localized: "Copied", bundle: relayLocalizationBundle) : String(localized: "Copy Diagnostics", bundle: relayLocalizationBundle), systemImage: copied ? "checkmark" : "doc.on.doc") {
@@ -351,7 +346,7 @@ struct DiagnosticsView: View {
                 }.disabled(relay.diagnostics == nil).accessibilityIdentifier("diagnostics.copy")
             } footer: { Text(String(localized: "Copied diagnostics omit machine names, host addresses, account identities, credentials and conversation content.", bundle: relayLocalizationBundle)) }
         }.navigationTitle(String(localized: "Diagnostics", bundle: relayLocalizationBundle)).navigationBarTitleDisplayMode(.inline)
-            .task { await relay.loadDiagnostics() }.refreshable { copied = false; await relay.loadDiagnostics() }
+            .task { await relay.loadDiagnostics(); await relay.loadDevices() }.refreshable { copied = false; await relay.loadDiagnostics() }
     }
 }
 
@@ -362,5 +357,58 @@ private struct AboutView: View {
             Section { Image("RelayMark").resizable().scaledToFit().frame(width: 64, height: 64).clipShape(RoundedRectangle(cornerRadius: 16)).accessibilityHidden(true); Text("Codex Relay").font(.title2.weight(.semibold)); Text(String(localized: "Supervise and continue Codex across your machines from iPhone.", bundle: relayLocalizationBundle)).foregroundStyle(.secondary); LabeledContent(String(localized: "Version", bundle: relayLocalizationBundle), value: Self.version) }
             Section { Link(String(localized: "Source & documentation", bundle: relayLocalizationBundle), destination: URL(string: "https://github.com/mothx9/codex-relay")!); Text(String(localized: "Self-hosted. Open source. Independent of OpenAI.", bundle: relayLocalizationBundle)).font(.footnote).foregroundStyle(.secondary) }
         }.navigationTitle(String(localized: "About", bundle: relayLocalizationBundle)).navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct RelayLibraryView: View {
+    let openHistory: () -> Void
+    var body: some View {
+        List {
+            Section(String(localized: "Browse", bundle: relayLocalizationBundle)) {
+                NavigationLink { MachinesView() } label: { Label(String(localized: "Machines", bundle: relayLocalizationBundle), systemImage: "desktopcomputer") }
+                NavigationLink { AccountsView() } label: { Label(String(localized: "Codex Accounts", bundle: relayLocalizationBundle), systemImage: "person.crop.circle") }
+                Button(action: openHistory) { Label(String(localized: "All sessions", bundle: relayLocalizationBundle), systemImage: "clock.arrow.circlepath") }
+            }
+            Section(String(localized: "Manage", bundle: relayLocalizationBundle)) {
+                NavigationLink { ControllersView() } label: { Label(String(localized: "Controllers & Access", bundle: relayLocalizationBundle), systemImage: "lock.shield") }
+                NavigationLink { DiagnosticsView() } label: { Label(String(localized: "Diagnostics", bundle: relayLocalizationBundle), systemImage: "waveform.path.ecg") }
+                NavigationLink { DevicesView() } label: { Label(String(localized: "Settings", bundle: relayLocalizationBundle), systemImage: "gearshape") }
+            }
+        }.navigationTitle("Relay").navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct MachineDiagnosticsView: View {
+    @Environment(RelayController.self) private var relay
+    let id: String
+    var body: some View {
+        List {
+            if let host = relay.machines[id] {
+                Section {
+                    LabeledContent("Relay", value: relay.machineConnectionLabel(id))
+                    LabeledContent("Agent", value: host.agentVersion ?? String(localized: "Unavailable", bundle: relayLocalizationBundle))
+                    LabeledContent("Codex", value: host.codexVersion ?? String(localized: "Unavailable", bundle: relayLocalizationBundle))
+                    DateFact(title: String(localized: "Last seen", bundle: relayLocalizationBundle), value: host.lastSeen)
+                }
+                if let freshness = host.freshness {
+                    Section(String(localized: "Freshness", bundle: relayLocalizationBundle)) {
+                        DateFact(title: String(localized: "Last heartbeat", bundle: relayLocalizationBundle), value: freshness.lastHeartbeat)
+                        DateFact(title: String(localized: "Last event", bundle: relayLocalizationBundle), value: freshness.lastEvent)
+                        DateFact(title: String(localized: "Last snapshot", bundle: relayLocalizationBundle), value: freshness.lastSnapshot)
+                        FreshnessRows(freshness: freshness)
+                    }
+                }
+                if let diagnostic = relay.diagnostics?.machines.first(where: { $0.id == id }) {
+                    Section {
+                        LabeledContent("Adapter", value: diagnostic.adapter)
+                        LabeledContent(String(localized: "Known sessions", bundle: relayLocalizationBundle), value: "\(diagnostic.sessions)")
+                        LabeledContent(String(localized: "Hot sessions", bundle: relayLocalizationBundle), value: "\(diagnostic.hot)")
+                        LabeledContent(String(localized: "Pending requests", bundle: relayLocalizationBundle), value: "\(diagnostic.pending)")
+                        if let age = diagnostic.snapshotAgeMs { LabeledContent(String(localized: "Snapshot age at check", bundle: relayLocalizationBundle), value: "\(age / 1000) s") }
+                    }
+                }
+            }
+        }.navigationTitle(String(localized: "Machine diagnostics", bundle: relayLocalizationBundle)).navigationBarTitleDisplayMode(.inline)
+            .task { await relay.loadDiagnostics() }.refreshable { await relay.loadDiagnostics() }
     }
 }

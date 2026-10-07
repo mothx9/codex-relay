@@ -88,18 +88,18 @@ struct FleetView: View {
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: sorted.filter { state($0) == "NEEDS_YOU" }.map(\.id).sorted())
     }
 
-    private var fleetHeader: some View {
-        VStack(alignment: .leading, spacing: RelaySpacing.compact) {
-            let waiting = relay.requests.count
-            let working = relay.sessions.values.filter { state($0) == "WORKING" }.count
-            Text(waiting > 0 ? String(localized: "\(waiting) needs you · \(working) working", bundle: relayLocalizationBundle) : working > 0 ? (working == 1 ? String(localized: "1 session working", bundle: relayLocalizationBundle) : String(localized: "\(working) sessions working", bundle: relayLocalizationBundle)) : String(localized: "Your fleet, at a glance", bundle: relayLocalizationBundle))
-                .font(.title3.weight(.semibold)).accessibilityIdentifier("fleet.summary")
+    @ViewBuilder private var fleetHeader: some View {
+        let exceptions = relay.machines.values.filter { $0.status != "ONLINE" }
+        if !relay.online || !exceptions.isEmpty {
             Button { showingMachines = true } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: relay.online ? "network" : "network.slash")
-                    Text(relay.online ? String(localized: "\(relay.machines.values.filter { $0.status == "ONLINE" }.count)/\(relay.machines.count) machines online", bundle: relayLocalizationBundle) : String(localized: "Connecting to Hub…", bundle: relayLocalizationBundle))
+                    Image(systemName: "exclamationmark.circle")
+                    if !relay.online { Text(String(localized: "Connecting to Hub…", bundle: relayLocalizationBundle)) }
+                    else if exceptions.count == 1, let host = exceptions.first { Text("\(host.name) · \(relay.machineConnectionLabel(host.id))") }
+                    else { Text(String(localized: "\(exceptions.count) machines need attention", bundle: relayLocalizationBundle)) }
+                    Spacer(minLength: 4)
                     Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
-                }.font(.subheadline).foregroundStyle(.secondary).frame(minHeight: 44)
+                }.font(.subheadline).foregroundStyle(RelayPalette.attention).frame(minHeight: 44)
             }.accessibilityIdentifier("fleet.connection")
         }
     }

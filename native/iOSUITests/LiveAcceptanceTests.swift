@@ -87,12 +87,13 @@ import XCTest
         let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
         continueAfterFailure = false
         let app = XCUIApplication(); app.launch()
-        let machines = app.buttons["fleet.connection"]
+        app.buttons["navigation.relay"].tap()
+        let machines = app.buttons["Machines"]
         XCTAssertTrue(machines.waitForExistence(timeout: 20)); machines.tap()
         let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "machine.")).firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10))
         let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "M2 Machines live"; capture.lifetime = .keepAlways; add(capture)
-        app.buttons["machines.close"].tap()
+        app.buttons["Close"].tap()
         let search = app.textFields["fleet.search"]; XCTAssertTrue(search.waitForExistence(timeout: 10)); search.tap(); search.typeText(config.sessionTitle)
         let session = app.buttons["session." + config.sessionID]
         XCTAssertTrue(session.waitForExistence(timeout: 15)); session.tap()
@@ -112,7 +113,7 @@ import XCTest
     func testPublicProductScreenshots() {
         continueAfterFailure = false
         let app = XCUIApplication()
-        for surface in ["fleet", "conversation", "needs-you", "question", "terminal", "tools", "diff", "machines", "account", "settings", "diagnostics", "pairing"] {
+        for surface in ["fleet", "conversation", "needs-you", "question", "terminal", "tools", "diff", "machines", "account", "settings", "diagnostics", "pairing", "navigation", "machine-diagnostics"] {
             app.launchArguments = ["--product-screenshot", surface, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
             app.launch()
             XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))
@@ -176,10 +177,11 @@ import XCTest
         continueAfterFailure = false
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.textFields["fleet.search"].waitForExistence(timeout: 20))
-        app.tabBars.buttons["Settings"].tap()
+        app.buttons["navigation.relay"].tap()
         XCTAssertTrue(app.buttons["Controllers & Access"].waitForExistence(timeout: 10))
+        app.buttons["Settings"].tap()
         XCTAssertTrue(app.buttons["settings.hub"].exists)
-        for label in ["Machines", "Codex Accounts", "Notifications", "Diagnostics"] { XCTAssertTrue(app.buttons[label].exists, label) }
+        for label in ["Notifications", "Diagnostics"] { XCTAssertTrue(app.buttons[label].exists, label) }
         let settings = XCTAttachment(screenshot: app.screenshot()); settings.name = "M2 Settings"; settings.lifetime = .keepAlways; add(settings)
         app.buttons["Diagnostics"].tap()
         let copy = app.buttons["diagnostics.copy"]
@@ -222,7 +224,7 @@ import XCTest
         continueAfterFailure = false
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.textFields["fleet.search"].waitForExistence(timeout: 15))
-        app.tabBars.buttons["Settings"].tap()
+        app.buttons["navigation.relay"].tap()
         let accounts = app.buttons["Codex Accounts"]
         XCTAssertTrue(accounts.waitForExistence(timeout: 10)); accounts.tap()
         let entry = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "account.")).firstMatch
@@ -376,7 +378,7 @@ import XCTest
         wait(90) { !question.exists }
         app.navigationBars.buttons.element(boundBy: 0).tap()
         wait(10) { !inbox.exists }
-        app.tabBars.buttons["Settings"].tap()
+        app.buttons["navigation.relay"].tap()
         app.buttons["Diagnostics"].tap()
         for id in ["diagnostics.transport", "diagnostics.reducer"] {
             let timing = app.descendants(matching: .any).matching(identifier: id).firstMatch
@@ -467,7 +469,7 @@ import XCTest
         let app = XCUIApplication(); app.launch()
         XCTAssertTrue(app.textFields["fleet.search"].waitForExistence(timeout: 15))
         let fleet = XCTAttachment(screenshot: app.screenshot()); fleet.name = "Live Fleet iPhone 16"; fleet.lifetime = .keepAlways; add(fleet)
-        app.tabBars.buttons["Settings"].tap()
+        app.buttons["navigation.relay"].tap()
         XCTAssertTrue(app.buttons["Diagnostics"].waitForExistence(timeout: 10))
         let settings = XCTAttachment(screenshot: app.screenshot()); settings.name = "Live Settings"; settings.lifetime = .keepAlways; add(settings)
         app.buttons["Diagnostics"].tap()
@@ -610,13 +612,14 @@ import XCTest
         if pairing.waitForExistence(timeout: 3) {
             throw XCTSkip("Live acceptance reuses one explicitly paired development controller. Pairing/security tests run against isolated temporary Hubs; never enroll a production controller per test run.")
         }
-        wait { app.buttons["fleet.connection"].exists && app.buttons["fleet.connection"].label.contains("machines online") }
-        app.buttons["fleet.connection"].tap()
+        wait { app.buttons["navigation.relay"].exists }
+        app.buttons["navigation.relay"].tap()
+        app.buttons["Machines"].tap()
         for machine in config.machineIDs { XCTAssertTrue(app.buttons["machine." + machine].exists) }
-        app.buttons["machines.close"].tap()
+        app.buttons["Close"].tap()
         // A process restart must recover the paired credential from Keychain.
         app.terminate(); app.launch()
-        wait { app.buttons["fleet.connection"].exists && app.buttons["fleet.connection"].label.contains("machines online") }
+        wait { app.buttons["navigation.relay"].exists }
         XCTAssertFalse(app.textFields["pairing.url"].exists)
         let search = app.textFields["fleet.search"]
         search.tap(); search.typeText(config.sessionTitle)
