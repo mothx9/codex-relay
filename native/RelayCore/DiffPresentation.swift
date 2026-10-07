@@ -72,19 +72,44 @@ public enum ChangeOverview {
         count == 1 ? String(localized: "1 file changed", bundle: relayLocalizationBundle) : String(localized: "\(count) files changed", bundle: relayLocalizationBundle)
     }
     public static func describe(_ items: [Activity]) -> String {
-        let files: [PatchFile]
-        if let patch = items.last(where: { $0.kind == "diff" }) {
-            files = PatchDocument.parse(patch.text)
-        } else {
-            var latest: [String: ChangedFile] = [:]
-            for item in items { for file in item.files ?? [] { latest[file.path] = file } }
-            guard !latest.isEmpty else { return "" }
-            let count = fileCount(latest.count)
-            guard latest.values.allSatisfy({ $0.patch?.contains("@@ ") == true }) else { return count }
-            files = latest.values.flatMap { PatchDocument.parse($0.patch ?? "", path: $0.path) }
+        let names = paths(items)
+        guard !names.isEmpty else { return "" }
+        var patches: [String: [PatchFile]] = [:]
+        for item in items {
+            for file in item.files ?? [] {
+                // A newer operation without a patch invalidates older line totals.
+                patches[file.path] = file.patch?.contains("@@ ") == true
+                    ? PatchDocument.parse(file.patch ?? "", path: file.path) : nil
+            }
         }
-        let count = Set(files.map(\.path)).count
-        guard count > 0 else { return "" }
-        return fileCount(count) + " · +\(files.reduce(0) { $0 + $1.additions }) −\(files.reduce(0) { $0 + $1.deletions })"
+        if let latest = items.last(where: { $0.kind == "diff" }) {
+            for file in PatchDocument.parse(latest.text) where file.path != "Patch" {
+                patches[file.path] = file.lines.contains(where: { $0.kind == .hunk }) ? [file] : nil
+            }
+        }
+        let count = fileCount(names.count)
+        guard names.allSatisfy({ patches[$0] != nil }) else { return count }
+        let files = names.flatMap { patches[$0] ?? [] }
+        return count + " · +\(files.reduce(0) { $0 + $1.additions }) −\(files.reduce(0) { $0 + $1.deletions })"
+    }
+}
+
+/// A preview only: the original executable input remains available for copy/detail.
+public enum ActivityPreview {
+    public static func command(_ source: String) -> String {
+        var value = source.trimmingCharacters(in: .whitespacesAndNewlines)
+        for shell in ["/bin/bash", "/bin/zsh", "/bin/sh", "bash", "zsh", "sh"] {
+            for flag in ["-lc", "-c"] {
+                let prefix = shell + " " + flag + " "
+                if value.hasPrefix(prefix) {
+                    value = String(value.dropFirst(prefix.count))
+                    if let quote = value.first, ["\"", "'"].contains(String(quote)), value.last == quote {
+                        value = String(value.dropFirst().dropLast())
+                    }
+                    return String(value.split(separator: "\n", omittingEmptySubsequences: true).first ?? "").prefix(240).description
+                }
+            }
+        }
+        return String(value.split(separator: "\n", omittingEmptySubsequences: true).first ?? "").prefix(240).description
     }
 }

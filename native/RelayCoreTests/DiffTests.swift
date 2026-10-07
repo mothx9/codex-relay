@@ -29,4 +29,18 @@ final class DiffTests: XCTestCase {
         let latest = Activity(id: "new", kind: "diff", text: "--- a/a.c\n+++ b/a.c\n@@ -1 +1,2 @@\n-old\n+new\n+second")
         XCTAssertEqual(ChangeOverview.describe([file, old, latest]), "1 file changed · +2 −1")
     }
+    func testFilePreviewAndCountShareUnionWithoutInventingMissingLineTotals() {
+        var item = Activity(id: "files", kind: "fileChange", text: "")
+        item.files = [ChangedFile(path: "a.c", kind: "modify", previousPath: nil, patch: nil), ChangedFile(path: "b.c", kind: "modify", previousPath: nil, patch: nil)]
+        let patch = Activity(id: "patch", kind: "diff", text: "--- a/a.c\n+++ b/a.c\n@@ -1 +1 @@\n-old\n+new")
+        XCTAssertEqual(ChangeOverview.paths([item, patch]), ["a.c", "b.c"])
+        XCTAssertEqual(ChangeOverview.describe([item, patch]), "2 files changed")
+    }
+    func testCommandPreviewUnwrapsKnownShellWithoutChangingOriginal() {
+        let command = "/bin/bash -lc 'python3 qa.py\necho done'"
+        XCTAssertEqual(ActivityPreview.command(command), "python3 qa.py")
+        XCTAssertEqual(ActivityPreview.command("custom-shell -c test"), "custom-shell -c test")
+        XCTAssertEqual(command, "/bin/bash -lc 'python3 qa.py\necho done'")
+    }
+
 }

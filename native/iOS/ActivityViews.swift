@@ -27,14 +27,23 @@ struct ToolSummaryView: View {
         if state == "READY" { value += " · " + String(localized: "Completed", bundle: relayLocalizationBundle) }
         return value
     }
-    private var preview: String? {
-        guard let current else { return nil }
-        if let command = current.command { return command }
-        if let tool = current.toolName { return [current.toolServer, tool].compactMap { $0 }.joined(separator: " · ") }
-        if let files = current.files, !files.isEmpty {
-            return files.prefix(3).map { URL(fileURLWithPath: $0.path).lastPathComponent }.joined(separator: ", ")
-        }
-        return nil
+    private var command: Activity? {
+        group.items.last(where: { $0.command != nil && $0.state == "running" }) ?? group.items.last(where: { $0.command != nil })
+    }
+    private var tool: Activity? {
+        group.items.last(where: { $0.toolName != nil && $0.state == "running" }) ?? group.items.last(where: { $0.toolName != nil })
+    }
+    private func operationPreview(_ item: Activity, icon: String, text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: icon).frame(width: 16).foregroundStyle(.secondary)
+            Text(text).font(item.command == nil ? .caption : .caption.monospaced()).lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if item.state == "running" || item.state == "failed" || item.state == "declined" {
+                Image(systemName: item.state == "running" ? "clock" : "exclamationmark.circle")
+                    .foregroundStyle(item.state == "running" ? RelayPalette.working : RelayPalette.failure)
+                    .accessibilityLabel(activityState(item.state))
+            }
+        }.font(.caption).foregroundStyle(.secondary)
     }
     var body: some View {
         VStack(alignment: .leading, spacing: RelaySpacing.row) {
@@ -43,27 +52,31 @@ struct ToolSummaryView: View {
                     HStack(spacing: 10) {
                         Image(systemName: toolIcon(group.kind)).font(.subheadline.weight(.medium)).foregroundStyle(tint)
                             .frame(width: 24, height: 24)
-                        Text(toolTitle(group.kind)).font(.subheadline.weight(.semibold))
+                        Text(group.kind == .activity ? summary : toolTitle(group.kind)).font(.caption.weight(.medium)).foregroundStyle(.secondary)
                         Spacer(minLength: 4)
                         if state != "INACTIVE" { SessionStatusMark(status: state).font(.caption) }
                         Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
                             .rotationEffect(.degrees(expanded ? 90 : 0))
                     }
-                    Text(summary).font(.caption).foregroundStyle(.secondary).padding(.leading, 34)
+                    if group.kind != .activity { Text(summary).font(.caption).foregroundStyle(.secondary).padding(.leading, 34)
                         .contentTransition(.opacity)
-                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: state)
-                    if let preview {
-                        if current?.command != nil { CommandPreviewView(command: preview).lineLimit(1).padding(.leading, 34) }
-                        else { Text(preview).font(.caption).foregroundStyle(.secondary).lineLimit(1).padding(.leading, 34) }
-                    }
+                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: state) }
+
                 }.foregroundStyle(.primary).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
             }.buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("tool." + group.id)
                 .accessibilityValue(expanded ? String(localized: "Details expanded", bundle: relayLocalizationBundle) : String(localized: "Details collapsed", bundle: relayLocalizationBundle))
-            if !group.changedPaths.isEmpty {
-                Text(group.changedPaths.prefix(3).map { URL(fileURLWithPath: $0).lastPathComponent }.joined(separator: ", ") + (group.changedPaths.count > 3 ? " +\(group.changedPaths.count - 3)" : ""))
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(2).padding(.leading, 34)
-                    .accessibilityIdentifier("activity.files." + group.id)
-            }
+            VStack(alignment: .leading, spacing: 8) {
+                if let command { operationPreview(command, icon: "terminal", text: ActivityPreview.command(command.command ?? "")) }
+                if let tool { operationPreview(tool, icon: "wrench.and.screwdriver", text: [tool.toolServer, tool.toolName].compactMap { $0 }.joined(separator: ".")) }
+                if !group.changedPaths.isEmpty {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "doc.text").frame(width: 16)
+                        Text(group.changedPaths.prefix(3).map { URL(fileURLWithPath: $0).lastPathComponent }.joined(separator: "\n") + (group.changedPaths.count > 3 ? "\n+\(group.changedPaths.count - 3)" : ""))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }.font(.caption).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("activity.files." + group.id)
+                }
+            }.padding(.leading, 34)
             if expanded, running > 0, let progress = current?.progress, !progress.isEmpty {
                 Text(progress).font(.caption).foregroundStyle(.secondary).lineLimit(3)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -79,7 +92,22 @@ struct ToolSummaryView: View {
             }
             if expanded {
                 VStack(alignment: .leading, spacing: RelaySpacing.row) {
-                    Divider()
+                    ForEach(Array(group.items.suffix(3))) { item in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Image(systemName: item.command != nil ? "terminal" : item.toolName != nil ? "wrench.and.screwdriver" : "doc.text")
+                                    .foregroundStyle(.secondary)
+                                Text(item.command.map(ActivityPreview.command) ?? item.toolName ?? ChangeOverview.paths([item]).map { URL(fileURLWithPath: $0).lastPathComponent }.joined(separator: ", "))
+                                    .lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
+                                SessionStatusMark(status: item.state == "running" ? "WORKING" : item.state == "failed" ? "FAILED" : item.state == "completed" ? "READY" : "INACTIVE")
+                            }.font(.caption)
+                            if item.command != nil, !item.commandOutput.isEmpty {
+                                Text(item.commandOutput.suffix(360).split(separator: "\n", omittingEmptySubsequences: false).suffix(3).joined(separator: "\n"))
+                                    .font(.caption2.monospaced()).foregroundStyle(.secondary).lineLimit(3)
+                            }
+                        }.padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+                    }
                     Button(action: open) {
                         HStack {
                             Text(String(localized: "Open details and output", bundle: relayLocalizationBundle))
@@ -89,9 +117,7 @@ struct ToolSummaryView: View {
                     }.accessibilityIdentifier("tool.details." + group.id)
                 }.transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
             }
-        }.padding(RelaySpacing.row)
-            .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.primary.opacity(0.04)))
+        }.padding(.vertical, RelaySpacing.compact)
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: state)
             .task(id: group.items.filter { $0.kind == "diff" || $0.kind == "fileChange" }) {
                 let items = group.items
@@ -110,7 +136,7 @@ struct ToolDetailView: View {
         NavigationStack {
             ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: RelaySpacing.page) {
+                LazyVStack(alignment: .leading, spacing: RelaySpacing.row) {
                     HStack {
                         Label(toolCount(liveGroup), systemImage: toolIcon(group.kind))
                         Spacer()
@@ -186,11 +212,28 @@ private struct ActivityDetailRow: View {
                     CommandPreviewView(command: command).fixedSize(horizontal: true, vertical: false)
                 }.contextMenu { Button(String(localized: "Copy Command", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = command } }
             }
+            if item.exitCode != nil || item.durationMs != nil || item.truncated == true {
             HStack(spacing: RelaySpacing.row) {
                 if let code = item.exitCode { Label("Exit \(code)", systemImage: code == 0 ? "checkmark.circle" : "exclamationmark.circle") }
                 if let duration = item.durationMs { Text(String(format: "%.1f s", Double(duration) / 1000)) }
                 if item.truncated == true { Text(String(localized: "Partial content", bundle: relayLocalizationBundle)) }
             }.font(.caption).foregroundStyle(.secondary)
+            }
+            if !ChangeOverview.paths([item]).isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(ChangeOverview.paths([item]), id: \.self) { path in
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(URL(fileURLWithPath: path).lastPathComponent).lineLimit(2)
+                            Spacer(minLength: 8)
+                            if let file = item.files?.first(where: { $0.path == path }) {
+                                Text(fileChangeLabel(file.kind)).foregroundStyle(.secondary)
+                            }
+                        }.font(.caption).contextMenu {
+                            Button(String(localized: "Copy Path", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = path }
+                        }
+                    }
+                }
+            }
             if let progress = item.progress, item.state == "running" {
                 Text(progress).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
             }
