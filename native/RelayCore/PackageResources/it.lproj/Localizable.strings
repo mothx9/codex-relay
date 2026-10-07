@@ -26,6 +26,7 @@
 "1 event" = "1 evento";
 "1 file changed" = "1 file modificato";
 "1 item" = "1 elemento";
+"1 line" = "1 riga";
 "1 machine needs attention" = "1 macchina richiede attenzione";
 "1 operation" = "1 operazione";
 "1 session working" = "1 sessione in corso";
@@ -106,6 +107,7 @@
 "Collapsed" = "Chiuso";
 "Command" = "Comando";
 "Command rejected." = "Comando rifiutato.";
+"Compacting context" = "Compattazione del contesto";
 "Completed" = "Completato";
 "Configured" = "Configurato";
 "Connect this thread to Codex to send messages." = "Collega questo thread a Codex per inviare messaggi.";
@@ -121,6 +123,8 @@
 "Connection lost." = "Connessione interrotta.";
 "Connection lost. Try again." = "Connessione interrotta. Riprova.";
 "Connection → Online" = "Collegamento → Online";
+"Context compacted" = "Contesto compattato";
+"Context compaction" = "Compattazione del contesto";
 "Control unavailable for this session." = "Controllo non disponibile per questa sessione.";
 "Controller" = "Controller";
 "Controllers & Access" = "Controller e accesso";
@@ -282,6 +286,7 @@
 "No" = "No";
 "No account data yet" = "Nessun dato account disponibile";
 "No output" = "Nessun output";
+"No patch provided" = "Nessuna patch disponibile";
 "No pending requests" = "Nessuna richiesta";
 "No samples" = "Nessun campione";
 "No text result provided" = "Nessun risultato testuale fornito";

@@ -5819,6 +5819,57 @@
           }
         }
       }
+    },
+    "No patch provided": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna patch disponibile"
+          }
+        }
+      }
+    },
+    "Compacting context": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compattazione del contesto"
+          }
+        }
+      }
+    },
+    "Context compacted": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contesto compattato"
+          }
+        }
+      }
+    },
+    "Context compaction": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compattazione del contesto"
+          }
+        }
+      }
+    },
+    "1 line": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 riga"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

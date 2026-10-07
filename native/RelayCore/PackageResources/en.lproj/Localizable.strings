@@ -26,6 +26,7 @@
 "1 event" = "1 event";
 "1 file changed" = "1 file changed";
 "1 item" = "1 item";
+"1 line" = "1 line";
 "1 machine needs attention" = "1 machine needs attention";
 "1 operation" = "1 operation";
 "1 session working" = "1 session working";
@@ -106,6 +107,7 @@
 "Collapsed" = "Collapsed";
 "Command" = "Command";
 "Command rejected." = "Command rejected.";
+"Compacting context" = "Compacting context";
 "Completed" = "Completed";
 "Configured" = "Configured";
 "Connect this thread to Codex to send messages." = "Connect this thread to Codex to send messages.";
@@ -121,6 +123,8 @@
 "Connection lost." = "Connection lost.";
 "Connection lost. Try again." = "Connection lost. Try again.";
 "Connection → Online" = "Connection → Online";
+"Context compacted" = "Context compacted";
+"Context compaction" = "Context compaction";
 "Control unavailable for this session." = "Control unavailable for this session.";
 "Controller" = "Controller";
 "Controllers & Access" = "Controllers & Access";
@@ -282,6 +286,7 @@
 "No" = "No";
 "No account data yet" = "No account data yet";
 "No output" = "No output";
+"No patch provided" = "No patch provided";
 "No pending requests" = "No pending requests";
 "No samples" = "No samples";
 "No text result provided" = "No text result provided";

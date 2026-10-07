@@ -205,7 +205,12 @@ private struct SessionTranscript: View {
     @Binding var scrollRequest: Int
     let onEdit: (Outgoing) -> Void
     let onQuestionReply: (String) -> Void
-    @State private var tools: TranscriptGroup?
+    private struct ActivitySelection: Identifiable {
+        let group: TranscriptGroup
+        let path: String?
+        var id: String { group.id + "/" + (path ?? "") }
+    }
+    @State private var tools: ActivitySelection?
     @State private var scrolling = TranscriptScrollPolicy()
     @State private var initialScroll = false
     @State private var historyPositioned = false
@@ -247,10 +252,13 @@ private struct SessionTranscript: View {
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         ForEach(TranscriptGroup.make(relay.chat.items)) { group in
-                            if group.kind == .message, let activity = group.items.first {
+                            if let activity = group.items.first, activity.kind == "context_compaction" {
+                                Label(activity.state == "running" && activity.turnId == session.turnId && session.displayStatus(machine: relay.machines[session.machineId], connected: relay.online) == "WORKING" ? String(localized: "Compacting context", bundle: relayLocalizationBundle) : activity.state == "completed" ? String(localized: "Context compacted", bundle: relayLocalizationBundle) : String(localized: "Context compaction", bundle: relayLocalizationBundle), systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
+                                    .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("context.compaction")
+                            } else if group.kind == .message, let activity = group.items.first {
                                 ChatMessageView(activity: activity, liveQuestion: relay.liveQuestions.records.contains { $0.sessionID == relay.selected && $0.activity.id == activity.id }, onQuestionReply: onQuestionReply).equatable()
                             } else {
-                                ToolSummaryView(group: group) { tools = group }
+                                ToolSummaryView(group: group) { path in tools = ActivitySelection(group: group, path: path) }
                             }
                         }
                         ForEach(relay.outbox.visible(session: session.id)) { item in
@@ -318,7 +326,7 @@ private struct SessionTranscript: View {
                     }
                 }
             }
-        }.sheet(item: $tools) { ToolDetailView(group: $0) }
+        }.sheet(item: $tools) { ToolDetailView(group: $0.group, focusedPath: $0.path) }
     }
 }
 
@@ -411,17 +419,6 @@ private struct ChatMessageView: View, Equatable {
                     }
                     if activity.truncated == true { Text(String(localized: "Partial context · see Codex for the full content.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary) }
                 }
-                Menu {
-                    Button(String(localized: "Copy Full Message", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = activity.text }
-                    if !user { ShareLink(item: activity.text) { Label(String(localized: "Share", bundle: relayLocalizationBundle), systemImage: "square.and.arrow.up") } }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "ellipsis").font(.caption)
-                    }.font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                        .frame(minWidth: 44, minHeight: 44, alignment: user ? .trailing : .leading)
-                        .contentShape(Rectangle())
-                }.buttonStyle(.plain).accessibilityLabel(String(localized: "Message actions", bundle: relayLocalizationBundle))
-                    .accessibilityIdentifier("message.actions." + activity.id)
             }.frame(maxWidth: .infinity, alignment: user ? .trailing : .leading)
                 .environment(\.completeMessage, activity.text)
                 .contextMenu {
@@ -500,20 +497,44 @@ private struct SessionHeartbeat: View {
     var body: some View {
         VStack(alignment: .leading, spacing: RelaySpacing.small) {
             HStack(spacing: RelaySpacing.compact) {
-                SessionStatusMark(status: state)
-                Text(state == "OFFLINE" ? relay.machineConnectionLabel(session.machineId) : statusLabel(state))
-                    .accessibilityIdentifier("session.connection")
-                    .accessibilityValue(state == "OFFLINE" ? String(localized: "Offline", bundle: relayLocalizationBundle) : ["SYNCING", "RECONNECTING", "DEGRADED"].contains(state) ? statusLabel(state) : String(localized: "Live", bundle: relayLocalizationBundle))
+                if state == "WORKING" {
+                    WorkingText(text: relay.liveActivities[session.id].flatMap { $0.kind == "context_compaction" && $0.state == "running" ? $0.title : nil } ?? statusLabel("WORKING")).accessibilityIdentifier("session.connection")
+                        .accessibilityValue(String(localized: "Live", bundle: relayLocalizationBundle))
+                } else {
+                    SessionStatusMark(status: state)
+                    Text(state == "OFFLINE" ? relay.machineConnectionLabel(session.machineId) : statusLabel(state))
+                        .accessibilityIdentifier("session.connection")
+                        .accessibilityValue(state == "OFFLINE" ? String(localized: "Offline", bundle: relayLocalizationBundle) : ["SYNCING", "RECONNECTING", "DEGRADED"].contains(state) ? statusLabel(state) : String(localized: "Live", bundle: relayLocalizationBundle))
+                }
                 if state == "WORKING" { ElapsedLabel(start: session.turnStarted) }
                 Spacer(minLength: 0)
             }.font(.caption.weight(.medium))
             if ["OFFLINE", "SYNCING", "RECONNECTING", "DEGRADED"].contains(state) {
                 LastKnownSession(session: session, machine: relay.machines[session.machineId]).accessibilityIdentifier("session.stale")
-            } else if state == "WORKING", let activity = relay.liveActivities[session.id] {
-                Text(activity.detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                    .contentTransition(.opacity)
             }
         }.padding(.top, RelaySpacing.compact)
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: state)
+    }
+}
+
+/// Only this small text mask redraws; transcript and composer do not animate.
+private struct WorkingText: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let text: String
+    private var label: Text { Text(text) }
+    var body: some View {
+        label.foregroundStyle(.secondary)
+            .overlay {
+                if !reduceMotion {
+                    GeometryReader { geometry in
+                        TimelineView(.animation(minimumInterval: 1.0 / 24)) { context in
+                            let phase = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3.4) / 3.4
+                            LinearGradient(colors: [.clear, Color.primary.opacity(0.85), .clear], startPoint: .leading, endPoint: .trailing)
+                                .frame(width: geometry.size.width * 0.75)
+                                .offset(x: geometry.size.width * (phase * 2 - 0.75))
+                        }
+                    }.mask(label).accessibilityHidden(true)
+                }
+            }
     }
 }

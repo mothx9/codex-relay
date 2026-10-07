@@ -18,7 +18,7 @@ struct ChatMarkdown: View {
     var body: some View {
         VStack(alignment: .leading, spacing: RelaySpacing.row) {
             if blocks.isEmpty {
-                Text(text).font(.body).textSelection(.enabled).accessibilityIdentifier(identifier)
+                Text(text).font(.body).fixedSize(horizontal: false, vertical: true).textSelection(.enabled).accessibilityIdentifier(identifier)
             } else {
                 ForEach(blocks) { block in
                     MarkdownBlockView(block: block, identifier: block.id == "0" ? identifier : identifier + "." + block.id)
@@ -80,7 +80,8 @@ private struct MarkdownBlockView: View {
                         HStack(alignment: .firstTextBaseline, spacing: RelaySpacing.row) {
                             Text(block.ordinal.map { "\($0 + index)." } ?? "•").font(.body.monospacedDigit()).foregroundStyle(.secondary)
                             MarkdownBlockView(block: child, identifier: identifier + "." + child.id)
-                        }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }.fixedSize(horizontal: false, vertical: true)
                     }
                 }
             case .item: children
@@ -109,7 +110,7 @@ private struct MarkdownBlockView: View {
         }
     }
     private func inline(_ spans: [RichSpan]) -> some View {
-        Text(styled(spans)).textSelection(.enabled)
+        Text(styled(spans)).lineLimit(nil).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             .contextMenu {
                 if let completeMessage {
                     Button(String(localized: "Copy Full Message", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = completeMessage }
@@ -196,11 +197,14 @@ struct CodeBlockView: View {
 struct PatchView: View {
     let patch: String
     var path = "Patch"
+    var focusedPath: String? = nil
+    var showHeader = true
     @State private var files: [PatchFile] = []
     var body: some View {
         VStack(alignment: .leading, spacing: RelaySpacing.page) {
-            ForEach(files) { file in
+            ForEach(files.filter { focusedPath == nil || $0.path == focusedPath }) { file in
                 VStack(alignment: .leading, spacing: RelaySpacing.row) {
+                    if showHeader {
                     HStack {
                         Text(URL(fileURLWithPath: file.path).lastPathComponent).font(.subheadline.weight(.semibold)).lineLimit(2)
                         Spacer()
@@ -211,17 +215,18 @@ struct PatchView: View {
                         } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
                             .accessibilityLabel(String(localized: "Actions for ", bundle: relayLocalizationBundle) + file.path)
                     }
+                    }
                     ScrollView(.horizontal) {
                         VStack(alignment: .leading, spacing: 0) {
-                            ForEach(file.lines) { line in
+                            ForEach(file.lines.filter { $0.kind != .metadata }) { line in
                                 HStack(alignment: .top, spacing: 8) {
-                                    Text(line.old.map(String.init) ?? "").frame(minWidth: 28, alignment: .trailing).foregroundStyle(.secondary)
-                                    Text(line.new.map(String.init) ?? "").frame(minWidth: 28, alignment: .trailing).foregroundStyle(.secondary)
+                                    Text(line.old.map(String.init) ?? "").frame(width: 32, alignment: .trailing).foregroundStyle(.tertiary)
+                                    Text(line.new.map(String.init) ?? "").frame(width: 32, alignment: .trailing).foregroundStyle(.tertiary)
                                     Text(line.text).textSelection(.enabled)
                                     Spacer(minLength: 0)
                                 }.font(.caption.monospaced()).fixedSize(horizontal: false, vertical: true)
                                     .padding(.horizontal, 8).padding(.vertical, 2)
-                                    .background(tint(line.kind))
+                                    .background { Rectangle().fill(tint(line.kind)) }
                             }
                         }.fixedSize(horizontal: true, vertical: false)
                     }.background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
@@ -235,9 +240,9 @@ struct PatchView: View {
     }
     private func tint(_ kind: PatchLine.Kind) -> Color {
         switch kind {
-        case .addition: RelayPalette.addition.opacity(0.12)
-        case .deletion: RelayPalette.deletion.opacity(0.12)
-        case .hunk: .accentColor.opacity(0.12)
+        case .addition: RelayPalette.addition.opacity(0.08)
+        case .deletion: RelayPalette.deletion.opacity(0.08)
+        case .hunk: Color.primary.opacity(0.04)
         default: .clear
         }
     }

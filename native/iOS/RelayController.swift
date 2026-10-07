@@ -465,7 +465,7 @@ import UIKit
     }
     func forget(preserveNavigation: Bool = false) { guard !previewOnly else { return }; stop(); if !preserveNavigation { pendingNavigation = PendingNavigation() }; navigationTask?.cancel(); routedMachine = nil; CredentialVault.clear(); credential = nil; pushRegistered = false; pushRegistrationVerifiedAt = nil; settingsErrors = [:]; machines = [:]; sessions = [:]; catalogue = SessionCatalogue(); catalogueErrors = [:]; liveActivities = [:]; requests = [:]; registry = nil; accounts = []; diagnostics = nil; diagnosticsUpdatedAt = nil; pairCode = nil; selected = ""; chat = RecentChat(); outbox = Outbox(); connection = String(localized: "Sign-in required", bundle: relayLocalizationBundle); updateNotificationBadge() }
     func background() { guard !previewOnly else { return }; paused = true; lastBackground = Date(); stop() }
-    func foreground() { guard !previewOnly else { return }; paused = false; outbox.prune(active: ""); if let lastBackground, Date().timeIntervalSince(lastBackground) > 300 { outbox = Outbox(); chat = RecentChat(); historyCursor = nil }; connect() }
+    func foreground() { guard !previewOnly else { return }; guard paused || loop == nil else { return }; paused = false; outbox.prune(active: ""); if let lastBackground, Date().timeIntervalSince(lastBackground) > 300 { outbox = Outbox(); chat = RecentChat(); historyCursor = nil }; connect() }
     var attentionCount: Int { requests.count + liveQuestions.records.count }
     private func observeLiveQuestion(_ event: RelayEvent) {
         let session = sessions[event.sessionId]

@@ -271,7 +271,7 @@ private struct EnrollmentView: View {
     }
 }
 
-private struct NotificationSettingsView: View {
+struct NotificationSettingsView: View {
     @Environment(RelayController.self) private var relay
     @Environment(\.openURL) private var openURL
     var body: some View {

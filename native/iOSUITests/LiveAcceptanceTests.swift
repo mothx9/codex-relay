@@ -143,6 +143,43 @@ import XCTest
         XCTAssertTrue(app.buttons["Notifications"].exists)
         for label in ["Machines", "Codex Accounts", "Controllers & Access", "Diagnostics"] { XCTAssertFalse(app.buttons[label].exists) }
     }
+    func testOwnedLiveQuestionAttentionAndExpiry() throws {
+        guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires owned live validation thread") }
+        let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
+        guard config.sendTurn && config.sessionTitle == "Relay live attention acceptance" else { throw XCTSkip("Owned validation only") }
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.buttons["navigation.relay"].waitForExistence(timeout: 20)); app.buttons["navigation.relay"].tap()
+        app.buttons["Settings"].tap(); app.buttons["Notifications"].tap()
+        if app.buttons["Allow notifications"].exists { app.buttons["Allow notifications"].tap() }
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        if springboard.buttons["Allow"].waitForExistence(timeout: 2) { springboard.buttons["Allow"].tap() }
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["Close"].tap()
+        app.tabBars.buttons["Needs You"].tap()
+        print("LIVE_QUESTION_LISTENER_READY")
+        let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "live-question.")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 100))
+        XCTAssertTrue(app.staticTexts["Live questions"].exists)
+        let banner = springboard.staticTexts["Codex asked a live question"].firstMatch
+        XCTAssertTrue(banner.waitForExistence(timeout: 5))
+        let capture = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); capture.name = "Real Codex live question and local banner"; capture.lifetime = .keepAlways; add(capture)
+        banner.tap() // Exercise the same safe deep link as a real notification tap.
+        XCTAssertTrue(app.staticTexts["Asked during this live turn"].waitForExistence(timeout: 15))
+        let option = app.buttons.containing(.staticText, identifier: "Focused").firstMatch
+        XCTAssertTrue(option.waitForExistence(timeout: 10)); option.tap()
+        let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
+        XCTAssertTrue((composer.value as? String ?? "").contains("Focused"))
+        print("LIVE_QUESTION_OBSERVED")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.tabBars.buttons["Needs You"].tap()
+        wait(40) { !row.exists }
+        app.terminate(); app.launch()
+        XCTAssertTrue(app.tabBars.buttons["Needs You"].waitForExistence(timeout: 15)); app.tabBars.buttons["Needs You"].tap()
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "live-question.")).firstMatch.exists)
+        print("LIVE_QUESTION_RESTART_EMPTY")
+    }
     func testLocalForegroundNotificationKindsAndDedupe() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -170,10 +207,44 @@ import XCTest
         app.buttons["Disable alerts"].tap()
         XCTAssertTrue(app.staticTexts["Local alerts off"].exists)
     }
+    func testWholeMessageCopyFromLastParagraph() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--product-screenshot", "conversation", "-AppleLanguages", "(en)"]
+        app.launch()
+        let paragraph = app.staticTexts["activity.agentMessage.example-code.2"]
+        XCTAssertTrue(paragraph.waitForExistence(timeout: 10))
+        paragraph.press(forDuration: 1)
+        let copy = app.buttons["Copy Full Message"]
+        XCTAssertTrue(copy.waitForExistence(timeout: 5)); copy.tap()
+        let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
+        composer.tap(); composer.press(forDuration: 1)
+        let paste = app.menuItems["Paste"]
+        XCTAssertTrue(paste.waitForExistence(timeout: 5)); paste.tap()
+        let expected = "The guard keeps the failure explicit:\n\n```rust\nif input.is_empty() {\n    return Err(Error::EmptyInput);\n}\nrun_checks(input)?;\n```\n\nThe regression test has passed. Integration checks are still running."
+        wait(5) { composer.value as? String == expected }
+        app.terminate() // Never submit the draft.
+    }
+
+    func testCompactionAndDirectFileInspection() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--product-screenshot", "compaction", "-AppleLanguages", "(en)"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["session.connection"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["session.connection"].label, "Compacting context")
+        XCTAssertTrue(app.staticTexts["context.compaction"].exists)
+        let file = app.buttons["activity.file.src/validation.rs"]
+        for _ in 0..<6 { if file.isHittable { break }; app.scrollViews["session.transcript"].swipeDown() }; XCTAssertTrue(file.isHittable); file.tap()
+        XCTAssertTrue(app.navigationBars["validation.rs"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["1 event"].exists)
+        XCTAssertTrue(app.staticTexts["+    if input.is_empty() {"].exists)
+        let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Direct file diff"; capture.lifetime = .keepAlways; add(capture)
+    }
+
     func testPublicProductScreenshots() {
         continueAfterFailure = false
         let app = XCUIApplication()
-        for surface in ["fleet", "conversation", "needs-you", "question", "terminal", "tools", "diff", "machines", "account", "settings", "diagnostics", "pairing", "navigation", "machine-diagnostics", "live-question"] {
+        for surface in ["fleet", "conversation", "needs-you", "question", "terminal", "tools", "diff", "machines", "account", "settings", "diagnostics", "pairing", "navigation", "machine-diagnostics", "live-question", "live-inbox", "notifications", "compaction"] {
             app.launchArguments = ["--product-screenshot", surface, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
             app.launch()
             XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))
@@ -490,7 +561,7 @@ import XCTest
         let transcript = app.scrollViews["session.transcript"]
         XCTAssertTrue(transcript.waitForExistence(timeout: 15))
         let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
-        // Both the last Markdown paragraph and the explicit message action
+        // Both the first and last Markdown paragraph actions
         // must copy the canonical source, not the focused text selection.
         let paragraphs = app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@", "activity.agentMessage." + itemID + "."))
         for _ in 0..<30 {
@@ -504,7 +575,7 @@ import XCTest
             }
         }
         let lastParagraph = paragraphs.allElementsBoundByIndex.last
-        let actions = app.buttons["message.actions." + itemID]
+        let actions = try XCTUnwrap(paragraphs.allElementsBoundByIndex.first)
         for route in 0..<2 {
             let source = route == 0 ? try XCTUnwrap(lastParagraph) : actions
             for _ in 0..<24 {
@@ -513,7 +584,7 @@ import XCTest
                 else { transcript.swipeDown() }
             }
             XCTAssertTrue(source.isHittable)
-            if route == 0 { source.press(forDuration: 1) } else { source.tap() }
+            source.press(forDuration: 1)
             let copy = app.buttons["Copy Full Message"]
             XCTAssertTrue(copy.waitForExistence(timeout: 5)); copy.tap()
             composer.tap(); composer.press(forDuration: 1)

@@ -120,7 +120,7 @@ public struct ChangedFile: Codable, Sendable, Equatable {
 public struct LiveActivity: Codable, Sendable, Equatable {
     public let itemId: String; public let kind: String; public let label: String; public let state: String; public let timestamp: String
     public var title: String {
-        switch kind { case "terminal": String(localized: "Terminal", bundle: relayLocalizationBundle); case "tool": "MCP"; case "file": "File"; case "diff": "Diff"; case "assistant": state == "running" ? String(localized: "Generating response…", bundle: relayLocalizationBundle) : String(localized: "Response completed", bundle: relayLocalizationBundle); default: String(localized: "Activity", bundle: relayLocalizationBundle) }
+        switch kind { case "context_compaction": state == "running" ? String(localized: "Compacting context", bundle: relayLocalizationBundle) : String(localized: "Context compacted", bundle: relayLocalizationBundle); case "terminal": String(localized: "Terminal", bundle: relayLocalizationBundle); case "tool": "MCP"; case "file": "File"; case "diff": "Diff"; case "assistant": state == "running" ? String(localized: "Generating response…", bundle: relayLocalizationBundle) : String(localized: "Response completed", bundle: relayLocalizationBundle); default: String(localized: "Activity", bundle: relayLocalizationBundle) }
     }
     public var detail: String { label.isEmpty ? title : title + " · " + label }
 }

@@ -98,7 +98,7 @@ public enum ChangeOverview {
 public enum ActivityPreview {
     public static func command(_ source: String) -> String {
         var value = source.trimmingCharacters(in: .whitespacesAndNewlines)
-        for shell in ["/bin/bash", "/bin/zsh", "/bin/sh", "bash", "zsh", "sh"] {
+        for shell in ["/bin/bash", "/bin/zsh", "/bin/sh", "/usr/bin/bash", "/usr/bin/zsh", "/usr/bin/sh", "bash", "zsh", "sh"] {
             for flag in ["-lc", "-c"] {
                 let prefix = shell + " " + flag + " "
                 if value.hasPrefix(prefix) {

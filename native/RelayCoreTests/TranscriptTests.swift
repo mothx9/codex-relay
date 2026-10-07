@@ -28,6 +28,15 @@ final class TranscriptTests: XCTestCase {
         XCTAssertTrue(policy.shouldFollow)
     }
 
+    func testCompactionKeepsItsBoundaryAndLiveLabel() throws {
+        var item = Activity(id: "compact", kind: "context_compaction", text: "Context compacted")
+        item.state = "running"
+        let groups = TranscriptGroup.make([Activity(id: "cmd", kind: "commandExecution", text: "pwd"), item, Activity(id: "next", kind: "commandExecution", text: "ls")])
+        XCTAssertEqual(groups.map(\.kind), [.terminal, .message, .terminal])
+        let live = try RelayJSON.decoder().decode(LiveActivity.self, from: Data(#"{"item_id":"compact","kind":"context_compaction","label":"","state":"running","timestamp":""}"#.utf8))
+        XCTAssertEqual(live.title, "Compacting context")
+    }
+
     func testToolGroupsPreserveConversationOrderAndIdentity() {
         let items = [
             Activity(id: "agent", kind: "agentMessage", text: "Checking"),

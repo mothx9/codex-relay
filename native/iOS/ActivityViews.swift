@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ToolSummaryView: View {
     let group: TranscriptGroup
-    let open: () -> Void
+    let open: (String?) -> Void
     @State private var expanded = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var running: Int { group.items.filter { $0.state == "running" }.count }
@@ -70,11 +70,16 @@ struct ToolSummaryView: View {
                 if let tool { operationPreview(tool, icon: "wrench.and.screwdriver", text: [tool.toolServer, tool.toolName].compactMap { $0 }.joined(separator: ".")) }
                 if !group.changedPaths.isEmpty {
                     HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "doc.text").frame(width: 16)
-                        Text(group.changedPaths.prefix(3).map { URL(fileURLWithPath: $0).lastPathComponent }.joined(separator: "\n") + (group.changedPaths.count > 3 ? "\n+\(group.changedPaths.count - 3)" : ""))
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "doc.text").frame(width: 16, height: 44)
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(group.changedPaths.prefix(3), id: \.self) { path in
+                                Button { open(path) } label: {
+                                    HStack { Text(URL(fileURLWithPath: path).lastPathComponent).lineLimit(2); Spacer(); Image(systemName: "chevron.right").font(.caption2) }.frame(minHeight: 44).contentShape(Rectangle())
+                                }.buttonStyle(.plain).accessibilityIdentifier("activity.file." + path)
+                            }
+                            if group.changedPaths.count > 3 { Text("+\(group.changedPaths.count - 3)") }
+                        }.frame(maxWidth: .infinity, alignment: .leading)
                     }.font(.caption).foregroundStyle(.secondary)
-                        .accessibilityIdentifier("activity.files." + group.id)
                 }
             }.padding(.leading, 34)
             if expanded, running > 0, let progress = current?.progress, !progress.isEmpty {
@@ -99,7 +104,7 @@ struct ToolSummaryView: View {
                                     .foregroundStyle(.secondary)
                                 Text(item.command.map(ActivityPreview.command) ?? item.toolName ?? ChangeOverview.paths([item]).map { URL(fileURLWithPath: $0).lastPathComponent }.joined(separator: ", "))
                                     .lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
-                                SessionStatusMark(status: item.state == "running" ? "WORKING" : item.state == "failed" ? "FAILED" : item.state == "completed" ? "READY" : "INACTIVE")
+                                if item.state != nil { SessionStatusMark(status: item.state == "running" ? "WORKING" : item.state == "failed" ? "FAILED" : item.state == "completed" ? "READY" : "INACTIVE") }
                             }.font(.caption)
                             if item.command != nil, !item.commandOutput.isEmpty {
                                 Text(item.commandOutput.suffix(360).split(separator: "\n", omittingEmptySubsequences: false).suffix(3).joined(separator: "\n"))
@@ -108,7 +113,7 @@ struct ToolSummaryView: View {
                         }.padding(10).frame(maxWidth: .infinity, alignment: .leading)
                             .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
                     }
-                    Button(action: open) {
+                    Button { open(nil) } label: {
                         HStack {
                             Text(String(localized: "Open details and output", bundle: relayLocalizationBundle))
                             Spacer()
@@ -131,6 +136,7 @@ struct ToolDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(RelayController.self) private var relay
     let group: TranscriptGroup
+    var focusedPath: String? = nil
     private var liveGroup: TranscriptGroup { TranscriptGroup.make(relay.chat.items).first { $0.id == group.id } ?? group }
     var body: some View {
         NavigationStack {
@@ -138,12 +144,12 @@ struct ToolDetailView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: RelaySpacing.row) {
                     HStack {
-                        Label(toolCount(liveGroup), systemImage: toolIcon(group.kind))
+                        Label(focusedPath ?? (liveGroup.kind == .changes ? ChangeOverview.describe(liveGroup.items) : toolCount(liveGroup)), systemImage: focusedPath == nil ? toolIcon(group.kind) : "doc.text")
                         Spacer()
                         let running = liveGroup.items.filter { $0.state == "running" }.count
-                        if running > 0 { Text(String(localized: "\(running) running", bundle: relayLocalizationBundle)).foregroundStyle(RelayPalette.working) }
+                        if focusedPath == nil && running > 0 { Text(String(localized: "\(running) running", bundle: relayLocalizationBundle)).foregroundStyle(RelayPalette.working) }
                     }.font(.caption.weight(.medium)).foregroundStyle(.secondary)
-                    if liveGroup.commandCount > 0 {
+                    if focusedPath == nil && liveGroup.commandCount > 0 {
                         let completed = liveGroup.items.filter { $0.state == "completed" }.count
                         let failed = liveGroup.items.filter { $0.state == "failed" || $0.state == "declined" }.count
                         HStack(spacing: RelaySpacing.page) {
@@ -151,9 +157,25 @@ struct ToolDetailView: View {
                             if failed > 0 { Label(String(localized: "\(failed) failed", bundle: relayLocalizationBundle), systemImage: "xmark.circle").foregroundStyle(RelayPalette.failure) }
                         }.font(.caption).foregroundStyle(.secondary)
                     }
+                    if let focusedPath {
+                        ForEach(liveGroup.items.filter { ChangeOverview.paths([$0]).contains(focusedPath) }.suffix(1)) { item in
+                            if item.kind == "diff" { PatchView(patch: item.text, focusedPath: focusedPath) }
+                            else if let file = item.files?.first(where: { $0.path == focusedPath }) {
+                                if let patch = file.patch { PatchView(patch: patch, path: file.path) }
+                                else { Label(URL(fileURLWithPath: file.path).lastPathComponent, systemImage: "doc.text"); Text(fileChangeLabel(file.kind)).font(.caption).foregroundStyle(.secondary) }
+                            }
+                        }
+                    } else if liveGroup.kind == .changes {
+                        ForEach(liveGroup.items) { item in
+                            if item.kind == "diff" { PatchView(patch: item.text) }
+                            else { FileActivityDetail(item: item) }
+                        }
+                    } else {
                     ForEach(liveGroup.items) { item in
-                        ActivityDetailRow(item: item, initiallyExpanded: item.state == "running" || item.id == liveGroup.items.last?.id).id(item.id)
+                        if item.kind == "fileChange" || item.kind == "diff" { FileActivityDetail(item: item).id(item.id) }
+                        else { ActivityDetailRow(item: item, initiallyExpanded: item.state == "running" || item.id == liveGroup.items.last?.id).id(item.id) }
                         if item.id != liveGroup.items.last?.id { Divider() }
+                    }
                     }
                 }.padding(RelaySpacing.page)
             }.onAppear {
@@ -161,18 +183,59 @@ struct ToolDetailView: View {
                     DispatchQueue.main.async { proxy.scrollTo(target, anchor: .top) }
                 }
             }
-            }.navigationTitle(toolTitle(group.kind)).navigationBarTitleDisplayMode(.inline)
+            }.navigationTitle(focusedPath.map { URL(fileURLWithPath: $0).lastPathComponent } ?? toolTitle(group.kind)).navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
+                    if focusedPath == nil { ToolbarItem(placement: .topBarLeading) {
                         Menu {
                             Button(String(localized: "Copy All Outputs", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") {
                                 UIPasteboard.general.string = liveGroup.items.map { $0.command != nil ? $0.commandOutput : $0.resultSummary ?? $0.text }.joined(separator: "\n\n")
                             }
                         } label: { Image(systemName: "doc.on.doc").frame(minWidth: 44, minHeight: 44) }.accessibilityLabel(String(localized: "Copy Activity", bundle: relayLocalizationBundle))
                     }
+                    }
                     ToolbarItem(placement: .confirmationAction) { Button(String(localized: "Close", bundle: relayLocalizationBundle)) { dismiss() } }
                 }
         }
+    }
+}
+
+private struct FileActivityDetail: View {
+    let item: Activity
+    @State private var expanded: Set<String> = []
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private var files: [ChangedFile] {
+        if let files = item.files, !files.isEmpty { return files }
+        return PatchDocument.parse(item.text).map { ChangedFile(path: $0.path, kind: "", previousPath: nil, patch: $0.lines.map(\.text).joined(separator: "\n")) }
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: RelaySpacing.compact) {
+            ForEach(files, id: \.path) { file in
+                VStack(alignment: .leading, spacing: RelaySpacing.compact) {
+                    Button {
+                        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.18)) {
+                            if expanded.contains(file.path) { expanded.remove(file.path) } else { expanded.insert(file.path) }
+                        }
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "doc.text").foregroundStyle(.secondary)
+                            Text(URL(fileURLWithPath: file.path).lastPathComponent).font(.subheadline.weight(.medium)).lineLimit(2)
+                            Spacer(minLength: 8)
+                            if !file.kind.isEmpty { Text(fileChangeLabel(file.kind)).font(.caption).foregroundStyle(.secondary) }
+                            Image(systemName: expanded.contains(file.path) ? "chevron.down" : "chevron.right").font(.caption2).foregroundStyle(.secondary)
+                        }.frame(minHeight: 44).contentShape(Rectangle())
+                    }.buttonStyle(.plain).accessibilityIdentifier("file.detail." + file.path)
+                    if expanded.contains(file.path) {
+                        if let patch = file.patch, !patch.isEmpty {
+                            if patch.contains("@@ ") { PatchView(patch: patch, path: file.path, showHeader: false) }
+                            else { CodeBlockView(code: patch, language: URL(fileURLWithPath: file.path).pathExtension) }
+                        } else { Text(String(localized: "No patch provided", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary) }
+                    }
+                }.contextMenu {
+                    Button(String(localized: "Copy Path", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = file.path }
+                    if let patch = file.patch { Button(String(localized: "Copy Patch", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = patch } }
+                }
+            }
+        }.onAppear { if files.count == 1, let path = files.first?.path { expanded.insert(path) } }
     }
 }
 
@@ -183,7 +246,7 @@ private struct ActivityDetailRow: View {
     init(item: Activity, initiallyExpanded: Bool) {
         self.item = item; _expanded = State(initialValue: initiallyExpanded)
     }
-    private var output: String { item.command != nil ? item.commandOutput : item.resultSummary ?? item.text }
+    private var output: String { item.command != nil ? item.commandOutput : item.resultSummary ?? (item.toolName == nil ? item.text : "") }
     private var status: String {
         switch item.state { case "running": "WORKING"; case "completed": "READY"; case "failed", "declined": "FAILED"; default: "INACTIVE" }
     }
@@ -196,7 +259,7 @@ private struct ActivityDetailRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: RelaySpacing.row) {
             HStack(spacing: RelaySpacing.compact) {
-                SessionStatusMark(status: status).font(.caption)
+                if item.state != nil { SessionStatusMark(status: status).font(.caption) }
                 Text(title).font(.subheadline.weight(.semibold))
                 Spacer(minLength: 4)
                 Text(activityState(item.state)).font(.caption).foregroundStyle(.secondary)
@@ -219,7 +282,7 @@ private struct ActivityDetailRow: View {
                 if item.truncated == true { Text(String(localized: "Partial content", bundle: relayLocalizationBundle)) }
             }.font(.caption).foregroundStyle(.secondary)
             }
-            if !ChangeOverview.paths([item]).isEmpty {
+            if !expanded && !ChangeOverview.paths([item]).isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(ChangeOverview.paths([item]), id: \.self) { path in
                         HStack(alignment: .firstTextBaseline) {
@@ -244,7 +307,7 @@ private struct ActivityDetailRow: View {
                     Image(systemName: "chevron.right").rotationEffect(.degrees(expanded ? 90 : 0))
                     Text(item.files?.isEmpty == false || item.kind == "diff" ? String(localized: "Changes", bundle: relayLocalizationBundle) : "Output")
                     Spacer()
-                    if !output.isEmpty && item.files?.isEmpty != false && item.kind != "diff" { Text(String(localized: "\(output.split(separator: "\n", omittingEmptySubsequences: false).count) lines", bundle: relayLocalizationBundle)).foregroundStyle(.secondary) }
+                    if !output.isEmpty && item.files?.isEmpty != false && item.kind != "diff" { Text(output.split(separator: "\n", omittingEmptySubsequences: false).count == 1 ? String(localized: "1 line", bundle: relayLocalizationBundle) : String(localized: "\(output.split(separator: "\n", omittingEmptySubsequences: false).count) lines", bundle: relayLocalizationBundle)).foregroundStyle(.secondary) }
                 }.font(.caption.weight(.medium)).frame(minHeight: 44).contentShape(Rectangle())
             }.buttonStyle(.plain).accessibilityIdentifier("activity.output." + item.id)
                 .accessibilityValue(expanded ? String(localized: "Expanded", bundle: relayLocalizationBundle) : String(localized: "Collapsed", bundle: relayLocalizationBundle))
