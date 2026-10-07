@@ -22,8 +22,8 @@ a second message. The + menu contains attachments only. Activity inspection dist
 compact aggregate, individual operation and changed-file list. Short live
 questions open in a partial-height material sheet. Sanitized screenshots and a
 recorded walkthrough document the current native views. The m2.9 signed iPhone
-build is ready; its installation is pending because the device is currently
-unavailable to the Mac. The previously installed build remains separate evidence.
+build is installed and launched in place on the physical device. Owner gesture
+and notification presentation acceptance remain separate from installation.
 
 The native app supports iOS 17+, English/Italian, Dynamic Type and Reduce Motion.
 Liquid Glass uses a material fallback on older iOS. Installation currently

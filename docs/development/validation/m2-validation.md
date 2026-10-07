@@ -639,7 +639,9 @@ deployment samples are not an iPhone latency guarantee.
 All 23 sanitized screenshots and the 18.40-second simulator walkthrough were
 refreshed after the final layout changes and reviewed across their full content.
 The README, navigation, setup, protocol and transparent
-Follow-up diagram describe the same controls. The signed iPhone build succeeds,
-but its installation attempt failed because CoreDevice reports the phone as
-unavailable. Physical acceptance of this build remains pending; the earlier
-installed build does not certify these new controls.
+Follow-up diagram describe the same controls. The signed iPhone build succeeds.
+The first installation attempt failed while CoreDevice reported the phone as
+unavailable. After the owner connected it, the m2.9 app was installed in place
+and launched successfully on the physical device. Physical gesture and
+notification presentation acceptance remain pending; installation alone does
+not certify those behaviors.
