@@ -1,5 +1,12 @@
 import SwiftUI
 
+private struct MarkdownProseFontKey: EnvironmentKey { static let defaultValue: Font = .body }
+extension EnvironmentValues {
+    var markdownProseFont: Font {
+        get { self[MarkdownProseFontKey.self] }
+        set { self[MarkdownProseFontKey.self] = newValue }
+    }
+}
 private struct CompleteMessageKey: EnvironmentKey {
     static let defaultValue: String? = nil
 }
@@ -13,10 +20,11 @@ extension EnvironmentValues {
 struct ChatMarkdown: View {
     let text: String
     let identifier: String
+    var compact = false
     @State private var rendering = MarkdownRendering()
     private var blocks: [RichBlock] { rendering.blocks }
     var body: some View {
-        VStack(alignment: .leading, spacing: RelaySpacing.row) {
+        VStack(alignment: .leading, spacing: 14) {
             if blocks.isEmpty {
                 Text(text).font(.body).fixedSize(horizontal: false, vertical: true).textSelection(.enabled).accessibilityIdentifier(identifier)
             } else {
@@ -25,6 +33,7 @@ struct ChatMarkdown: View {
                 }
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
+            .environment(\.markdownProseFont, compact ? .callout : .body)
             .onChange(of: text, initial: true) { _, value in rendering.submit(value) }
             .onDisappear { rendering.cancel() }
     }
@@ -58,6 +67,7 @@ private final class MarkdownRendering {
 
 private struct MarkdownBlockView: View {
     @Environment(\.completeMessage) private var completeMessage
+    @Environment(\.markdownProseFont) private var baseFont
     let block: RichBlock
     let identifier: String
     var body: some View {
@@ -78,7 +88,7 @@ private struct MarkdownBlockView: View {
                 VStack(alignment: .leading, spacing: RelaySpacing.compact) {
                     ForEach(Array(block.children.enumerated()), id: \.element.id) { index, child in
                         HStack(alignment: .firstTextBaseline, spacing: RelaySpacing.row) {
-                            Text(block.ordinal.map { "\($0 + index)." } ?? "•").font(.body.monospacedDigit()).foregroundStyle(.secondary)
+                            Text(block.ordinal.map { "\($0 + index)." } ?? "•").font(.body.monospacedDigit()).foregroundStyle(.secondary).frame(minWidth: 18, alignment: .trailing)
                             MarkdownBlockView(block: child, identifier: identifier + "." + child.id)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }.fixedSize(horizontal: false, vertical: true)
@@ -110,7 +120,7 @@ private struct MarkdownBlockView: View {
         }
     }
     private func inline(_ spans: [RichSpan]) -> some View {
-        Text(styled(spans)).lineLimit(nil).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+        Text(styled(spans)).lineSpacing(3).lineLimit(nil).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             .contextMenu {
                 if let completeMessage {
                     Button(String(localized: "Copy Full Message", bundle: relayLocalizationBundle), systemImage: "doc.on.doc") { UIPasteboard.general.string = completeMessage }
@@ -126,14 +136,20 @@ private struct MarkdownBlockView: View {
                 }
             }
     }
+    private var proseFont: Font {
+        guard block.kind == .heading else { return baseFont }
+        return block.level == 1 ? .title3.weight(.semibold) : .headline
+    }
     private func styled(_ spans: [RichSpan]) -> AttributedString {
         var result = AttributedString()
         for span in spans {
             var part = AttributedString(span.text)
-            var font: Font = span.code ? .system(.body, design: .monospaced) : .body
+            var font: Font = span.code ? .system(.callout, design: .monospaced) : proseFont
             if span.bold { font = font.bold() }; if span.italic { font = font.italic() }
             // Leave ordinary prose font to the block so headings can scale.
-            if span.code || span.bold || span.italic { part.font = font }
+            part.font = font
+            if span.code { part.backgroundColor = Color.primary.opacity(0.07) }
+            if span.strikethrough { part.strikethroughStyle = .single }
             if let target = span.link, let url = RichDocument.webURL(target) { part.link = url; part.foregroundColor = .accentColor }
             result.append(part)
         }

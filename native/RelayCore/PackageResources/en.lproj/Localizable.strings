@@ -7,6 +7,7 @@
 "%lld events" = "%lld events";
 "%lld failed" = "%lld failed";
 "%lld files changed" = "%lld files changed";
+"%lld images" = "%lld images";
 "%lld items" = "%lld items";
 "%lld items loaded" = "%lld items loaded";
 "%lld lines" = "%lld lines";
@@ -47,6 +48,7 @@
 "Add a follow-up…" = "Add a follow-up…";
 "Add a machine" = "Add a machine";
 "Add machine" = "Add machine";
+"Add photos" = "Add photos";
 "Adds this option to your draft. Review before sending." = "Adds this option to your draft. Review before sending.";
 "Agent epoch" = "Agent epoch";
 "Agent → Hub" = "Agent → Hub";
@@ -318,6 +320,7 @@
 "Open Relay to see the current state." = "Open Relay to see the current state.";
 "Open details and output" = "Open details and output";
 "Open iOS notification settings" = "Open iOS notification settings";
+"Operation" = "Operation";
 "Origin" = "Origin";
 "Outbox full or message too long." = "Outbox full or message too long.";
 "Output" = "Output";
@@ -341,6 +344,8 @@
 "Pending requests" = "Pending requests";
 "Permission context unavailable: resolve in local Codex." = "Permission context unavailable: resolve in local Codex.";
 "Plan" = "Plan";
+"Prepare a reply, then send it to the current turn. This live question is not a pending approval." = "Prepare a reply, then send it to the current turn. This live question is not a pending approval.";
+"Preparing image…" = "Preparing image…";
 "Project" = "Project";
 "Protocol" = "Protocol";
 "QUEUED" = "QUEUED";
@@ -378,12 +383,15 @@
 "Remote push" = "Remote push";
 "Remove controller" = "Remove controller";
 "Remove enrollment" = "Remove enrollment";
+"Remove image" = "Remove image";
 "Remove machine enrollment" = "Remove machine enrollment";
 "Remove this controller and its notification registration? Its credential will stop working." = "Remove this controller and its notification registration? Its credential will stop working.";
 "Remove this enrollment and its Relay routing metadata? The credential is revoked. Codex and its history remain on the machine." = "Remove this enrollment and its Relay routing metadata? The credential is revoked. Codex and its history remain on the machine.";
 "Removing controller…" = "Removing controller…";
 "Removing…" = "Removing…";
 "Renamed" = "Renamed";
+"Reply" = "Reply";
+"Reply using the live question above the composer." = "Reply using the live question above the composer.";
 "Reported by" = "Reported by";
 "Reported credit balance. Codex does not specify a unit; this is not a currency amount." = "Reported credit balance. Codex does not specify a unit; this is not a currency amount.";
 "Requested permissions · this turn only" = "Requested permissions · this turn only";
@@ -432,6 +440,7 @@
 "Send failed" = "Send failed";
 "Send follow-up" = "Send follow-up";
 "Send test notification" = "Send test notification";
+"Send to current turn" = "Send to current turn";
 "Sending response…" = "Sending response…";
 "Sending test…" = "Sending test…";
 "Session Info" = "Session Info";
@@ -478,6 +487,7 @@
 "This chat shows temporary recent context. History remains in Codex." = "This chat shows temporary recent context. History remains in Codex.";
 "This controller has been removed." = "This controller has been removed.";
 "This iPhone" = "This iPhone";
+"This image could not be prepared. Choose a smaller photo or screenshot." = "This image could not be prepared. Choose a smaller photo or screenshot.";
 "This machine is no longer enrolled in this Relay." = "This machine is no longer enrolled in this Relay.";
 "This machine is not in the current Hub snapshot." = "This machine is not in the current Hub snapshot.";
 "This message is no longer editable in the queue. Your text stays in the composer." = "This message is no longer editable in the queue. Your text stays in the composer.";
@@ -504,11 +514,14 @@
 "Used on" = "Used on";
 "VERIFY OUTCOME" = "VERIFY OUTCOME";
 "Version" = "Version";
+"View all %lld activities" = "View all %lld activities";
+"View image" = "View image";
 "View queued messages" = "View queued messages";
 "Waiting for output…" = "Waiting for output…";
 "Waiting for tool result…" = "Waiting for tool result…";
 "Within limit" = "Within limit";
 "Working" = "Working";
+"Write a reply" = "Write a reply";
 "Yes" = "Yes";
 "Your Codex fleet.\nOn iPhone." = "Your Codex fleet.\nOn iPhone.";
 "Your Hub coordinates machines, controllers and notifications. The person administering the Hub owns this installation. There is no Relay cloud account." = "Your Hub coordinates machines, controllers and notifications. The person administering the Hub owns this installation. There is no Relay cloud account.";

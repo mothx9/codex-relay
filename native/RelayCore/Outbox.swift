@@ -2,6 +2,7 @@ import Foundation
 public enum DeliveryPhase: String, Sendable { case unconfirmed = "UNCONFIRMED", local = "LOCAL", sending = "SENDING", queued = "QUEUED", dispatched = "DISPATCHED", materialized = "MATERIALIZED", accepted = "ACCEPTED", steering = "STEERING", applied = "APPLIED", failed = "FAILED" }
 public struct Outgoing: Identifiable, Sendable {
     public let id: String; public let sessionId: String; public let kind: String; public var text: String; public var phase: DeliveryPhase = .local
+    public var images: [ImageInput] = []; public var imageCount = 0
     public var queuePosition: Int?; public var queueId: String?; public var queueRevision: String?; public var queueEditable = false
     public var error: String?; public var errorCode: String?; public let expectedTurn: String?; public let created: Date
 }
@@ -11,11 +12,17 @@ public struct Outbox: Sendable {
     // Remember identities, never text, so a late queue read cannot resurrect them.
     private var canonical: [(session: String, client: String)] = []
     public init() {}
-    public mutating func add(id: String = UUID().uuidString, session: String, kind: String, text: String, expectedTurn: String? = nil, now: Date = Date()) throws -> String {
+    public mutating func add(id: String = UUID().uuidString, session: String, kind: String, text: String, images: [ImageInput] = [], expectedTurn: String? = nil, now: Date = Date()) throws -> String {
         if items.contains(where: { $0.id == id }) { return id }
+        let incomingBytes = images.reduce(0) { $0 + $1.data.count }
+        guard images.count <= ImageInput.maxCount, images.allSatisfy({ !$0.data.isEmpty && $0.data.count <= ImageInput.maxBytes }) else { throw HubFailure.message("Images exceed the attachment limit.") }
+        // Retain a small local preview after canonical reconciliation; evict oldest
+        // confirmed previews before admitting more, without touching pending input.
+        for index in items.indices where items[index].phase == .materialized && items.reduce(incomingBytes, { $0 + $1.images.reduce(0) { $0 + $1.data.count } }) > 4 * 1024 * 1024 { items[index].images = [] }
+        guard items.reduce(incomingBytes, { $0 + $1.images.reduce(0) { $0 + $1.data.count } }) <= 4 * 1024 * 1024 else { throw HubFailure.message("Attachment outbox full. Wait for pending messages before adding more images.") }
         let pending = items.filter { $0.phase != .materialized }
         guard text.utf8.count <= 16384, pending.count < 32, pending.reduce(text.utf8.count, { $0 + $1.text.utf8.count }) <= 131072 else { throw HubFailure.message(String(localized: "Outbox full or message too long.", bundle: relayLocalizationBundle)) }
-        items.append(Outgoing(id: id, sessionId: session, kind: kind, text: text, expectedTurn: expectedTurn, created: now))
+        items.append(Outgoing(id: id, sessionId: session, kind: kind, text: text, images: images, imageCount: images.count, expectedTurn: expectedTurn, created: now))
         while items.count > 128, let i = items.firstIndex(where: { $0.phase == .materialized }) { items.remove(at: i) }
         return id
     }
@@ -51,13 +58,19 @@ public struct Outbox: Sendable {
         }
         for (position, entry) in entries.enumerated() {
             guard !entry.clientId.isEmpty, !canonical.contains(where: { $0.session == session && $0.client == entry.clientId }) else { continue }
-            guard let text = entry.text, !text.isEmpty else { continue }
+            let text = entry.text ?? ""
+            guard !text.isEmpty || (entry.imageCount ?? 0) > 0 else { continue }
             if !items.contains(where: { $0.id == entry.clientId }) { _ = try? add(id: entry.clientId, session: session, kind: "follow_up", text: text) }
             update(entry.clientId) { if $0.sessionId == session && ![.materialized, .dispatched].contains($0.phase) {
+                $0.imageCount = entry.imageCount ?? $0.images.count
                 $0.phase = .queued; $0.queuePosition = position; $0.text = text; $0.queueId = entry.id; $0.queueRevision = entry.revision; $0.queueEditable = entry.editable == true
                 $0.error = nil; $0.errorCode = nil
             } }
         }
+    }
+    public func images(session: String, clientID: String?) -> [ImageInput] {
+        guard let clientID else { return [] }
+        return items.first { $0.sessionId == session && $0.id == clientID }?.images ?? []
     }
     public func visible(session: String) -> [Outgoing] { items.filter { $0.sessionId == session && $0.phase != .materialized } }
     public func pending(session: String) -> [Outgoing] {

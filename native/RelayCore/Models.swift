@@ -79,6 +79,7 @@ public struct Machine: Codable, Identifiable, Sendable {
     }
 }
 public struct Capabilities: Codable, Sendable {
+    public var canSendImages: Bool?
     public var canEditQueue: Bool?
     public var canSend: Bool; public var canFollowUp: Bool; public var canSteer: Bool; public var canInterrupt: Bool; public var canAnswer: Bool
     public init(canSend: Bool = false, canFollowUp: Bool = false, canSteer: Bool = false, canInterrupt: Bool = false, canAnswer: Bool = false) {
@@ -124,7 +125,13 @@ public struct LiveActivity: Codable, Sendable, Equatable {
     }
     public var detail: String { label.isEmpty ? title : title + " · " + label }
 }
+public struct QuestionReply: Codable, Sendable, Equatable {
+    public let question: String
+    public let answer: String
+}
 public struct Activity: Codable, Identifiable, Sendable, Equatable {
+    public var replies: [QuestionReply]?
+    public var imageCount: Int?
     public var id: String; public var kind: String; public var text: String; public var timestamp: String?; public var clientId: String?
     public var turnId: String?
     public var questions: [AsyncQuestion]?; public var truncated: Bool?
@@ -138,13 +145,14 @@ public struct Activity: Codable, Identifiable, Sendable, Equatable {
         return text
     }
     public init(id: String, kind: String, text: String, timestamp: String? = nil, clientId: String? = nil, questions: [AsyncQuestion]? = nil, truncated: Bool? = nil) { self.id = id; self.kind = kind; self.text = text; self.timestamp = timestamp; self.clientId = clientId; self.questions = questions; self.truncated = truncated }
-    public var contextBytes: Int { (progress?.utf8.count ?? 0) + (resultSummary?.utf8.count ?? 0) + text.utf8.count + (questions ?? []).reduce(0) { $0 + $1.title.utf8.count + ($1.options ?? []).reduce(0) { $0 + $1.utf8.count } } + (command?.utf8.count ?? 0) + (toolName?.utf8.count ?? 0) + (toolServer?.utf8.count ?? 0) + (files ?? []).reduce(0) { $0 + $1.path.utf8.count + $1.kind.utf8.count + ($1.previousPath?.utf8.count ?? 0) + ($1.patch?.utf8.count ?? 0) } }
+    public var contextBytes: Int { (replies ?? []).reduce(0) { $0 + $1.question.utf8.count + $1.answer.utf8.count } + (progress?.utf8.count ?? 0) + (resultSummary?.utf8.count ?? 0) + text.utf8.count + (questions ?? []).reduce(0) { $0 + $1.title.utf8.count + ($1.options ?? []).reduce(0) { $0 + $1.utf8.count } } + (command?.utf8.count ?? 0) + (toolName?.utf8.count ?? 0) + (toolServer?.utf8.count ?? 0) + (files ?? []).reduce(0) { $0 + $1.path.utf8.count + $1.kind.utf8.count + ($1.previousPath?.utf8.count ?? 0) + ($1.patch?.utf8.count ?? 0) } }
 }
 public struct AsyncQuestion: Codable, Sendable, Equatable {
     public let title: String; public let options: [String]?
     public init(title: String, options: [String]? = nil) { self.title = title; self.options = options }
 }
 public struct FollowUp: Codable, Sendable {
+    public let imageCount: Int?
     public let id: String; public let clientId: String; public let text: String?
     public let editable: Bool?; public let revision: String?
 }
@@ -392,4 +400,14 @@ public struct SessionCatalogue: Sendable {
     public func merged(canonical: [String: RelaySession]) -> [String: RelaySession] {
         sessions.merging(canonical) { _, current in current }
     }
+}
+
+/// Ephemeral inline image; the wire encoder emits base64, never a local path.
+public struct ImageInput: Sendable, Equatable, Identifiable {
+    public let id = UUID().uuidString
+    public let mediaType: String
+    public let data: Data
+    public init(mediaType: String = "image/jpeg", data: Data) { self.mediaType = mediaType; self.data = data }
+    public static let maxCount = 2
+    public static let maxBytes = 256 * 1024
 }

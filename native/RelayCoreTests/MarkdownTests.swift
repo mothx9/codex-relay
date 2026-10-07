@@ -72,3 +72,21 @@ extension MarkdownTests {
         }
     }
 }
+
+extension MarkdownTests {
+    func testQuotesCodeAndNestedEmphasisKeepTheirMeaning() {
+        let block = RichDocument.parse("Use `test-123` — not 'test-456' — and **bold `code`** or ~~obsolete~~.")[0]
+        XCTAssertTrue(block.spans.contains { $0.text == "test-123" && $0.code })
+        XCTAssertTrue(block.spans.contains { $0.text.contains("‘test-456’") && !$0.code })
+        XCTAssertTrue(block.spans.contains { $0.text == "code" && $0.code && $0.bold })
+        XCTAssertTrue(block.spans.contains { $0.text == "obsolete" && $0.strikethrough })
+    }
+    func testToolPreviewUsesSourceAndDescriptionWithoutInventingSemantics() {
+        var item = Activity(id: "tool", kind: "mcpToolCall", text: "")
+        item.toolServer = "computer"; item.toolName = "js"; item.progress = "Inspect the simulator\nFull details"
+        XCTAssertEqual(ActivityPreview.tool(item), "computer · js")
+        XCTAssertEqual(ActivityPreview.detail(item), "Inspect the simulator")
+        item.progress = nil; item.resultSummary = "Observed 3 controls"
+        XCTAssertEqual(ActivityPreview.detail(item), "Observed 3 controls")
+    }
+}

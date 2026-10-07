@@ -7,6 +7,7 @@
 "%lld events" = "%lld eventi";
 "%lld failed" = "%lld non riusciti";
 "%lld files changed" = "%lld file modificati";
+"%lld images" = "%lld immagini";
 "%lld items" = "%lld elementi";
 "%lld items loaded" = "%lld elementi caricati";
 "%lld lines" = "%lld righe";
@@ -47,6 +48,7 @@
 "Add a follow-up…" = "Aggiungi un follow-up…";
 "Add a machine" = "Aggiungi una macchina";
 "Add machine" = "Aggiungi macchina";
+"Add photos" = "Aggiungi foto";
 "Adds this option to your draft. Review before sending." = "Aggiunge questa opzione alla bozza. Controllala prima di inviare.";
 "Agent epoch" = "Epoca agent";
 "Agent → Hub" = "Agent → Hub";
@@ -318,6 +320,7 @@
 "Open Relay to see the current state." = "Apri Relay per vedere lo stato attuale.";
 "Open details and output" = "Apri dettagli e output";
 "Open iOS notification settings" = "Apri impostazioni notifiche iOS";
+"Operation" = "Operazione";
 "Origin" = "Origine";
 "Outbox full or message too long." = "Outbox pieno o messaggio troppo lungo.";
 "Output" = "Output";
@@ -341,6 +344,8 @@
 "Pending requests" = "Richieste in attesa";
 "Permission context unavailable: resolve in local Codex." = "Contesto dei permessi non disponibile: risolvi da Codex locale.";
 "Plan" = "Piano";
+"Prepare a reply, then send it to the current turn. This live question is not a pending approval." = "Prepara una risposta, poi inviala al turno corrente. Questa domanda live non è un’approvazione in attesa.";
+"Preparing image…" = "Preparazione immagine…";
 "Project" = "Progetto";
 "Protocol" = "Protocollo";
 "QUEUED" = "IN CODA";
@@ -378,12 +383,15 @@
 "Remote push" = "Push remoto";
 "Remove controller" = "Rimuovi controller";
 "Remove enrollment" = "Rimuovi registrazione";
+"Remove image" = "Rimuovi immagine";
 "Remove machine enrollment" = "Rimuovi registrazione macchina";
 "Remove this controller and its notification registration? Its credential will stop working." = "Rimuovere questo controller e la sua registrazione notifiche? La credenziale smetterà di funzionare.";
 "Remove this enrollment and its Relay routing metadata? The credential is revoked. Codex and its history remain on the machine." = "Rimuovere questa registrazione e i metadati di instradamento Relay? La credenziale viene revocata. Codex e la sua cronologia rimangono sulla macchina.";
 "Removing controller…" = "Rimozione controller…";
 "Removing…" = "Rimozione…";
 "Renamed" = "Rinominato";
+"Reply" = "Rispondi";
+"Reply using the live question above the composer." = "Rispondi dalla domanda live sopra il campo di scrittura.";
 "Reported by" = "Dati forniti da";
 "Reported credit balance. Codex does not specify a unit; this is not a currency amount." = "Saldo crediti riportato. Codex non specifica un’unità; non è un importo in valuta.";
 "Requested permissions · this turn only" = "Permessi richiesti · soltanto per questo turno";
@@ -432,6 +440,7 @@
 "Send failed" = "Invio fallito";
 "Send follow-up" = "Invia follow-up";
 "Send test notification" = "Invia notifica di test";
+"Send to current turn" = "Invia al turno corrente";
 "Sending response…" = "Invio della risposta…";
 "Sending test…" = "Invio test…";
 "Session Info" = "Contesto della sessione";
@@ -478,6 +487,7 @@
 "This chat shows temporary recent context. History remains in Codex." = "Questa chat mostra contesto recente ed effimero. La cronologia rimane in Codex.";
 "This controller has been removed." = "Questo controller è stato rimosso.";
 "This iPhone" = "Questo iPhone";
+"This image could not be prepared. Choose a smaller photo or screenshot." = "Impossibile preparare questa immagine. Scegli una foto o uno screenshot più piccolo.";
 "This machine is no longer enrolled in this Relay." = "Questa macchina non è più registrata in questo Relay.";
 "This machine is not in the current Hub snapshot." = "Questa macchina non è nello snapshot attuale del Hub.";
 "This message is no longer editable in the queue. Your text stays in the composer." = "Il messaggio non è più modificabile in coda. Il testo resta nel composer.";
@@ -504,11 +514,14 @@
 "Used on" = "Utilizzato su";
 "VERIFY OUTCOME" = "ESITO DA VERIFICARE";
 "Version" = "Versione";
+"View all %lld activities" = "Mostra tutte le %lld attività";
+"View image" = "Visualizza immagine";
 "View queued messages" = "Visualizza messaggi in coda";
 "Waiting for output…" = "In attesa di output…";
 "Waiting for tool result…" = "In attesa del risultato del tool…";
 "Within limit" = "Entro il limite";
 "Working" = "In corso";
+"Write a reply" = "Scrivi una risposta";
 "Yes" = "Sì";
 "Your Codex fleet.\nOn iPhone." = "La tua fleet Codex.\nSu iPhone.";
 "Your Hub coordinates machines, controllers and notifications. The person administering the Hub owns this installation. There is no Relay cloud account." = "Il tuo Hub coordina macchine, controller e notifiche. Chi amministra il Hub possiede questa installazione. Non esiste un account cloud Relay.";

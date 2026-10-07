@@ -5678,8 +5678,13 @@
       }
     },
     "Live question": {
-      "extractionState": "manual",
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live question"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -5977,6 +5982,214 @@
           "stringUnit": {
             "state": "translated",
             "value": "Codex non elenca più questo messaggio nella coda. Il suo esito non è ancora confermato. Verifica la conversazione prima di inviarlo di nuovo."
+          }
+        }
+      }
+    },
+    "Add photos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add photos"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungi foto"
+          }
+        }
+      }
+    },
+    "Remove image": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove image"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuovi immagine"
+          }
+        }
+      }
+    },
+    "Preparing image…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparing image…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparazione immagine…"
+          }
+        }
+      }
+    },
+    "View image": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View image"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visualizza immagine"
+          }
+        }
+      }
+    },
+    "Send to current turn": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send to current turn"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia al turno corrente"
+          }
+        }
+      }
+    },
+    "This image could not be prepared. Choose a smaller photo or screenshot.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This image could not be prepared. Choose a smaller photo or screenshot."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile preparare questa immagine. Scegli una foto o uno screenshot più piccolo."
+          }
+        }
+      }
+    },
+    "%lld images": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld images"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld immagini"
+          }
+        }
+      }
+    },
+    "View all %lld activities": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View all %lld activities"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra tutte le %lld attività"
+          }
+        }
+      }
+    },
+    "Operation": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Operation"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Operazione"
+          }
+        }
+      }
+    },
+    "Reply": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reply"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rispondi"
+          }
+        }
+      }
+    },
+    "Write a reply": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Write a reply"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scrivi una risposta"
+          }
+        }
+      }
+    },
+    "Prepare a reply, then send it to the current turn. This live question is not a pending approval.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prepare a reply, then send it to the current turn. This live question is not a pending approval."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prepara una risposta, poi inviala al turno corrente. Questa domanda live non è un’approvazione in attesa."
+          }
+        }
+      }
+    },
+    "Reply using the live question above the composer.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reply using the live question above the composer."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rispondi dalla domanda live sopra il campo di scrittura."
           }
         }
       }

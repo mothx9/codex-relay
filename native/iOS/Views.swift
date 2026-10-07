@@ -29,7 +29,10 @@ struct RootView: View {
                             Button { library = true } label: { Image(systemName: "sidebar.left").frame(minWidth: 44, minHeight: 44) }
                                 .accessibilityLabel(String(localized: "Relay menu", bundle: relayLocalizationBundle)).accessibilityIdentifier("navigation.relay")
                         }
-                        ToolbarItem(placement: .principal) { Text(destination == 0 ? "Codex Relay" : destination == 1 ? String(localized: "Needs You", bundle: relayLocalizationBundle) : String(localized: "Settings", bundle: relayLocalizationBundle)).font(.headline) }
+                        ToolbarItem(placement: .principal) {
+                            if destination == 0 { Image("RelayMark").resizable().scaledToFit().frame(width: 28, height: 28).accessibilityLabel("Codex Relay") }
+                            else { Text(String(localized: "Needs You", bundle: relayLocalizationBundle)).font(.headline) }
+                        }
                         if destination == 0 {
                             ToolbarItem(placement: .topBarTrailing) {
                                 Menu {
@@ -496,7 +499,7 @@ struct LastKnownSession: View {
         let sessionSpecs = [("laptop", "decision", "Validate the release", "relay", "NEEDS_YOU"), ("workstation", "build", "Harden input validation", "compiler", "WORKING"), ("laptop", "docs", "Update installation guide", "relay", "READY"), ("node", "kernel", "Check CUDA kernels", "compute", "WORKING")]
         let sessions: [RelaySession] = sessionSpecs.enumerated().map { index, spec in
             let (machine, thread, title, project, status) = spec
-            return decode(["id": machine + "~" + thread, "machine_id": machine, "thread_id": thread, "title": title, "project": project, "cwd": "/workspace/" + project, "branch": "main", "status": status, "updated_at": ISO8601DateFormatter().string(from: now.addingTimeInterval(Double(-index * 60))), "turn_id": "example-turn", "turn_started": ISO8601DateFormatter().string(from: now.addingTimeInterval(-267)), "read_only": false, "capabilities": ["can_send": true, "can_follow_up": true, "can_steer": true, "can_interrupt": true, "can_answer": true]])
+            return decode(["id": machine + "~" + thread, "machine_id": machine, "thread_id": thread, "title": title, "project": project, "cwd": "/workspace/" + project, "branch": "main", "status": status, "updated_at": ISO8601DateFormatter().string(from: now.addingTimeInterval(Double(-index * 60))), "turn_id": "example-turn", "turn_started": ISO8601DateFormatter().string(from: now.addingTimeInterval(-267)), "read_only": false, "capabilities": ["can_send": true, "can_send_images": true, "can_follow_up": true, "can_steer": true, "can_interrupt": true, "can_answer": true]])
         }
         relay.sessions = Dictionary(uniqueKeysWithValues: sessions.map { ($0.id, $0) })
         relay.liveActivities = ["workstation~build": decode(["item_id": "example-command", "kind": "terminal", "label": "cargo test --workspace", "state": "running", "timestamp": stamp])]
@@ -510,7 +513,7 @@ struct LastKnownSession: View {
         command.command = "cargo test --workspace"; command.state = "running"; command.timestamp = stamp
         relay.chat.put(command)
         var tool = Activity(id: "example-tool", kind: "mcpToolCall", text: "fetch_document")
-        tool.toolName = "fetch_document"; tool.toolServer = "documentation"; tool.state = surface == "tools" ? "running" : "completed"; tool.progress = "Reading the validation API reference"
+        tool.toolName = "fetch_document"; tool.toolServer = "documentation"; tool.state = surface == "tools" ? "running" : "completed"; tool.progress = "Reading the validation API reference"; tool.resultSummary = surface == "tools" ? nil : "The validation API rejects empty input and returns a typed error. Source: local API reference."
         relay.chat.put(tool)
         var file = Activity(id: "example-file", kind: "fileChange", text: "src/validation.rs")
         file.state = "completed"; file.files = decode([["path": "src/validation.rs", "kind": "modify", "patch": patch]])

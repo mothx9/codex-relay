@@ -1,11 +1,21 @@
 import SwiftUI
+import PhotosUI
+import UniformTypeIdentifiers
+import ImageIO
+import UIKit
 
 struct SessionView: View {
     @Environment(RelayController.self) private var relay
     @State private var draft = ""
+    @State private var images: [ImageInput] = []
+    @State private var showPhotos = false
+    @State private var questionDetails = false
+    @State private var photoItems: [PhotosPickerItem] = []
+    @State private var loadingImages = 0
     @State private var steer = false
     @State private var editingQueue: Outgoing?
     @State private var draftBeforeEdit = ""
+    @State private var imagesBeforeEdit: [ImageInput] = []
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var expectedTurn = ""
     @State private var interrupt = false
@@ -31,10 +41,34 @@ struct SessionView: View {
                     composing = true
                 }
                 .simultaneousGesture(TapGesture().onEnded { actionsOpen = false })
+                liveQuestionDock(session)
                 queuedMessages(session)
                 SessionHeartbeat(session: session).padding(.horizontal, 20).padding(.top, 2)
                 composer(session).padding(.horizontal, 12).padding(.top, 4).padding(.bottom, 2)
             }
+                .onDrop(of: [UTType.image.identifier], isTargeted: nil) { providers in
+                    guard session.capabilities.canSendImages == true, editingQueue == nil, !submitting else { return false }
+                    let accepted = providers.prefix(max(0, ImageInput.maxCount - images.count - loadingImages))
+                    for provider in accepted {
+                        guard let type = provider.registeredTypeIdentifiers.first(where: { UTType($0)?.conforms(to: .image) == true }) else { continue }
+                        loadingImages += 1
+                        provider.loadDataRepresentation(forTypeIdentifier: type) { data, _ in
+                            Task { @MainActor in await importImage(data, sessionID: session.id) }
+                        }
+                    }
+                    return !accepted.isEmpty
+                }
+                .photosPicker(isPresented: $showPhotos, selection: $photoItems, maxSelectionCount: max(1, ImageInput.maxCount - images.count - loadingImages), matching: .images)
+                .onChange(of: currentQuestions(session).map(\.id)) { _, ids in if ids.isEmpty { questionDetails = false } }
+                .sheet(isPresented: $questionDetails) { liveQuestionSheet(session) }
+                .onChange(of: photoItems) { _, items in
+                    guard !items.isEmpty else { return }
+                    photoItems = []
+                    for item in items.prefix(max(0, ImageInput.maxCount - images.count - loadingImages)) {
+                        loadingImages += 1
+                        Task { await importImage(try? await item.loadTransferable(type: Data.self), sessionID: session.id) }
+                    }
+                }
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .principal) {
@@ -53,8 +87,8 @@ struct SessionView: View {
                 .onChange(of: relay.outbox.items.filter { $0.sessionId == session.id && $0.kind == "steer" && $0.phase == .failed && $0.errorCode != "UNKNOWN_OUTCOME" }.map(\.id)) { old, new in
                     guard draft.isEmpty, let id = new.last(where: { !old.contains($0) }),
                           let failed = relay.outbox.items.first(where: { $0.id == id }) else { return }
-                    draft = failed.text
-                    steer = false
+                    draft = failed.text; images = failed.images
+                    steer = true; expectedTurn = failed.expectedTurn ?? ""
                 }
                 .sheet(isPresented: $queueDetails) {
                     NavigationStack {
@@ -87,7 +121,7 @@ struct SessionView: View {
                         Spacer()
                         Button(String(localized: "Cancel", bundle: relayLocalizationBundle)) {
                             withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
-                                self.editingQueue = nil; draft = draftBeforeEdit; draftBeforeEdit = ""
+                                self.editingQueue = nil; draft = draftBeforeEdit; draftBeforeEdit = ""; images = imagesBeforeEdit; imagesBeforeEdit = []
                             }
                             relay.queueEditError = nil
                         }.font(.caption).disabled(submitting)
@@ -109,7 +143,21 @@ struct SessionView: View {
                 }
                 let kind = editingQueue != nil ? "queue_update" : steer ? "steer" : session.defaultCommand
                 let available = machineOnline(session) && session.allows(kind) && (editingQueue != nil || ["READY", "WORKING"].contains(session.status))
-                let canSend = available && !submitting && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                let canSend = available && !submitting && loadingImages == 0 && (!draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !images.isEmpty) && (images.isEmpty || session.capabilities.canSendImages == true)
+                if !images.isEmpty {
+                    HStack(spacing: 8) {
+                        ForEach(images) { image in
+                            ZStack(alignment: .topTrailing) {
+                                AttachmentPreview(image: image).frame(width: 72, height: 72)
+                                Button { images.removeAll { $0.id == image.id } } label: {
+                                    Image(systemName: "xmark.circle.fill").symbolRenderingMode(.palette).foregroundStyle(.primary, .regularMaterial).frame(width: 44, height: 44)
+                                }.accessibilityLabel(String(localized: "Remove image", bundle: relayLocalizationBundle)).disabled(submitting)
+                            }
+                        }
+                        Spacer()
+                    }.accessibilityIdentifier("composer.attachments")
+                }
+                if loadingImages > 0 { ProgressView(String(localized: "Preparing image…", bundle: relayLocalizationBundle)).font(.caption) }
                 HStack(alignment: .bottom, spacing: 4) {
                     Button {
                         withAnimation(reduceMotion ? nil : .easeOut(duration: 0.16)) { actionsOpen.toggle() }
@@ -133,7 +181,7 @@ struct SessionView: View {
                                 defer { submitting = false }
                                 if await relay.editQueued(item, text: text) {
                                     withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
-                                        editingQueue = nil; draft = draftBeforeEdit; draftBeforeEdit = ""
+                                        editingQueue = nil; draft = draftBeforeEdit; draftBeforeEdit = ""; images = imagesBeforeEdit; imagesBeforeEdit = []
                                     }
                                 }
                             }
@@ -162,6 +210,56 @@ struct SessionView: View {
         }
     }
 
+    private func currentQuestions(_ session: RelaySession) -> [LiveQuestion] {
+        relay.liveQuestions.records.filter { $0.sessionID == session.id && $0.turnID == session.turnId }
+    }
+    @ViewBuilder private func liveQuestionDock(_ session: RelaySession) -> some View {
+        if let first = currentQuestions(session).first {
+            Button { questionDetails = true } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "questionmark.bubble").foregroundStyle(.orange)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(String(localized: "Live question", bundle: relayLocalizationBundle)).font(.caption.weight(.semibold))
+                        Text(first.activity.questions?.first?.title ?? first.activity.text).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                    Text(String(localized: "Reply", bundle: relayLocalizationBundle)).font(.subheadline.weight(.medium))
+                    Image(systemName: "chevron.right").font(.caption2)
+                }.frame(minHeight: 44).padding(.horizontal, 20).padding(.vertical, 4).contentShape(Rectangle())
+            }.buttonStyle(.plain).accessibilityIdentifier("session.liveQuestion")
+        }
+    }
+    private func liveQuestionSheet(_ session: RelaySession) -> some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ForEach(currentQuestions(session)) { record in
+                        ForEach(Array((record.activity.questions ?? []).enumerated()), id: \.offset) { index, question in
+                            VStack(alignment: .leading, spacing: 10) {
+                                ChatMarkdown(text: question.title, identifier: "liveQuestion.title.\(index)")
+                                ForEach(question.options ?? [], id: \.self) { option in
+                                    Button { prepareReply(question.title + "\n" + option, record: record, session: session) } label: {
+                                        HStack { Text(option).multilineTextAlignment(.leading); Spacer(); Image(systemName: "arrow.down.to.line") }.frame(minHeight: 44)
+                                    }.buttonStyle(.bordered).disabled(!machineOnline(session) || !session.allows("steer") || editingQueue != nil || submitting)
+                                }
+                                Button(String(localized: "Write a reply", bundle: relayLocalizationBundle), systemImage: "square.and.pencil") {
+                                    prepareReply(question.title + "\n", record: record, session: session)
+                                }.frame(minHeight: 44).disabled(!machineOnline(session) || !session.allows("steer") || editingQueue != nil || submitting)
+                            }
+                        }
+                    }
+                    Text(String(localized: "Prepare a reply, then send it to the current turn. This live question is not a pending approval.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
+                }.padding(20)
+            }.navigationTitle(String(localized: "Live question", bundle: relayLocalizationBundle)).navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Button(String(localized: "Close", bundle: relayLocalizationBundle)) { questionDetails = false } } }
+        }
+    }
+    private func prepareReply(_ answer: String, record: LiveQuestion, session: RelaySession) {
+        guard editingQueue == nil, !submitting, machineOnline(session), session.turnId == record.turnID,
+              relay.liveQuestions.records.contains(where: { $0.id == record.id }), session.allows("steer") else { return }
+        draft = draft.isEmpty ? answer : draft + "\n\n" + answer
+        steer = true; expectedTurn = record.turnID; questionDetails = false; composing = true
+    }
+
     @ViewBuilder private func queuedMessages(_ session: RelaySession) -> some View {
         let pending = relay.outbox.pending(session: session.id)
         if !pending.isEmpty {
@@ -179,6 +277,7 @@ struct SessionView: View {
                             HStack(alignment: .top, spacing: 8) {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(item.text).font(.subheadline).lineLimit(2)
+                                    if item.imageCount > 0 { Label(String(localized: "\(item.imageCount) images", bundle: relayLocalizationBundle), systemImage: "photo").font(.caption) }
                                     Text(item.phase == .queued ? "FOLLOW-UP · QUEUED" : item.phase == .unconfirmed ? String(localized: "No longer queued · check conversation", bundle: relayLocalizationBundle) : item.phase == .failed ? item.error ?? "Send failed" : "Sending…")
                                         .font(.caption2).foregroundStyle(item.phase == .failed ? RelayPalette.failure : .secondary)
                                 }.frame(maxWidth: .infinity, alignment: .leading)
@@ -197,19 +296,29 @@ struct SessionView: View {
     }
 
     private func hasComposerActions(_ session: RelaySession) -> Bool {
-        machineOnline(session) && (session.allows("steer") || session.allows("interrupt") ||
+        machineOnline(session) && (session.capabilities.canSendImages == true || session.allows("steer") || session.allows("interrupt") ||
             (session.allows("queue_update") && relay.outbox.visible(session: session.id).contains { $0.phase == .queued && $0.queueEditable }))
     }
 
     private func composerActions(_ session: RelaySession) -> some View {
         VStack(alignment: .leading, spacing: 0) {
+            if session.capabilities.canSendImages == true {
+                Button { actionsOpen = false; showPhotos = true } label: {
+                    Label(String(localized: "Add photos", bundle: relayLocalizationBundle), systemImage: "photo")
+                        .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 44)
+                }.disabled(editingQueue != nil || submitting || images.count + loadingImages >= ImageInput.maxCount)
+                Divider()
+            }
             if machineOnline(session) && session.allows("steer") {
                 Button {
-                    actionsOpen = false; steer.toggle(); expectedTurn = session.turnId ?? ""; composing = true
+                    actionsOpen = false
+                    if !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !images.isEmpty {
+                        sendDraft(session, kind: "steer", targetTurn: session.turnId)
+                    } else { steer.toggle(); expectedTurn = session.turnId ?? ""; composing = true }
                 } label: {
-                    Label(steer ? String(localized: "Back to follow-up", bundle: relayLocalizationBundle) : String(localized: "Steer Current Turn", bundle: relayLocalizationBundle), systemImage: "arrow.triangle.branch")
+                    Label(!draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !images.isEmpty ? String(localized: "Send to current turn", bundle: relayLocalizationBundle) : steer ? String(localized: "Back to follow-up", bundle: relayLocalizationBundle) : String(localized: "Steer Current Turn", bundle: relayLocalizationBundle), systemImage: "arrow.triangle.branch")
                         .frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 44)
-                }.disabled(editingQueue != nil)
+                }.disabled(editingQueue != nil || submitting || loadingImages > 0)
             }
             if machineOnline(session) && session.allows("queue_update"), let last = relay.outbox.visible(session: session.id).last(where: { $0.phase == .queued && $0.queueEditable }) {
                 Button { actionsOpen = false; beginQueueEdit(last) } label: {
@@ -232,7 +341,7 @@ struct SessionView: View {
 
     private func beginQueueEdit(_ item: Outgoing) {
         guard !submitting else { return }
-        if editingQueue == nil { draftBeforeEdit = draft }
+        if editingQueue == nil { draftBeforeEdit = draft; imagesBeforeEdit = images; images = [] }
         withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
             editingQueue = item; draft = item.text; steer = false
         }
@@ -241,16 +350,25 @@ struct SessionView: View {
 
     private func sendDraft(_ session: RelaySession, kind: String, targetTurn: String?) {
         guard !submitting else { return }
-        let text = draft
+        let text = draft, attachments = images
         submitting = true
         Task {
             defer { submitting = false }
             guard relay.current?.id == session.id else { return }
-            if await relay.submit(text, kind: kind, expectedTurn: targetTurn) {
+            if await relay.submit(text, images: attachments, kind: kind, expectedTurn: targetTurn) {
                 if draft == text { draft = "" }
+                if images == attachments { images = [] }
                 steer = false; scrollRequest += 1
             }
         }
+    }
+
+    private func importImage(_ data: Data?, sessionID: String) async {
+        defer { loadingImages -= 1; actionsOpen = false }
+        guard let data, relay.current?.id == sessionID, images.count < ImageInput.maxCount else { return }
+        let prepared = await Task.detached(priority: .userInitiated) { prepareAttachment(data) }.value
+        guard let prepared else { relay.error = String(localized: "This image could not be prepared. Choose a smaller photo or screenshot.", bundle: relayLocalizationBundle); return }
+        if relay.current?.id == sessionID, images.count < ImageInput.maxCount { images.append(prepared) }
     }
 
     private func contextSheet(_ session: RelaySession) -> some View {
@@ -286,7 +404,8 @@ private struct SessionTranscript: View {
     private struct ActivitySelection: Identifiable {
         let group: TranscriptGroup
         let path: String?
-        var id: String { group.id + "/" + (path ?? "") }
+        let itemID: String?
+        var id: String { group.id + "/" + (path ?? "") + "/" + (itemID ?? "") }
     }
     @State private var tools: ActivitySelection?
     @State private var scrolling = TranscriptScrollPolicy()
@@ -334,9 +453,9 @@ private struct SessionTranscript: View {
                                 Label(activity.state == "running" && activity.turnId == session.turnId && session.displayStatus(machine: relay.machines[session.machineId], connected: relay.online) == "WORKING" ? String(localized: "Compacting context", bundle: relayLocalizationBundle) : activity.state == "completed" ? String(localized: "Context compacted", bundle: relayLocalizationBundle) : String(localized: "Context compaction", bundle: relayLocalizationBundle), systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
                                     .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("context.compaction")
                             } else if group.kind == .message, let activity = group.items.first {
-                                ChatMessageView(activity: activity, liveQuestion: relay.liveQuestions.records.contains { $0.sessionID == relay.selected && $0.activity.id == activity.id }, onQuestionReply: onQuestionReply).equatable()
+                                ChatMessageView(activity: activity, images: relay.outbox.images(session: session.id, clientID: activity.clientId), liveQuestion: relay.liveQuestions.records.contains { $0.sessionID == relay.selected && $0.activity.id == activity.id }, onQuestionReply: onQuestionReply).equatable()
                             } else {
-                                ToolSummaryView(group: group) { path in tools = ActivitySelection(group: group, path: path) }
+                                ToolSummaryView(group: group) { path, itemID in tools = ActivitySelection(group: group, path: path, itemID: itemID) }
                             }
                         }
                         ForEach(relay.outbox.conversation(session: session.id)) { item in
@@ -404,7 +523,7 @@ private struct SessionTranscript: View {
                     }
                 }
             }
-        }.sheet(item: $tools) { ToolDetailView(group: $0.group, focusedPath: $0.path) }
+        }.sheet(item: $tools) { ToolDetailView(group: $0.group, focusedPath: $0.path, focusedItemID: $0.itemID) }
     }
 }
 
@@ -457,16 +576,27 @@ private struct ComposerSurface: ViewModifier {
 
 private struct ChatMessageView: View, Equatable {
     let activity: Activity
+    let images: [ImageInput]
     let liveQuestion: Bool
     let onQuestionReply: (String) -> Void
-    nonisolated static func == (lhs: Self, rhs: Self) -> Bool { lhs.activity == rhs.activity && lhs.liveQuestion == rhs.liveQuestion }
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool { lhs.activity == rhs.activity && lhs.images == rhs.images && lhs.liveQuestion == rhs.liveQuestion }
     private var user: Bool { activity.kind == "userMessage" }
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             if user { Spacer(minLength: 44) }
             VStack(alignment: user ? .trailing : .leading, spacing: 8) {
                 if user {
-                    Text(activity.text).font(.body).textSelection(.enabled)
+                    if !images.isEmpty { HStack { ForEach(images) { AttachmentPreview(image: $0).frame(width: 108, height: 108) } } }
+                    else if let count = activity.imageCount, count > 0 { Label(String(localized: "\(count) images", bundle: relayLocalizationBundle), systemImage: "photo").font(.caption).foregroundStyle(.secondary) }
+                    VStack(alignment: .leading, spacing: 8) {
+                        if let replies = activity.replies, !replies.isEmpty {
+                            ForEach(Array(replies.enumerated()), id: \.offset) { _, reply in
+                                ChatMarkdown(text: reply.question, identifier: "reply.context." + activity.id, compact: true)
+                                    .font(.caption).foregroundStyle(.secondary)
+                                Text(reply.answer).font(.body).textSelection(.enabled)
+                            }
+                        } else if !activity.text.isEmpty { Text(activity.text).font(.body).textSelection(.enabled) }
+                    }
                         .padding(.horizontal, 16).padding(.vertical, 12)
                         .background(.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 20))
                         .accessibilityIdentifier("activity." + activity.kind + "." + activity.id)
@@ -479,19 +609,15 @@ private struct ChatMessageView: View, Equatable {
                         VStack(alignment: .leading, spacing: 12) {
                             Label(liveQuestion ? String(localized: "Asked during this live turn", bundle: relayLocalizationBundle) : String(localized: "Question", bundle: relayLocalizationBundle), systemImage: "questionmark.bubble").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                             if activity.text == questions.map(\.title).joined(separator: "\n\n") || !activity.text.contains(question.title) {
-                                Text(question.title).font(.body).textSelection(.enabled)
-                                    .accessibilityIdentifier("question." + activity.id + ".\(index)")
+                                ChatMarkdown(text: question.title, identifier: "question." + activity.id + ".\(index)")
                             }
-                            ForEach(Array((question.options ?? []).enumerated()), id: \.offset) { _, option in
-                                if liveQuestion {
-                                    Button { onQuestionReply(question.title + "\n" + option) } label: {
-                                        HStack { Text(option); Spacer(); Image(systemName: "arrow.down.to.line") }.font(.subheadline).frame(minHeight: 44)
-                                    }.accessibilityHint(String(localized: "Adds this option to your draft. Review before sending.", bundle: relayLocalizationBundle))
-                                } else {
+                            if !liveQuestion {
+                                ForEach(Array((question.options ?? []).enumerated()), id: \.offset) { _, option in
                                     Text("• " + option).font(.subheadline).foregroundStyle(.secondary).textSelection(.enabled)
                                 }
+                            } else {
+                                Text(String(localized: "Reply using the live question above the composer.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
                             }
-                            if liveQuestion { Text(String(localized: "Choose an option to prepare a message. This is not a pending approval.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary) }
                         }.padding(RelaySpacing.row).frame(maxWidth: .infinity, alignment: .leading)
                             .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
                     }
@@ -532,6 +658,8 @@ private struct OutgoingMessageView: View {
         HStack {
             Spacer(minLength: 44)
             VStack(alignment: .trailing, spacing: 8) {
+                if !item.images.isEmpty { HStack { ForEach(item.images) { AttachmentPreview(image: $0).frame(width: 108, height: 108) } } }
+                else if item.imageCount > 0 { Label(String(localized: "\(item.imageCount) images", bundle: relayLocalizationBundle), systemImage: "photo").font(.caption) }
                 Text(item.text).font(.body).textSelection(.enabled)
                     .padding(.horizontal, 16).padding(.vertical, 12)
                     .background(.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 20))
@@ -619,5 +747,36 @@ private struct WorkingText: View {
                     }.mask(label).accessibilityHidden(true)
                 }
             }
+    }
+}
+
+
+/// Decode a bounded thumbnail and strip location/EXIF metadata before transport.
+private func prepareAttachment(_ data: Data) -> ImageInput? {
+    guard data.count <= 20 * 1024 * 1024,
+          let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
+          let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceCreateThumbnailWithTransform: true, kCGImageSourceThumbnailMaxPixelSize: 1600] as CFDictionary) else { return nil }
+    let image = UIImage(cgImage: thumbnail)
+    for quality in [0.85, 0.65, 0.45, 0.25] {
+        if let encoded = image.jpegData(compressionQuality: quality), encoded.count <= ImageInput.maxBytes { return ImageInput(data: encoded) }
+    }
+    return nil
+}
+
+private struct AttachmentPreview: View {
+    let image: ImageInput
+    @State private var expanded = false
+    var body: some View {
+        if let bitmap = UIImage(data: image.data) {
+            Button { expanded = true } label: {
+                Image(uiImage: bitmap).resizable().scaledToFill().frame(maxWidth: .infinity, maxHeight: .infinity).clipped().clipShape(RoundedRectangle(cornerRadius: 12))
+            }.buttonStyle(.plain).accessibilityLabel(String(localized: "View image", bundle: relayLocalizationBundle))
+                .sheet(isPresented: $expanded) {
+                    NavigationStack {
+                        Image(uiImage: bitmap).resizable().scaledToFit().padding()
+                            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(String(localized: "Close", bundle: relayLocalizationBundle)) { expanded = false } } }
+                    }
+                }
+        }
     }
 }

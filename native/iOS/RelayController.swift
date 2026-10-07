@@ -320,8 +320,8 @@ import UIKit
         selected = ""; chat = RecentChat(); historyCursor = nil; historyRequestID = nil; historyLoading = false; restoredWatch = false
         Task { await send(["type": "watch", "session_id": ""]) }
     }
-    @discardableResult func submit(_ text: String, kind: String? = nil, expectedTurn: String? = nil) async -> Bool {
-        guard let session = current, online, machines[session.machineId]?.status == "ONLINE", session.allows(kind ?? session.defaultCommand), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { error = String(localized: "Control unavailable for this session.", bundle: relayLocalizationBundle); return false }
+    @discardableResult func submit(_ text: String, images: [ImageInput] = [], kind: String? = nil, expectedTurn: String? = nil) async -> Bool {
+        guard let session = current, online, machines[session.machineId]?.status == "ONLINE", session.allows(kind ?? session.defaultCommand), (!text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !images.isEmpty), images.isEmpty || session.capabilities.canSendImages == true else { error = String(localized: "Control unavailable for this session.", bundle: relayLocalizationBundle); return false }
         let kind = kind ?? session.defaultCommand
         let targetTurn = kind == "steer" ? (expectedTurn ?? session.turnId) : nil
         if kind == "steer", targetTurn != session.turnId {
@@ -329,8 +329,9 @@ import UIKit
             return false
         }
         do {
-            let id = try outbox.add(session: selected, kind: kind, text: text, expectedTurn: targetTurn); outbox.sending(id)
+            let id = try outbox.add(session: selected, kind: kind, text: text, images: images, expectedTurn: targetTurn); outbox.sending(id)
             var command: [String: Any] = ["id": id, "kind": kind, "session_id": selected, "text": text]
+            if !images.isEmpty { command["images"] = images.map { ["media_type": $0.mediaType, "data": $0.data.base64EncodedString()] } }
             if kind == "steer" { command["turn_id"] = targetTurn }
             if !(await sendCommand(command)) { outbox.fail(id, code: "UNKNOWN_OUTCOME", message: String(localized: "Unknown outcome. Check Codex before resending.", bundle: relayLocalizationBundle)) }
             liveQuestions.clear(session: session.id); updateNotificationBadge()
@@ -375,7 +376,7 @@ import UIKit
     func retry(_ item: Outgoing, as kind: String? = nil) async {
         guard item.sessionId == selected else { return }
         let kind = kind ?? item.kind
-        if await submit(item.text, kind: kind, expectedTurn: kind == "steer" ? item.expectedTurn : nil) { outbox.discard(item.id) }
+        if await submit(item.text, images: item.images, kind: kind, expectedTurn: kind == "steer" ? item.expectedTurn : nil) { outbox.discard(item.id) }
     }
     func action(_ kind: String, expectedTurn: String? = nil) async {
         guard let current, online, machines[current.machineId]?.status == "ONLINE", kind == "attach" ? current.readOnly : current.allows(kind) else { error = String(localized: "Control unavailable for this session.", bundle: relayLocalizationBundle); return }

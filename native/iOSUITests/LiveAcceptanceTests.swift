@@ -63,13 +63,13 @@ import XCTest
         XCTAssertEqual(composer.frame.minY, before.minY, accuracy: 2)
         XCTAssertFalse(app.buttons["Copy Session Link"].exists)
         let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Compact composer with persistent action panel"; capture.lifetime = .keepAlways; add(capture)
-        app.buttons["Session actions"].tap()
+        app.buttons["Steer Current Turn"].tap()
         composer.tap(); composer.typeText("Keep the draft.")
+        XCTAssertEqual(send.label, "Send Steer")
         app.buttons["Session actions"].tap()
         XCTAssertTrue(composer.isHittable); XCTAssertTrue(app.keyboards.firstMatch.exists)
-        app.buttons["Steer Current Turn"].tap()
+        XCTAssertTrue(app.buttons["Send to current turn"].exists)
         XCTAssertEqual(composer.value as? String, "Keep the draft.")
-        XCTAssertEqual(send.label, "Send Steer")
     }
     func testIsolatedChatComposerAndToolDetails() {
         continueAfterFailure = false
@@ -142,10 +142,12 @@ import XCTest
         app.launchArguments = ["--product-screenshot", "live-question", "-AppleLanguages", "(en)"]
         app.launch()
         XCTAssertTrue(app.staticTexts["Asked during this live turn"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["session.liveQuestion"].exists)
+        app.buttons["session.liveQuestion"].tap()
         app.buttons.containing(.staticText, identifier: "Full suite").firstMatch.tap()
         let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
         XCTAssertEqual(composer.value as? String, "Which validation scope should I use?\nFull suite")
-        XCTAssertEqual(app.buttons["composer.send"].label, "Send follow-up")
+        XCTAssertEqual(app.buttons["composer.send"].label, "Send Steer")
         XCTAssertFalse(app.buttons["Respond"].exists)
         // Preparing text never sends or resolves a request. History has no live action.
         app.terminate()
@@ -246,6 +248,83 @@ import XCTest
         app.buttons["Disable alerts"].tap()
         XCTAssertTrue(app.staticTexts["Local alerts off"].exists)
     }
+    func testOwnedImageReachesCodex() throws {
+        guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires a paired Hub and an owned image-validation thread.") }
+        let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
+        guard config.sendTurn && config.sessionTitle == "Relay input acceptance" else { throw XCTSkip("Requires an explicitly owned disposable image thread.") }
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launch()
+        let search = app.textFields["fleet.search"]
+        XCTAssertTrue(search.waitForExistence(timeout: 20)); search.tap(); search.typeText(config.sessionTitle)
+        let session = app.buttons["session." + config.sessionID]
+        XCTAssertTrue(session.waitForExistence(timeout: 20)); session.tap()
+        XCTAssertTrue(app.buttons["Session actions"].waitForExistence(timeout: 15)); app.buttons["Session actions"].tap()
+        XCTAssertTrue(app.buttons["Add photos"].waitForExistence(timeout: 5)); app.buttons["Add photos"].tap()
+        let photo = app.images.matching(identifier: "PXGGridLayout-Info").firstMatch
+        XCTAssertTrue(photo.waitForExistence(timeout: 15)); photo.tap(); app.navigationBars["Photos"].buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["Remove image"].waitForExistence(timeout: 15))
+        let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
+        composer.tap(); composer.typeText("Reply with RELAY_IMAGE_COLOR followed by the dominant color of the attached image. Do not use tools or files.")
+        app.buttons["composer.send"].tap()
+        wait(90) { app.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS[c] %@ AND label CONTAINS[c] %@", "activity.agentMessage.", "RELAY_IMAGE_COLOR", "red")).firstMatch.exists }
+        print("REAL_RELAY_IMAGE_RECOGNIZED")
+        let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Image delivered through canonical Hub and Agent"; capture.lifetime = .keepAlways; add(capture)
+    }
+
+    func testOwnedQueueAndSteerStaySequential() throws {
+        guard let url = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires an owned control-validation thread.") }
+        let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: url))
+        guard config.sendTurn && config.sessionTitle == "Relay input acceptance" else { throw XCTSkip("Owned validation only.") }
+        continueAfterFailure = false
+        let app = XCUIApplication(); app.launch()
+        let search = app.textFields["fleet.search"]
+        XCTAssertTrue(search.waitForExistence(timeout: 20)); search.tap(); search.typeText(config.sessionTitle)
+        let row = app.buttons["session." + config.sessionID]
+        XCTAssertTrue(row.waitForExistence(timeout: 20)); row.tap()
+        let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
+        XCTAssertTrue(composer.waitForExistence(timeout: 15))
+        let send = app.buttons["composer.send"]
+        wait(15) { send.label == "Send" }
+        composer.tap(); composer.typeText("Run only sleep 70, then say WAIT_FINISHED. No other tools or files."); send.tap()
+        wait(30) { send.label == "Send follow-up" }
+        let marker = String(UUID().uuidString.prefix(8))
+        let queued = "In the next turn reply only QUEUE_" + marker + ". No tools."
+        composer.tap(); composer.typeText(queued); send.tap()
+        wait(15) { app.staticTexts["FOLLOW-UP · QUEUED"].exists }
+        let transcript = app.scrollViews["session.transcript"]
+        XCTAssertFalse(transcript.staticTexts[queued].exists)
+        let steer = "For the current turn finish with CURRENT_" + marker + ". Keep the next turn queued."
+        composer.tap(); composer.typeText(steer)
+        app.buttons["Session actions"].tap(); app.buttons["Send to current turn"].tap()
+        wait(30) { transcript.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.userMessage.' AND label == %@", steer)).count == 1 }
+        XCTAssertFalse(transcript.staticTexts[queued].exists)
+        XCTAssertTrue(app.staticTexts["FOLLOW-UP · QUEUED"].exists)
+        let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Real current-turn control with separate canonical queue"; capture.lifetime = .keepAlways; add(capture)
+        wait(120) { transcript.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.agentMessage.' AND label CONTAINS %@", "CURRENT_" + marker)).firstMatch.exists }
+        wait(120) { transcript.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.agentMessage.' AND label CONTAINS %@", "QUEUE_" + marker)).firstMatch.exists }
+        XCTAssertEqual(transcript.staticTexts.matching(NSPredicate(format: "identifier BEGINSWITH 'activity.userMessage.' AND label == %@", queued)).count, 1)
+        XCTAssertFalse(app.staticTexts["FOLLOW-UP · QUEUED"].exists)
+        print("REAL_QUEUE_STEER_ORDER_CONFIRMED")
+    }
+
+    func testPhotoPickerImportsImageIntoComposer() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--product-screenshot", "conversation", "-AppleLanguages", "(en)"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Session actions"].waitForExistence(timeout: 10))
+        app.buttons["Session actions"].tap()
+        app.buttons["Add photos"].tap()
+        let photo = app.images.matching(identifier: "PXGGridLayout-Info").firstMatch
+        XCTAssertTrue(photo.waitForExistence(timeout: 15)); photo.tap()
+        app.navigationBars["Photos"].buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["Remove image"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["composer.send"].isEnabled)
+        app.buttons["Remove image"].tap()
+        XCTAssertFalse(app.buttons["composer.send"].isEnabled)
+        let capture = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); capture.name = "Native photo picker"; capture.lifetime = .keepAlways; add(capture)
+    }
+
     func testQueueRemainsOutsideConversationAfterCanonicalSteer() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -280,6 +359,12 @@ import XCTest
         XCTAssertFalse(app.buttons["activity.file.src/validation.rs"].exists)
         XCTAssertTrue(app.buttons["tool.details.terminal.example-command"].exists)
         let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Activity expanded without duplicate preview"; capture.lifetime = .keepAlways; add(capture)
+        app.buttons["activity.item.example-tool"].tap()
+        XCTAssertTrue(app.navigationBars["Operation"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["The validation API rejects empty input and returns a typed error. Source: local API reference."].isHittable)
+        XCTAssertFalse(app.staticTexts["cargo test --workspace"].isHittable)
+        let detailCapture = XCTAttachment(screenshot: app.screenshot()); detailCapture.name = "One tool operation"; detailCapture.lifetime = .keepAlways; add(detailCapture)
+        app.buttons["Close"].tap()
         group.tap()
         XCTAssertEqual(command.count, 1)
         XCTAssertTrue(app.buttons["activity.file.src/validation.rs"].exists)

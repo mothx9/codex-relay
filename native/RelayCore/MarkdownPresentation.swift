@@ -6,6 +6,7 @@ public struct RichSpan: Equatable, Sendable {
     public var bold = false
     public var italic = false
     public var code = false
+    public var strikethrough = false
     public var link: String?
 }
 public struct RichBlock: Identifiable, Equatable, Sendable {
@@ -58,25 +59,25 @@ public enum RichDocument {
         }
         return result
     }
-    private static func inline(_ node: any Markup, bold: Bool = false, italic: Bool = false, link: String? = nil) -> [RichSpan] {
+    private static func inline(_ node: any Markup, bold: Bool = false, italic: Bool = false, strikethrough: Bool = false, link: String? = nil) -> [RichSpan] {
         if let text = node as? Markdown.Text {
-            guard link == nil, let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else { return [RichSpan(text: text.string, bold: bold, italic: italic, link: link)] }
+            guard link == nil, let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else { return [RichSpan(text: text.string, bold: bold, italic: italic, strikethrough: strikethrough, link: link)] }
             let source = text.string; var spans: [RichSpan] = []; var cursor = source.startIndex
             for match in detector.matches(in: source, range: NSRange(source.startIndex..., in: source)) {
                 guard let range = Range(match.range, in: source), let url = match.url,
                       ["https://", "http://", "mailto:"].contains(where: { source[range].lowercased().hasPrefix($0) }), webURL(url.absoluteString) != nil else { continue }
-                if cursor < range.lowerBound { spans.append(RichSpan(text: String(source[cursor..<range.lowerBound]), bold: bold, italic: italic)) }
-                spans.append(RichSpan(text: String(source[range]), bold: bold, italic: italic, link: url.absoluteString))
+                if cursor < range.lowerBound { spans.append(RichSpan(text: String(source[cursor..<range.lowerBound]), bold: bold, italic: italic, strikethrough: strikethrough)) }
+                spans.append(RichSpan(text: String(source[range]), bold: bold, italic: italic, strikethrough: strikethrough, link: url.absoluteString))
                 cursor = range.upperBound
             }
-            if cursor < source.endIndex { spans.append(RichSpan(text: String(source[cursor...]), bold: bold, italic: italic)) }
+            if cursor < source.endIndex { spans.append(RichSpan(text: String(source[cursor...]), bold: bold, italic: italic, strikethrough: strikethrough)) }
             return spans
         }
-        if let code = node as? InlineCode { return [RichSpan(text: code.code, bold: bold, italic: italic, code: true, link: link)] }
+        if let code = node as? InlineCode { return [RichSpan(text: code.code, bold: bold, italic: italic, code: true, strikethrough: strikethrough, link: link)] }
         if node is SoftBreak { return [RichSpan(text: " ")] }
         if node is LineBreak { return [RichSpan(text: "\n")] }
         if let html = node as? InlineHTML { return [RichSpan(text: html.rawHTML)] }
         let destination = (node as? Markdown.Link)?.destination.flatMap { webURL($0)?.absoluteString } ?? link
-        return node.children.flatMap { inline($0, bold: bold || node is Strong, italic: italic || node is Emphasis, link: destination) }
+        return node.children.flatMap { inline($0, bold: bold || node is Strong, italic: italic || node is Emphasis, strikethrough: strikethrough || node is Strikethrough, link: destination) }
     }
 }

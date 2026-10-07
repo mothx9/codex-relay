@@ -79,6 +79,22 @@ final class ControlTests: XCTestCase {
         XCTAssertTrue(box.pending(session: "m~t").isEmpty)
     }
 
+    func testImagesRemainBoundedAndRetainedAcrossUnknownOutcome() throws {
+        var box = Outbox()
+        let image = ImageInput(data: Data(repeating: 1, count: ImageInput.maxBytes))
+        XCTAssertThrowsError(try box.add(session: "m~t", kind: "follow_up", text: "", images: [image, image, image]))
+        let id = try box.add(session: "m~t", kind: "steer", text: "inspect", images: [image], expectedTurn: "active")
+        box.sending(id); box.disconnected()
+        XCTAssertEqual(box.items[0].errorCode, "UNKNOWN_OUTCOME")
+        XCTAssertEqual(box.items[0].images, [image])
+        box.materialize(session: "m~t", activity: Activity(id: "real", kind: "userMessage", text: "inspect", clientId: id))
+        XCTAssertTrue(box.visible(session: "m~t").isEmpty)
+        XCTAssertEqual(box.images(session: "m~t", clientID: id), [image])
+        for n in 0..<8 { _ = try box.add(id: "i\(n)", session: "m~t", kind: "follow_up", text: "", images: [image, image]) }
+        XCTAssertTrue(box.images(session: "m~t", clientID: id).isEmpty)
+        XCTAssertThrowsError(try box.add(session: "m~t", kind: "follow_up", text: "", images: [image]))
+    }
+
     func testBoundedMemoryAndTTL() throws {
         var box = Outbox(); for _ in 0..<32 { _ = try box.add(session: "m~t", kind: "follow_up", text: "pending", now: Date(timeIntervalSince1970: 1)) }
         XCTAssertThrowsError(try box.add(session: "m~t", kind: "follow_up", text: "overflow")); box.prune(active: "", now: Date(timeIntervalSince1970: 302)); XCTAssertTrue(box.items.isEmpty)

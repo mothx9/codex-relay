@@ -96,6 +96,14 @@ public enum ChangeOverview {
 
 /// A preview only: the original executable input remains available for copy/detail.
 public enum ActivityPreview {
+    public static func tool(_ item: Activity) -> String {
+        [item.toolServer, item.toolName].compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+    public static func detail(_ item: Activity) -> String? {
+        let source = item.command != nil ? item.commandOutput : item.progress?.isEmpty == false ? item.progress! : item.resultSummary ?? ""
+        return source.split(separator: "\n").first.map { String($0.prefix(180)) }
+    }
+
     public static func command(_ source: String) -> String {
         var value = source.trimmingCharacters(in: .whitespacesAndNewlines)
         for shell in ["/bin/bash", "/bin/zsh", "/bin/sh", "/usr/bin/bash", "/usr/bin/zsh", "/usr/bin/sh", "bash", "zsh", "sh"] {
