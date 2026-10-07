@@ -45,6 +45,7 @@ def main():
         raise SystemExit("Install librsvg (macOS: brew install librsvg), then rerun.")
     ICON.mkdir(parents=True, exist_ok=True)
     render(ROOT / "docs/assets/app/codex-app-icon.svg", ICON / "AppIcon.png", 1024, 1024)
+    render(ROOT / "docs/assets/app/codex-app-icon.svg", ROOT / "docs/assets/app/codex-app-icon.png", 1024, 1024)
     for size in (192, 512):
         render(ROOT / "docs/assets/app/codex-app-icon.svg", ROOT / f"web/icon-{size}.png", size, size)
     shutil.copyfile(ROOT / "docs/assets/app/codex-app-icon.svg", ROOT / "web/icon.svg")
@@ -64,9 +65,9 @@ def main():
     for path in source.findall("{" + ns + "}path"):
         path = copy.deepcopy(path); path.set("fill", "#f0f2f3"); paths.append(ET.tostring(path, encoding="unicode"))
     mark = "".join(paths)
-    social = '''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+    social = '''<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
 <title>Codex Relay — your Codex fleet, on iPhone</title>
-<rect width="1200" height="630" fill="#15181c"/>
+<rect width="1280" height="640" fill="#15181c"/>
 <g transform="translate(60 140) scale(13.65)">''' + mark + '''</g>
 <g fill="#f0f2f3" font-family="-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif">
 <text x="440" y="236" font-size="64" font-weight="700">Codex Relay</text>
@@ -76,7 +77,7 @@ def main():
 </g></svg>'''
     social_source = ROOT / "docs/assets/app/social-preview.svg"
     social_source.write_text(social)
-    render(social_source, ROOT / "docs/assets/app/social-preview.png", 1200, 630)
+    render(social_source, ROOT / "docs/assets/app/social-preview.png", 1280, 640)
 
 
 if __name__ == "__main__":
