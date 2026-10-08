@@ -6,6 +6,13 @@ from the downloadable self-hosted release.
 
 ## v0.1.0 — 2026-10-08
 
+- Rebuilt release with independent bounded snapshot refresh, same-socket sync
+  recovery and explicit first-complete-snapshot admission for pending requests.
+- Native live transport opens before optional bootstrap; snapshot/pong watchdogs,
+  capped reconnect jitter and reusable request-scoped HTTPS reduce recovery delay.
+- Ten-second heartbeat/pings and 30-second peer deadlines replace the older
+  75–90-second silent-loss window; sync diagnostics expose only fixed failure classes.
+
 - Standardized versioned Hub/Agent archives, an unsigned device IPA, installer,
   checksums and exact source manifest; replaced the old RC downloads/tags.
 - Guided installation downloads the current release automatically; no clone or

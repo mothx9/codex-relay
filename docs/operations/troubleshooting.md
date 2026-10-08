@@ -28,10 +28,17 @@ state should remain on the host; sanitize before sharing.
 
 Silent machine loss is bounded by heartbeat/read deadlines, not immediate power
 telemetry. Clean disconnect is immediate; heartbeat/event silence normally closes
-a peer in roughly 75–90 seconds from last contact. Snapshot/transport timings
+a peer in roughly 30–35 seconds from last contact. Snapshot/transport timings
 include observation and clock effects, not model execution time. Do not diagnose
 a VPN from a spinner: measure each layer and inspect direct/relayed status only
 when reliable tooling provides it. Relay does not alter network configuration.
+
+If synchronization retries while the Hub is reachable, Agent logs now classify
+snapshot failures by stage (`catalogue`, `loaded_threads`, `subscription`) and
+failure class (`timeout`, RPC code, or generic failure), without upstream payloads.
+A slow snapshot has a 15-second deadline and does not block live forwarding.
+The iPhone retries a socket that supplies no initial snapshot within 10 seconds;
+optional HTTP bootstrap requests no longer precede the live connection.
 
 For lost-controller recovery, use the Hub administrator's local access to create
 a fresh one-time controller code, then revoke the lost credential. Local sign-out

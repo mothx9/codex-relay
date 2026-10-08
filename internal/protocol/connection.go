@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+const PingInterval = 10 * time.Second
+const PeerTimeout = 30 * time.Second
+
 // Peer has one reader and one writer, bounded outbound memory, and closes slow peers.
 type Peer struct {
 	Conn *websocket.Conn
@@ -18,8 +21,8 @@ type Peer struct {
 func NewPeer(c *websocket.Conn) *Peer {
 	p := &Peer{Conn: c, Send: make(chan Message, 128), Done: make(chan struct{})}
 	c.SetReadLimit(MaxMessage)
-	_ = c.SetReadDeadline(time.Now().Add(75 * time.Second))
-	c.SetPongHandler(func(string) error { return c.SetReadDeadline(time.Now().Add(75 * time.Second)) })
+	_ = c.SetReadDeadline(time.Now().Add(PeerTimeout))
+	c.SetPongHandler(func(string) error { return c.SetReadDeadline(time.Now().Add(PeerTimeout)) })
 	return p
 }
 func (p *Peer) Close() { p.once.Do(func() { close(p.Done); _ = p.Conn.Close() }) }
@@ -38,7 +41,7 @@ func (p *Peer) Enqueue(m Message) bool {
 	}
 }
 func (p *Peer) WriteLoop(ctx context.Context) {
-	t := time.NewTicker(25 * time.Second)
+	t := time.NewTicker(PingInterval)
 	defer t.Stop()
 	defer p.Close()
 	for {

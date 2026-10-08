@@ -24,7 +24,7 @@ func (a *Adapter) Snapshot(ctx context.Context) ([]protocol.Session, []protocol.
 		}
 		raw, e := a.rpc(ctx, "thread/list", params)
 		if e != nil {
-			return nil, nil, e
+			return nil, nil, &snapshotFailure{"catalogue", e}
 		}
 		if e = decode(raw, &page); e != nil {
 			return nil, nil, e
@@ -51,7 +51,7 @@ func (a *Adapter) Snapshot(ctx context.Context) ([]protocol.Session, []protocol.
 		}
 		raw, err := a.rpc(ctx, "thread/loaded/list", params)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, &snapshotFailure{"loaded_threads", err}
 		}
 		if err = decode(raw, &page); err != nil {
 			return nil, nil, err
@@ -107,7 +107,7 @@ func (a *Adapter) Snapshot(ctx context.Context) ([]protocol.Session, []protocol.
 						}
 					}
 				}
-				return nil, nil, err
+				return nil, nil, &snapshotFailure{"subscription", err}
 			}
 			_ = s
 		} else {

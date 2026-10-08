@@ -64,6 +64,7 @@ import UIKit
     var notificationStatus = String(localized: "Notifications not enabled", bundle: relayLocalizationBundle)
     var apnsToken: String?
     private var socket: URLSessionWebSocketTask?
+    private var socketHealth: SocketHealth?
     private var transport: URLSession?
     private var loop: Task<Void, Never>?
     private var generation = UUID()
@@ -101,29 +102,67 @@ import UIKit
             while !Task.isCancelled {
                 guard let self, self.generation == generation else { return }
                 do {
-                    let bootstrap: AckBootstrap = try await api.fetch("api/bootstrap")
-                    self.nativePushAvailable = bootstrap.nativePush ?? false
-                    let config = URLSessionConfiguration.ephemeral; config.httpCookieStorage = nil; config.urlCache = nil
+                    self.connection = String(localized: "Connecting…", bundle: relayLocalizationBundle)
+                    let config = URLSessionConfiguration.ephemeral; config.httpCookieStorage = nil; config.urlCredentialStorage = nil; config.urlCache = nil
                     let transport = URLSession(configuration: config, delegate: NoRedirect(), delegateQueue: nil); self.transport = transport
                     let socket = transport.webSocketTask(with: api.socketRequest()); socket.maximumMessageSize = 1_048_576
-                    self.socket = socket; self.connection = String(localized: "Connecting…", bundle: relayLocalizationBundle); socket.resume()
+                    self.socket = socket; self.socketHealth = SocketHealth(now: ProcessInfo.processInfo.systemUptime); socket.resume()
+                    // The live stream comes first. Optional bootstrap/account
+                    // reads must never delay admission or foreground recovery.
+                    let watchdog = Task { [weak self] in
+                        while !Task.isCancelled {
+                            do { try await Task.sleep(for: .seconds(1)) } catch { return }
+                            guard let self, self.generation == generation, self.socket === socket else { return }
+                            switch self.socketHealth?.action(now: ProcessInfo.processInfo.systemUptime) {
+                            case .reconnect: socket.cancel(with: .goingAway, reason: nil); return
+                            case .ping:
+                                socket.sendPing { [weak self] error in
+                                    Task { @MainActor in
+                                        guard let self, self.generation == generation, self.socket === socket else { return }
+                                        if error != nil { socket.cancel(with: .goingAway, reason: nil) }
+                                        else { self.socketHealth?.pongReceived(now: ProcessInfo.processInfo.systemUptime) }
+                                    }
+                                }
+                            default: break
+                            }
+                        }
+                    }
+                    defer { watchdog.cancel() }
+                    var bootstrapped = false
                     while !Task.isCancelled {
                         let message = try await socket.receive(); guard self.generation == generation else { return }
                         let data: Data
                         switch message { case .data(let d): data = d; case .string(let s): data = Data(s.utf8); @unknown default: continue }
                         let decoded = try RelayJSON.decoder().decode(WireMessage.self, from: data)
-                        await self.apply(decoded); attempt = 0
+                        if decoded.type == "snapshot", decoded.snapshot != nil {
+                            self.socketHealth?.snapshotReceived(); attempt = 0
+                            if !bootstrapped {
+                                bootstrapped = true
+                                Task { [weak self] in
+                                    let bootstrap: AckBootstrap? = try? await api.fetch("api/bootstrap")
+                                    guard let self, self.generation == generation, self.socket === socket, let bootstrap else { return }
+                                    self.nativePushAvailable = bootstrap.nativePush ?? false
+                                    await self.refreshNativePush()
+                                }
+                            }
+                        }
+                        await self.apply(decoded)
                     }
                 } catch {
                     guard self.generation == generation, !Task.isCancelled else { return }
+                    let status = (self.socket?.response as? HTTPURLResponse)?.statusCode
+                    let hubError = (error as? HubFailure) ?? status.flatMap { code in
+                        code == 101 ? nil : HubFailure.http(code, code == 401 || code == 403 ? String(localized: "Code expired or access revoked or invalid.", bundle: relayLocalizationBundle) : String(localized: "Hub unavailable (\(code)).", bundle: relayLocalizationBundle))
+                    }
                     self.liveQuestions.reset(); self.online = false; self.restoredWatch = false; self.historyLoading = false; self.historyRequestID = nil; self.outbox.disconnected(); for id in Array(self.queueWaiters.keys) { self.finishQueueEditUnknown(id) }; self.commands.removeAll(); self.catalogueCommands.removeAll(); self.catalogueLoading.removeAll(); self.socket?.cancel(with: .goingAway, reason: nil); self.transport?.invalidateAndCancel()
+                    self.socket = nil; self.socketHealth = nil; self.transport = nil
                     self.updateNotificationBadge(); self.cancelOfflineNotices()
                     self.connection = String(localized: "Offline · reconnecting", bundle: relayLocalizationBundle)
-                    if let hubError = error as? HubFailure {
+                    if let hubError {
                         if hubError.authenticationRequired { self.forget(preserveNavigation: true); self.error = hubError.localizedDescription; return }
                         if !hubError.retryable { self.error = hubError.localizedDescription; self.connection = String(localized: "Hub error", bundle: relayLocalizationBundle); return }
                     }
-                    let delay = min(60.0, pow(2.0, Double(min(attempt, 6)))) * Double.random(in: 0.5...1.0); attempt += 1
+                    let delay = SocketHealth.retryDelay(attempt: attempt, jitter: Double.random(in: 0.5...1.0)); attempt += 1
                     try? await Task.sleep(for: .seconds(delay))
                 }
             }
@@ -502,6 +541,6 @@ import UIKit
     private func reconcileLiveQuestions() {
         liveQuestions.reconcile(sessions: sessions, machines: machines, connected: online)
     }
-    private func stop() { liveQuestions.reset(); cancelOfflineNotices(); updateNotificationBadge(); for id in Array(queueWaiters.keys) { finishQueueEditUnknown(id) }; chat.endHistory(); restoredWatch = false; historyLoading = false; historyRequestID = nil; generation = UUID(); loop?.cancel(); loop = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; transport?.invalidateAndCancel(); transport = nil; online = false; commands.removeAll(); catalogueCommands.removeAll(); catalogueLoading.removeAll(); outbox.disconnected() }
+    private func stop() { liveQuestions.reset(); cancelOfflineNotices(); updateNotificationBadge(); for id in Array(queueWaiters.keys) { finishQueueEditUnknown(id) }; chat.endHistory(); restoredWatch = false; historyLoading = false; historyRequestID = nil; generation = UUID(); loop?.cancel(); loop = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; socketHealth = nil; transport?.invalidateAndCancel(); transport = nil; online = false; commands.removeAll(); catalogueCommands.removeAll(); catalogueLoading.removeAll(); outbox.disconnected() }
 }
 private struct AckBootstrap: Decodable, Sendable { let version: Int; let secure: Bool; let nativePush: Bool? }

@@ -5,10 +5,36 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/mothx9/codex-relay/internal/protocol"
 	"path/filepath"
 	"time"
 )
+
+// Snapshot failures expose only a fixed stage and class, never thread IDs or
+// arbitrary upstream error text. The original cause remains available to tests.
+type snapshotFailure struct {
+	stage string
+	cause error
+}
+
+func (e *snapshotFailure) Error() string { return "Codex snapshot failed: " + e.stage }
+func (e *snapshotFailure) Unwrap() error { return e.cause }
+func SnapshotFailureReason(err error) string {
+	stage := "snapshot"
+	var failure *snapshotFailure
+	if errors.As(err, &failure) {
+		stage = failure.stage
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return stage + "_timeout"
+	}
+	var rejection *rpcError
+	if errors.As(err, &rejection) {
+		return fmt.Sprintf("%s_rpc_%d", stage, rejection.Code)
+	}
+	return stage + "_failed"
+}
 
 type Backend interface {
 	Snapshot(context.Context) ([]protocol.Session, []protocol.PendingRequest, error)

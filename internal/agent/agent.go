@@ -33,8 +33,8 @@ func backoff(attempt int, min time.Duration) time.Duration {
 		attempt = 6
 	}
 	d := min * time.Duration(1<<attempt)
-	if d > time.Minute {
-		d = time.Minute
+	if d > 15*time.Second {
+		d = 15 * time.Second
 	}
 	return d/2 + time.Duration(rand.Int64N(int64(d/2)+1))
 }
@@ -124,6 +124,7 @@ func Run(ctx context.Context, cfg Config) error {
 			_ = resp.Body.Close()
 		}
 		if dialErr == nil {
+			connectedAt := time.Now()
 			p := protocol.NewPeer(conn)
 			go p.WriteLoop(ctx)
 			if backend == nil {
@@ -143,7 +144,10 @@ func Run(ctx context.Context, cfg Config) error {
 					backend = nil
 				default:
 				}
-				attempt = 0
+				// A successful handshake is not a stable synchronized connection.
+				if time.Since(connectedAt) >= protocol.PeerTimeout {
+					attempt = 0
+				}
 			}
 		}
 		if ctx.Err() != nil {
@@ -162,19 +166,71 @@ func serve(ctx context.Context, p *protocol.Peer, b codex.Backend, m protocol.Ma
 	return serveRefreshing(ctx, p, b, m, cache, order, 2*time.Minute)
 }
 func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m protocol.Machine, cache map[string]protocol.Result, order *[]string, refreshEvery time.Duration) error {
+	return serveConfigured(ctx, p, b, m, cache, order, serveConfig{refreshEvery, protocol.PingInterval, 15 * time.Second, time.Second})
+}
+
+type serveConfig struct {
+	refresh, heartbeat, snapshotTimeout, retryMin time.Duration
+}
+
+func serveConfigured(ctx context.Context, p *protocol.Peer, b codex.Backend, m protocol.Machine, cache map[string]protocol.Result, order *[]string, cfg serveConfig) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	started := time.Now()
-	sessions, requests, e := b.Snapshot(ctx)
-	if e != nil {
-		return e
+	// Snapshots may wait on disk or on many Codex reads. They must not stop
+	// event forwarding, socket reads, or application heartbeats.
+	type snapshotResult struct {
+		sessions  []protocol.Session
+		requests  []protocol.PendingRequest
+		epoch     string
+		watermark uint64
+		ms        float64
+		err       error
 	}
-	m.Freshness.SnapshotMS = float64(time.Since(started).Microseconds()) / 1000
-	revision := uint64(1)
+	refreshRequests := make(chan struct{}, 1)
+	refreshed := make(chan snapshotResult, 1)
+	snapshotDone := make(chan struct{})
+	defer func() { cancel(); <-snapshotDone }()
+	go func() {
+		defer close(snapshotDone)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-refreshRequests:
+				started := time.Now()
+				readCtx, stop := context.WithTimeout(ctx, cfg.snapshotTimeout)
+				sessions, requests, err := b.Snapshot(readCtx)
+				stop()
+				epoch, watermark := b.Cursor()
+				result := snapshotResult{sessions, requests, epoch, watermark, float64(time.Since(started).Microseconds()) / 1000, err}
+				select {
+				case refreshed <- result:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+	busy := false
+	requestSnapshot := func() {
+		if !busy {
+			busy = true
+			refreshRequests <- struct{}{}
+		}
+	}
+	revision := uint64(0)
 	epoch, watermark := b.Cursor()
+	requestSnapshot()
 	forwarded := watermark
-	m.LastSeen = time.Now().UTC()
-	p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", SnapshotRevision: revision, Machine: machineCopy(m), Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
+	announced := false
+	var initialEvents []protocol.Event
+	var droppedInitial uint64
+	syncFailures := 0
+	retry := time.NewTimer(time.Hour)
+	if !retry.Stop() {
+		<-retry.C
+	}
+	defer retry.Stop()
 	commands := make(chan protocol.Command, 32)
 	reads := make(chan protocol.Command, 8)
 	readerDone := make(chan struct{})
@@ -277,9 +333,9 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 		}
 	}()
 	accountRefresh <- struct{}{}
-	heartbeat := time.NewTicker(25 * time.Second)
+	heartbeat := time.NewTicker(cfg.heartbeat)
 	defer heartbeat.Stop()
-	refresh := time.NewTicker(refreshEvery)
+	refresh := time.NewTicker(cfg.refresh)
 	defer refresh.Stop()
 	for {
 		select {
@@ -290,7 +346,21 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 		case <-b.Done():
 			return errors.New("Codex disconnected")
 		case ev := <-b.Events():
-			if ev.Epoch == epoch && ev.Sequence <= watermark {
+			if !announced {
+				// Only events newer than the first complete snapshot need replay.
+				// Retain a bounded tail while continuously draining the adapter.
+				if len(initialEvents) == 256 {
+					droppedInitial = initialEvents[0].Sequence
+					copy(initialEvents, initialEvents[1:])
+					initialEvents = initialEvents[:255]
+				}
+				initialEvents = append(initialEvents, ev)
+				continue
+			}
+			if ev.Epoch != epoch {
+				return errors.New("Codex event epoch changed")
+			}
+			if ev.Sequence <= forwarded {
 				continue
 			}
 			p.Enqueue(protocol.Message{Type: "event", Event: &ev})
@@ -299,23 +369,70 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 			m.LastSeen = time.Now().UTC()
 			p.Enqueue(protocol.Message{Type: "heartbeat", Machine: machineCopy(m)})
 		case <-refresh.C:
-			started = time.Now()
-			sessions, requests, e = b.Snapshot(ctx)
-			if e != nil {
-				return e
-			}
-			m.Freshness.SnapshotMS = float64(time.Since(started).Microseconds()) / 1000
-			revision++
-			nextEpoch, nextWatermark := b.Cursor()
-			if nextEpoch != epoch {
+			requestSnapshot()
+		case <-retry.C:
+			requestSnapshot()
+		case result := <-refreshed:
+			busy = false
+			m.Freshness.SnapshotMS = result.ms
+			if result.epoch != epoch {
 				return errors.New("Codex epoch changed")
 			}
-			// A metadata snapshot cannot replace transcript deltas or completed
-			// items. Flush events covered by its cursor before announcing it;
-			// otherwise the Hub will reject those events as already observed.
-			for forwarded < nextWatermark {
-				select {
-				case ev := <-b.Events():
+			if result.err != nil {
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
+				// Reachable Relay with incomplete Codex state is Degraded, not
+				// Offline. Retain the socket and retry without a reconnect storm.
+				m.Status = protocol.Degraded
+				revision++
+				p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", SnapshotRevision: revision, Machine: machineCopy(m), Epoch: epoch, Sequence: forwarded})
+				delay := backoff(syncFailures, cfg.retryMin)
+				syncFailures++
+				retry.Reset(delay)
+				slog.Warn("Codex synchronization delayed", "machine", m.ID, "reason", codex.SnapshotFailureReason(result.err), "snapshot_ms", result.ms, "retry_ms", delay.Milliseconds())
+				continue
+			}
+			if announced && result.watermark < forwarded {
+				// Live events already advanced canonical state beyond this read.
+				// Never publish older metadata over them; take a new snapshot.
+				retry.Reset(50 * time.Millisecond)
+				continue
+			}
+			if !announced && droppedInitial > result.watermark {
+				return errors.New("initial event replay capacity exceeded")
+			}
+			// Flush all events covered by the snapshot before its watermark.
+			// The adapter cursor promises these events have already been emitted.
+			if announced {
+				for forwarded < result.watermark {
+					select {
+					case ev := <-b.Events():
+						if ev.Epoch != epoch {
+							return errors.New("Codex event epoch changed")
+						}
+						if ev.Sequence <= forwarded {
+							continue
+						}
+						p.Enqueue(protocol.Message{Type: "event", Event: &ev})
+						forwarded = ev.Sequence
+					case <-ctx.Done():
+						return ctx.Err()
+					case <-p.Done:
+						return errors.New("Hub disconnected")
+					case <-b.Done():
+						return errors.New("Codex disconnected")
+					}
+				}
+			}
+			watermark = result.watermark
+			m.Status = protocol.Online
+			m.LastSeen = time.Now().UTC()
+			revision++
+			p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", SnapshotRevision: revision, Machine: machineCopy(m), Sessions: result.sessions, Requests: result.requests, Epoch: epoch, Sequence: watermark})
+			if !announced {
+				forwarded = watermark
+				for _, ev := range initialEvents {
 					if ev.Epoch != epoch {
 						return errors.New("Codex event epoch changed")
 					}
@@ -324,20 +441,16 @@ func serveRefreshing(ctx context.Context, p *protocol.Peer, b codex.Backend, m p
 					}
 					p.Enqueue(protocol.Message{Type: "event", Event: &ev})
 					forwarded = ev.Sequence
-				case <-ctx.Done():
-					return ctx.Err()
-				case <-p.Done:
-					return errors.New("Hub disconnected")
-				case <-b.Done():
-					return errors.New("Codex disconnected")
 				}
+				initialEvents = nil
+				announced = true
 			}
+			syncFailures = 0
+			retry.Stop()
 			select {
 			case accountRefresh <- struct{}{}:
 			default:
 			}
-			watermark = nextWatermark
-			p.Enqueue(protocol.Message{Version: protocol.Version, Type: "announce", SnapshotRevision: revision, Machine: machineCopy(m), Sessions: sessions, Requests: requests, Epoch: epoch, Sequence: watermark})
 		}
 	}
 }

@@ -250,3 +250,64 @@ func TestPeriodicSnapshotDoesNotTurnSyncTimingIntoUptime(t *testing.T) {
 		t.Fatal("periodic refresh reported uptime as reconnect time")
 	}
 }
+
+func TestDegradedBeforeFirstSnapshotReconcilesRetiredRequestsOnRecovery(t *testing.T) {
+	h, db, srv := testHub(t, filepath.Join(t.TempDir(), "db"))
+	defer srv.Close()
+	defer db.Close()
+	s := protocol.Session{ID: "m~t", MachineID: "m", ThreadID: "t", Status: protocol.NeedsYou}
+	h.sessions[s.ID] = s
+	h.requests["old"] = protocol.PendingRequest{ID: "old", MachineID: "m", SessionID: s.ID, ThreadID: "t", Kind: "user_input", Status: "pending"}
+	a := &agentPeer{}
+	h.agents["m"] = a
+	h.syncing("m", a)
+	msg := protocol.Message{Version: protocol.Version, Machine: &protocol.Machine{ID: "m", Status: protocol.Degraded}, Epoch: "new", SnapshotRevision: 1}
+	if err := h.announce("m", a, msg); err != nil {
+		t.Fatal(err)
+	}
+	if len(h.requests) != 1 || a.snapshotAccepted {
+		t.Fatal("partial sync erased pending state or fabricated admission")
+	}
+	s.Status = protocol.Ready
+	msg.Machine.Status = protocol.Online
+	msg.SnapshotRevision = 2
+	msg.Sessions = []protocol.Session{s}
+	if err := h.announce("m", a, msg); err != nil {
+		t.Fatal(err)
+	}
+	if len(h.requests) != 0 || !a.snapshotAccepted || h.snapshot().Sessions[0].Status != protocol.Ready {
+		t.Fatal("complete recovery retained a retired request from the previous connection")
+	}
+}
+
+func TestTransientSyncFailurePreservesPendingAndInitialSyncDuration(t *testing.T) {
+	h, db, srv := testHub(t, filepath.Join(t.TempDir(), "db"))
+	defer srv.Close()
+	defer db.Close()
+	a := &agentPeer{}
+	h.agents["m"] = a
+	h.syncing("m", a)
+	s := protocol.Session{ID: "m~t", MachineID: "m", ThreadID: "t", Status: protocol.NeedsYou}
+	r := protocol.PendingRequest{ID: "pending", MachineID: "m", SessionID: s.ID, ThreadID: "t", Kind: "user_input", Status: "pending"}
+	msg := protocol.Message{Version: protocol.Version, Machine: &protocol.Machine{ID: "m", Status: protocol.Online}, Epoch: "e", SnapshotRevision: 1, Sessions: []protocol.Session{s}, Requests: []protocol.PendingRequest{r}}
+	if err := h.announce("m", a, msg); err != nil {
+		t.Fatal(err)
+	}
+	initial := h.machines["m"].Freshness.SyncMS
+	a.connectedAt = time.Now().Add(-time.Hour)
+	msg.Machine.Status = protocol.Degraded
+	msg.SnapshotRevision = 2
+	msg.Sessions, msg.Requests = nil, nil
+	if err := h.announce("m", a, msg); err != nil {
+		t.Fatal(err)
+	}
+	msg.Machine.Status = protocol.Online
+	msg.SnapshotRevision = 3
+	msg.Sessions = []protocol.Session{s}
+	if err := h.announce("m", a, msg); err != nil {
+		t.Fatal(err)
+	}
+	if len(h.requests) != 1 || h.machines["m"].Freshness.SyncMS != initial {
+		t.Fatal("same-connection recovery dropped unresolved work or replaced sync timing with uptime")
+	}
+}

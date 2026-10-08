@@ -668,6 +668,37 @@ import XCTest
         let controllers = XCTAttachment(screenshot: app.screenshot()); controllers.name = "M2 Controllers"; controllers.lifetime = .keepAlways; add(controllers)
         // Never tap production revoke/remove/pause controls in acceptance tests.
     }
+    func testLiveFleetRemainsConnectedAcrossQuietSocketAndForegroundRecovery() throws {
+        guard Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") != nil else { throw XCTSkip("Requires the existing paired live Hub and three healthy Agents.") }
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(en)"]
+        app.launch()
+        XCTAssertTrue(app.textFields["fleet.search"].waitForExistence(timeout: 15))
+        let warning = app.buttons["fleet.connection"]
+        wait(15) { !warning.exists && app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "session.")).count > 0 }
+        // A quiet Fleet still exchanges WebSocket pings. No Codex turn, answer,
+        // attach, credential change, or service interruption is needed here.
+        for _ in 0..<35 {
+            RunLoop.current.run(until: Date().addingTimeInterval(1))
+            XCTAssertFalse(warning.exists, "Quiet live socket regressed to Connecting/Offline")
+        }
+        for _ in 0..<2 {
+            XCUIDevice.shared.press(.home)
+            RunLoop.current.run(until: Date().addingTimeInterval(2))
+            app.activate()
+            XCTAssertTrue(app.textFields["fleet.search"].waitForExistence(timeout: 10))
+            wait(10) { !warning.exists }
+        }
+        app.buttons["navigation.relay"].tap()
+        app.buttons["Diagnostics"].tap()
+        XCTAssertTrue(app.navigationBars["Diagnostics"].waitForExistence(timeout: 10))
+        let connection = app.descendants(matching: .any).matching(identifier: "diagnostics.connection").firstMatch
+        XCTAssertTrue(connection.waitForExistence(timeout: 10))
+        XCTAssertEqual(connection.value as? String, "Connected")
+        print("SYNC_LIVE_QUIET_AND_FOREGROUND_RECOVERY_PASS")
+        app.terminate()
+    }
     func testLiveNotificationDeepLinks() throws {
         guard let configURL = Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") else { throw XCTSkip("Requires an existing paired Hub; no enrollment created.") }
         let config = try JSONDecoder().decode(Config.self, from: Data(contentsOf: configURL))

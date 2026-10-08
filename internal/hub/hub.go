@@ -26,6 +26,7 @@ type agentPeer struct {
 	epoch            string
 	sequence         uint64
 	snapshotRevision uint64
+	snapshotAccepted bool
 	seen             map[string]bool
 	seenOrder        []string
 	lastSeen         time.Time
@@ -114,7 +115,7 @@ func (h *Hub) Close() {
 }
 func (h *Hub) Run(ctx context.Context) {
 	go h.push.Run(ctx)
-	t := time.NewTicker(15 * time.Second)
+	t := time.NewTicker(5 * time.Second)
 	defer t.Stop()
 	for {
 		select {
@@ -130,7 +131,7 @@ func (h *Hub) maintain(now time.Time) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for id, a := range h.agents {
-		if now.Sub(a.lastSeen) > 75*time.Second || !h.store.Authenticate(id, a.token) {
+		if now.Sub(a.lastSeen) > protocol.PeerTimeout || !h.store.Authenticate(id, a.token) {
 			a.peer.Close()
 		}
 	}
@@ -238,6 +239,7 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 		m.LastSeen = time.Now().UTC()
 		h.machines[id] = m
 		a.epoch, a.lastSeen = msg.Epoch, m.LastSeen
+		a.snapshotRevision = msg.SnapshotRevision
 		snap := h.snapshot()
 		h.broadcast(protocol.Message{Type: "snapshot", Snapshot: &snap}, "")
 		return h.store.SaveMachine(m)
@@ -252,7 +254,7 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	m.Freshness.LastSnapshot = time.Now().UTC()
 	m.Freshness.Sequence, m.Freshness.SnapshotSequence = msg.Sequence, msg.Sequence
 	m.Freshness.SnapshotMS = msg.Machine.Freshness.SnapshotMS
-	if !a.connectedAt.IsZero() && h.machines[id].Status != protocol.Online {
+	if !a.connectedAt.IsZero() && !a.snapshotAccepted {
 		m.Freshness.SyncMS = float64(time.Since(a.connectedAt).Microseconds()) / 1000
 	}
 	m.ID = id
@@ -278,7 +280,7 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	for _, r := range msg.Requests {
 		incoming[r.ID] = r
 	}
-	if a.epoch == msg.Epoch {
+	if a.snapshotAccepted {
 		for rid, r := range h.requests {
 			if r.MachineID == id {
 				if _, exists := incoming[rid]; !exists {
@@ -312,7 +314,7 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	for sid, s := range h.sessions {
 		if s.MachineID == id {
 			delete(h.sessions, sid)
-			if a.epoch != msg.Epoch {
+			if !a.snapshotAccepted {
 				delete(h.liveActivities, sid)
 			}
 		}
@@ -320,12 +322,12 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	for rid, r := range h.requests {
 		if r.MachineID == id {
 			next, exists := incoming[rid]
-			if !exists && a.epoch == msg.Epoch {
+			if !exists && a.snapshotAccepted {
 				incoming[rid] = r
 				continue
 			}
 			// Periodic announcements must not release an in-flight approval.
-			if !exists || a.epoch != msg.Epoch || !samePending(r, next) {
+			if !exists || !a.snapshotAccepted || !samePending(r, next) {
 				delete(h.answering, rid)
 			}
 			delete(h.requests, rid)
@@ -345,6 +347,7 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 		h.notifyRequest(r)
 	}
 	a.snapshotRevision = msg.SnapshotRevision
+	a.snapshotAccepted = true
 	a.epoch = msg.Epoch
 	a.sequence = msg.Sequence
 	a.lastSeen = m.LastSeen

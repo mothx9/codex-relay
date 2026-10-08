@@ -336,6 +336,8 @@ struct DiagnosticsView: View {
             Section("Relay") {
                 LabeledContent("App", value: AboutView.version)
                 LabeledContent(String(localized: "Hub connection", bundle: relayLocalizationBundle), value: relay.online ? String(localized: "Connected", bundle: relayLocalizationBundle) : String(localized: "Not connected", bundle: relayLocalizationBundle))
+                    .accessibilityIdentifier("diagnostics.connection")
+                    .accessibilityValue(relay.online ? String(localized: "Connected", bundle: relayLocalizationBundle) : String(localized: "Not connected", bundle: relayLocalizationBundle))
                 if let diagnostics = relay.diagnostics {
                     LabeledContent(String(localized: "Hub version", bundle: relayLocalizationBundle), value: diagnostics.hubVersion)
                     LabeledContent(String(localized: "Protocol", bundle: relayLocalizationBundle), value: "\(diagnostics.protocolVersion)")

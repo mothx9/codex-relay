@@ -58,12 +58,32 @@ case is a loaded idle thread whose `thread/resume` returns JSON-RPC `-32600`,
 `idle` status and no observed pending request, then retains read-only metadata.
 It never applies that exception to active or pending work.
 
-Heartbeat interval is 25 seconds; the Hub checks every 15 seconds and closes a
-peer after more than 75 seconds without a heartbeat/event. Thus silent failure
-is bounded by approximately 75–90 seconds from last contact. Clean socket loss
-is reflected immediately. WebSocket read deadlines also close a peer 75 seconds
-from its last pong, which may detect silence earlier. Retry uses capped exponential backoff with jitter.
+Snapshot reads run in a separate serialized worker with a 15-second deadline.
+Live events, operator controls and heartbeats continue while it waits. A failed
+read announces `DEGRADED` on the existing Hub socket and retries with bounded
+backoff; it does not turn a healthy transport into a reconnect storm. Only the
+first complete snapshot reconciles requests absent from reconnect replay; an
+incomplete announcement cannot count as snapshot admission. Same-connection
+periodic recovery retains unresolved requests and the initial sync duration.
+Initial event replay retains a bounded tail and requires snapshot coverage for
+any discarded prefix. Periodic snapshots cannot overwrite newer live events.
+
+Agent heartbeat and WebSocket ping intervals are 10 seconds. The Hub checks every
+5 seconds and closes a peer after more than 30 seconds without heartbeat/event
+contact, bounding silent machine loss to approximately 30–35 seconds. WebSocket
+read deadlines also close a peer 30 seconds after its last pong. Clean socket
+loss is immediate. Agent reconnect backoff is capped at 15 seconds with jitter;
+a successful handshake alone does not reset repeated short-failure backoff.
 No shared Codex daemon restart is required.
+
+The native client opens WSS before optional bootstrap reads. It requires the
+first canonical snapshot within 10 seconds and probes a quiet socket every
+10 seconds, reconnecting after a missing pong exceeds 5 seconds. Callbacks check
+both controller generation and socket identity. Foreground recovery starts a new
+connection; retries are capped at 8 seconds with jitter. HTTP diagnostics reuse
+an ephemeral transport with request-scoped credentials and no cookie/cache or
+redirect forwarding. Authentication rejection remains distinct from a network
+retry. Uncertain commands are never automatically replayed.
 
 On Hub restart persisted machines load Offline, with last-known session metadata
 and pending routing. Payloads are rehydrated from the Agent/Codex, not SQLite.
