@@ -23,6 +23,8 @@ Keep overrides in ignored `native/LocalSigning.xcconfig`, included by
 chat/outbox. `SessionTranscript` observes chat independently from the composer.
 Its final heartbeat scrolls with the messages. The floating composer reserves a
 measured bottom content inset and has no opaque full-width footer.
+The single-line capsule is 38 points high inside 44-point touch targets; scalable
+16-point input text and a bounded heartbeat gap keep the footer compact as drafts grow.
 Stable item and request-incarnation identities prevent reconstruction on each
 snapshot. Markdown parsing is coalesced without waiting for completion; output
 updates do not animate every token. Reduce Motion disables state movement.

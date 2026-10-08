@@ -77,13 +77,19 @@ No route merges operations across conversational messages or turn identities.
 
 The compact jump-to-latest button does not change reader-intent scroll rules:
 streaming, keyboard changes and drag inertia never imply permission to force-scroll.
+Its smaller glass circle is centered above the composer and appears only after
+substantial content moves below the viewport, not for minor movement near the end.
 
 [Navigation](../assets/app/screenshots/navigation.png) ·
 [Settings](../assets/app/screenshots/settings.png) ·
 [Machine diagnostics](../assets/app/screenshots/machine-diagnostics.png)
 
-The composer is one material surface with integrated 44-point controls. Session
-Info belongs to the header. The `+` panel contains attachments only. During work,
+The composer is one material surface with integrated 44-point controls.
+The single-line glass capsule is inset to 38 points, with 16-point scalable input
+text and a smaller send glyph. The field grows for multiline drafts; the final
+heartbeat has a separate compact gap above the measured dock. The dock sits lower
+when unfocused and clears the keyboard while composing.
+Session Info belongs to the header. The `+` panel contains attachments only. During work,
 Send queues the input in Next up; its direct Steer button moves the selected
 canonical entry into the current turn, preserving its client identity. Escape on
 a physical keyboard targets the first queued entry. Stop replaces the empty send

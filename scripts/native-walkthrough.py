@@ -69,9 +69,14 @@ try:
         target = root / 'docs/assets/app/recordings'
         target.mkdir(parents=True, exist_ok=True)
         movie, preview = target / 'native-walkthrough.mp4', target / 'native-walkthrough.gif'
+        # The recording acknowledgement is not an exact first-frame timestamp.
+        # Leave a tail margin before XCTest tears down the app to exclude Home.
+        duration = markers['end'] - markers['start'] - 2.25
+        if duration <= 0:
+            raise RuntimeError('Walkthrough is too short for safe recording boundaries')
         subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-ss',
                         str(max(0, markers['start'] - started + .25)), '-i', str(raw),
-                        '-t', str(markers['end'] - markers['start'] - .25), '-an',
+                        '-t', str(duration), '-an',
                         '-vf', 'scale=590:-2', '-r', '30', '-c:v', 'libx264', '-crf', '23',
                         '-pix_fmt', 'yuv420p', '-movflags', '+faststart', str(movie)], check=True)
         subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', str(movie),

@@ -13,61 +13,25 @@ from the downloadable self-hosted release.
 - Documented iPhone sideloading without Xcode and immediate Home Screen PWA access.
 - Grouped compact active Fleet surfaces with quieter Recent separators; Working
   scrolls with the transcript and the composer floats without a solid footer.
+- Smaller single-line composer with scalable input and clear heartbeat spacing
+  when the draft grows across lines.
+- Centered, smaller glass jump-to-latest control, visible only while substantial
+  recent content is outside the viewport.
+- Canonical Next up queue and direct Steer preserve input/client identity; `+`
+  contains attachments only, and an empty working composer offers Stop.
+- Photo/screenshot picker and image drops forward bounded images through the
+  official Codex input API when the Agent supports them.
+- Drafts remain editable offline. Live Questions have one reply home, readable
+  structured history and partial-height panels; canonical Needs You stays distinct.
+- Aligned Activity cards open one operation, changed files or the aggregate;
+  smaller code blocks, syntax highlighting and readable diffs.
+- Independent history/control lanes and coalesced refresh invalidations keep
+  slow reads from delaying Steer or Interrupt.
+- Contextual local alerts, notification deduplication, device registration retry
+  and safe routing; native remote APNs delivery remains separately gated.
+- Machine/account/access settings, bounded redacted diagnostics, English/Italian
+  resources and the attributed Codex mark.
 - Generic machine diagrams and refreshed screenshots/recorded walkthrough.
-
-- Compact hybrid Fleet: light glass emphasis for active rows, flat Recent, larger
-  source metadata and an explicit Working state separate from activity.
-- Direct queued-message Steer with preserved input/client identity; `+` contains
-  attachments only, and an empty working composer offers Stop.
-- Draft remains editable without live control; Live Questions show source context,
-  clear reply access and formatted text without transport-lifecycle prose.
-- Opaque semantic Activity cards retain individual operation/file routes.
-
-- Open Fleet, Needs You and Relay menu lists with title-first hierarchy, quiet
-  Recent rows and stable Working order during live updates.
-- Two-line Working rows align machine/project above elapsed time and show a
-  green execution-state sweep beside the secondary activity category;
-  current live questions have one composer-side reply home without transcript copies.
-- Consistent activity alignment and distinct routes for one operation, changed files
-  and the compact aggregate; short live questions use a partial-height sheet.
-- Smaller code blocks and renewed native screenshots, video and transparent SVGs.
-
-- Bounded photo/screenshot input through the native picker and image drops,
-  gated by Agent capability and forwarded through the official Codex input API.
-- Separate Next up queue, canonical queue-edit results and independent read/control
-  lanes; uncertain outcomes remain explicit and never resend automatically.
-- Compact, individually navigable activities with source/tool context; persistent
-  live-question reply access and readable structured reply history.
-- Foreground alerts retained in Notification Center, with Lock Screen and remote
-  delivery limitations made explicit.
-
-- Contextual notification banners identify machine, project, session and source turn,
-  with an explicit hide-details preference and automatic device registration retry.
-- Slimmer composer with persistent contextual actions, tighter activity indentation,
-  quieter code typography, refreshed screenshots and a recorded native walkthrough.
-
-- Connected-client local iOS alerts, independent permission/delivery readiness,
-  semantic deduplication and safe notification routing; remote APNs remains separate.
-- Ephemeral cross-session Live Questions with current-turn/epoch invalidation,
-  separate from canonical RPC requests and never reconstructed from history.
-- Quiet grouped Fleet, remaining-capacity quotas, integrated composer, mixed
-  activity previews, direct file inspection and mobile diff/readability hardening.
-- Explicit context-compaction lifecycle and neutral animated session heartbeat.
-- Updated native Codex icon attribution, transparent diagrams and screenshot suite.
-
-- Work-focused navigation with single entity homes and exception-only Fleet health.
-- Compact Terminal summaries, machine-local diagnostics and account relationships.
-- Live async-question draft preparation stays separate from authoritative Needs You;
-  reconnect/history never reconstruct pending questions from assistant content.
-- Apache-2.0 metadata aligned, public guides edited and validation evidence relocated.
-
-- Native Now/Fleet navigation, live session heartbeat, contextual composer and
-  structured Terminal/tool/file/diff presentation.
-- Derived Codex Account Registry with sparse usage windows and account freshness.
-- Product Settings, Machines, Controllers & Access and redacted Diagnostics.
-- Notification registration state and authenticated foreground/cold-start routing.
-- One-time machine installer flow, iPhone onboarding, English/Italian resources,
-  shared product mark and isolated public screenshot tooling.
 
 [M2 validation](docs/development/validation/m2-validation.md) records the live acceptance evidence.
 Physical APNs delivery is a separate acceptance requirement; implementation and

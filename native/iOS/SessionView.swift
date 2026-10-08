@@ -26,7 +26,8 @@ struct SessionView: View {
     @State private var actionsOpen = false
     @State private var queueDetails = false
     @State private var composerHeight: CGFloat = 44
-    @State private var dockHeight: CGFloat = 60
+    @State private var dockFrame: CGRect = .zero
+    @ScaledMetric(relativeTo: .body) private var composerFontSize: CGFloat = 16
     @State private var submitting = false
     @State private var scrollRequest = 0
     @FocusState private var composing: Bool
@@ -38,7 +39,7 @@ struct SessionView: View {
     var body: some View {
         if let session = relay.current {
             ZStack(alignment: .bottom) {
-                SessionTranscript(session: session, bottomInset: dockHeight, scrollRequest: $scrollRequest, onEdit: beginQueueEdit) { answer in
+                SessionTranscript(session: session, dockFrame: dockFrame, scrollRequest: $scrollRequest, onEdit: beginQueueEdit) { answer in
                     guard editingQueue == nil else { return }
                     if !answer.isEmpty && draft != answer { draft = draft.isEmpty ? answer : draft + "\n\n" + answer }
                     composing = true
@@ -49,9 +50,9 @@ struct SessionView: View {
                     liveQuestionDock(session)
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18)).padding(.horizontal, 12)
                     queuedMessages(session)
-                    composer(session).padding(.horizontal, 12)
-                }.padding(.bottom, 2)
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { dockHeight = $0 }
+                    composer(session).padding(.horizontal, 24)
+                }.padding(.bottom, composing ? 2 : -6)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { dockFrame = $0 }
             }
                 .onDrop(of: [UTType.image.identifier], isTargeted: nil) { providers in
                     guard session.capabilities.canSendImages == true, editingQueue == nil, !submitting else { return false }
@@ -171,7 +172,7 @@ struct SessionView: View {
                         withAnimation(reduceMotion ? nil : .easeOut(duration: 0.16)) { actionsOpen.toggle() }
                     } label: {
                         Image(systemName: actionsOpen ? "xmark" : "plus")
-                            .font(.system(size: 20, weight: .regular)).foregroundStyle(.primary)
+                            .font(.system(size: 18, weight: .regular)).foregroundStyle(.primary)
                             .frame(width: 44, height: 44).contentShape(Rectangle())
                     }.buttonStyle(.plain)
                         .disabled(!hasComposerActions(session))
@@ -180,7 +181,8 @@ struct SessionView: View {
                         .accessibilityValue(actionsOpen ? String(localized: "Expanded", bundle: relayLocalizationBundle) : String(localized: "Collapsed", bundle: relayLocalizationBundle))
 
                     TextField(steer ? String(localized: "Change the work in progress…", bundle: relayLocalizationBundle) : session.status == "WORKING" ? String(localized: "Add a follow-up…", bundle: relayLocalizationBundle) : String(localized: "Message Codex…", bundle: relayLocalizationBundle), text: $draft, axis: .vertical)
-                        .font(.body).lineLimit(1...5).focused($composing).padding(.vertical, 8)
+                        .font(.system(size: composerFontSize)).lineLimit(1...5).focused($composing)
+                        .padding(.vertical, 10).frame(minHeight: 44)
                         .accessibilityIdentifier("composer.text")
                     Button {
                         if showStop { interruptTurn = session.turnId ?? ""; interrupt = true }
@@ -199,13 +201,14 @@ struct SessionView: View {
                     } label: {
                         Image(systemName: showStop ? "stop.fill" : editingQueue != nil ? "checkmark" : "arrow.up").font(showStop ? .footnote : .body.weight(.semibold))
                             .foregroundStyle(Color(uiColor: .systemBackground))
-                            .frame(width: 32, height: 32).background(Color.primary.opacity(canSend || showStop ? 1 : 0.15), in: Circle())
+                            .frame(width: 28, height: 28).background(Color.primary.opacity(canSend || showStop ? 1 : 0.15), in: Circle())
                             .frame(width: 44, height: 44).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain).disabled(showStop ? !machineOnline(session) || submitting : !canSend)
                     .accessibilityLabel(showStop ? String(localized: "Interrupt Turn", bundle: relayLocalizationBundle) : editingQueue != nil ? String(localized: "Save queued message", bundle: relayLocalizationBundle) : steer ? String(localized: "Send Steer", bundle: relayLocalizationBundle) : session.status == "WORKING" ? String(localized: "Send follow-up", bundle: relayLocalizationBundle) : String(localized: "Send", bundle: relayLocalizationBundle))
                     .accessibilityIdentifier(showStop ? "composer.stop" : "composer.send")
                 }.padding(.horizontal, 2).modifier(ComposerSurface())
+                    .accessibilityElement(children: .contain).accessibilityIdentifier("composer.surface")
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { composerHeight = $0 }
                     .overlay(alignment: .bottomLeading) {
                         if actionsOpen {
@@ -427,7 +430,7 @@ private struct SessionTranscript: View {
     @Environment(RelayController.self) private var relay
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let session: RelaySession
-    let bottomInset: CGFloat
+    let dockFrame: CGRect
     @Binding var scrollRequest: Int
     let onEdit: (Outgoing) -> Void
     let onQuestionReply: (String) -> Void
@@ -440,6 +443,7 @@ private struct SessionTranscript: View {
     @State private var scrolling = TranscriptScrollPolicy()
     @State private var initialScroll = false
     @State private var historyPositioned = false
+    @State private var latestOutsideViewport = false
     private let bottomID = "transcript.bottom"
     private var revision: [String] {
         relay.chat.items.map(\.id) + [relay.chat.items.last?.text ?? ""]
@@ -451,6 +455,9 @@ private struct SessionTranscript: View {
     }
     var body: some View {
         GeometryReader { viewport in
+            // The scroll view extends beneath the home indicator. Reserve the
+            // actual distance to the dock, including keyboard and draft growth.
+            let bottomInset = dockFrame.isEmpty ? 60 : max(0, viewport.frame(in: .global).maxY - dockFrame.minY)
             ScrollViewReader { proxy in
                 ScrollView {
                     // Keep stable geometry when reading older history and returning
@@ -500,12 +507,14 @@ private struct SessionTranscript: View {
                         if relay.chat.items.isEmpty && relay.outbox.visible(session: session.id).isEmpty {
                             Text(String(localized: "Recent Codex context will appear here.", bundle: relayLocalizationBundle)).font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 24)
                         }
-                        SessionHeartbeat(session: session)
-                        Color.clear.frame(height: bottomInset + 8).id(bottomID)
-                            .background(GeometryReader { geometry in
-                                Color.clear.preference(key: TranscriptBottom.self, value: geometry.frame(in: .named("transcript")).maxY)
-                            })
-                    }.scrollTargetLayout().padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
+                        VStack(alignment: .leading, spacing: 8) {
+                            SessionHeartbeat(session: session)
+                            Color.clear.frame(height: bottomInset).id(bottomID)
+                                .background(GeometryReader { geometry in
+                                    Color.clear.preference(key: TranscriptBottom.self, value: geometry.frame(in: .named("transcript")).maxY)
+                                })
+                        }
+                    }.scrollTargetLayout().padding(.horizontal, 20).padding(.top, 12)
                 }
                 .coordinateSpace(name: "transcript")
                 .accessibilityIdentifier("session.transcript")
@@ -525,7 +534,16 @@ private struct SessionTranscript: View {
                         initialScroll = true
                     }
                 }
+                .onChange(of: bottomInset) { _, _ in
+                    // Growing drafts and queue panels must also keep the final
+                    // status above the dock while the reader follows live work.
+                    if scrolling.shouldFollow { DispatchQueue.main.async { if scrolling.shouldFollow { proxy.scrollTo(bottomID, anchor: .bottom) } } }
+                }
                 .onPreferenceChange(TranscriptBottom.self) { value in
+                    if value.isFinite && value < .greatestFiniteMagnitude {
+                        let hidden = value > viewport.size.height + 64
+                        if latestOutsideViewport != hidden { latestOutsideViewport = hidden }
+                    }
                     // Never infer reader intent from geometry: a short upward
                     // scroll, inertia, or keyboard resize must not re-enable follow.
                     if scrolling.shouldFollow && value > viewport.size.height + 12 {
@@ -548,11 +566,14 @@ private struct SessionTranscript: View {
                     scrolling.jumpToLatest()
                     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { proxy.scrollTo(bottomID, anchor: .bottom) }
                 }
-                .overlay(alignment: .bottomTrailing) {
-                    if !scrolling.followsLatest && !scrolling.isInteracting {
-                        Button { scrollRequest += 1 } label: { Label(String(localized: "Latest messages", bundle: relayLocalizationBundle), systemImage: "arrow.down") }
-                            .labelStyle(.iconOnly).font(.subheadline.weight(.semibold)).frame(width: 44, height: 44)
-                            .background(.regularMaterial, in: Circle()).buttonStyle(.plain).padding(8).padding(.bottom, bottomInset)
+                .overlay(alignment: .bottom) {
+                    if !scrolling.followsLatest && !scrolling.isInteracting && latestOutsideViewport {
+                        Button { scrollRequest += 1 } label: {
+                            Image(systemName: "arrow.down").font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.primary).frame(width: 32, height: 32).modifier(LatestMessageSurface())
+                                .frame(width: 44, height: 44).contentShape(Circle())
+                        }.accessibilityLabel(String(localized: "Latest messages", bundle: relayLocalizationBundle))
+                            .buttonStyle(.plain).padding(.bottom, bottomInset + 8)
                             .accessibilityIdentifier("transcript.latest")
                     }
                 }
@@ -600,11 +621,20 @@ private struct TranscriptBottom: PreferenceKey {
 private struct ComposerSurface: ViewModifier {
     @ViewBuilder func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 24))
+            content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 22).inset(by: 3))
         } else {
-            content.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24))
-                .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(.primary.opacity(0.1)))
+            content.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22).inset(by: 3))
+                .overlay(RoundedRectangle(cornerRadius: 22).inset(by: 3).strokeBorder(.primary.opacity(0.1)))
         }
+    }
+}
+
+private struct LatestMessageSurface: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @ViewBuilder func body(content: Content) -> some View {
+        if reduceTransparency { content.background(RelayPalette.surface, in: Circle()) }
+        else if #available(iOS 26.0, *) { content.glassEffect(.regular, in: Circle()) }
+        else { content.background(.regularMaterial, in: Circle()) }
     }
 }
 

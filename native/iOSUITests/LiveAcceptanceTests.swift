@@ -212,12 +212,57 @@ import XCTest
         let working = app.staticTexts["session.connection"]
         XCTAssertTrue(composer.waitForExistence(timeout: 10))
         wait(10) { working.isHittable }
+        let latest = app.buttons["transcript.latest"]
+        XCTAssertFalse(latest.exists)
         let transcript = app.scrollViews["session.transcript"]
         for _ in 0..<5 { if !working.isHittable { break }; transcript.swipeDown() }
         XCTAssertFalse(working.isHittable, "Working belongs to the latest messages, not the fixed composer")
         XCTAssertTrue(composer.isHittable)
-        app.buttons["transcript.latest"].tap()
+        XCTAssertTrue(latest.waitForExistence(timeout: 5))
+        XCTAssertEqual(latest.frame.midX, app.frame.midX, accuracy: 2)
+        latest.tap()
         wait(5) { working.isHittable }
+        wait(5) { !latest.exists }
+        let start = transcript.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 18)), withVelocity: .slow, thenHoldForDuration: 0.1)
+        XCTAssertFalse(latest.exists, "A small movement near the latest messages must not show the jump control")
+    }
+
+    func testComposerSpacingTracksKeyboardAndMultilineDraft() {
+        continueAfterFailure = false
+        for surface in ["conversation", "compaction"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["--product-screenshot", surface, "-AppleLanguages", "(en)"]
+            app.launch()
+            let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
+            let working = app.staticTexts["session.connection"]
+            let attach = app.buttons["composer.attach"]
+            let fieldSurface = app.descendants(matching: .any).matching(identifier: "composer.surface").firstMatch
+            XCTAssertTrue(composer.waitForExistence(timeout: 10))
+            func checkClearance() {
+                let predicate = NSPredicate { _, _ in
+                    let gap = fieldSurface.frame.minY + 3 - working.frame.maxY
+                    return working.exists && working.frame.minY >= app.scrollViews["session.transcript"].frame.minY && gap >= 4
+                }
+                XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: nil)], timeout: 5), .completed,
+                               "\(surface): state-to-composer gap \(fieldSurface.frame.minY - working.frame.maxY), state \(working.frame), composer \(fieldSurface.frame)")
+            }
+            // Short conversations keep status at the end of their messages.
+            // A growing draft must never cover that status at the live position.
+            checkClearance()
+            XCTAssertEqual(attach.frame.height, 44, accuracy: 1)
+            let message = "First line\nSecond line\nThird line\nFourth line\nFifth line"
+            composer.tap(); composer.typeText(message)
+            XCTAssertEqual(composer.value as? String, message)
+            XCTAssertGreaterThan(fieldSurface.frame.height, 80)
+            XCTAssertTrue(app.keyboards.firstMatch.exists)
+            checkClearance()
+            XCTAssertTrue(composer.isHittable)
+            let capture = XCTAttachment(screenshot: app.screenshot())
+            capture.name = "Compact composer spacing with keyboard - " + surface
+            capture.lifetime = .keepAlways; add(capture)
+            app.terminate()
+        }
     }
 
     func testAdministrativeHomesDoNotDuplicateSettings() {
