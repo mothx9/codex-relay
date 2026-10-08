@@ -6338,6 +6338,378 @@
           }
         }
       }
+    },
+    "Network unavailable": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Network unavailable"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rete non disponibile"
+          }
+        }
+      }
+    },
+    "Hub address unavailable": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hub address unavailable"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indirizzo Hub non disponibile"
+          }
+        }
+      }
+    },
+    "Hub unreachable": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hub unreachable"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hub non raggiungibile"
+          }
+        }
+      }
+    },
+    "Hub connection timed out": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hub connection timed out"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connessione Hub scaduta"
+          }
+        }
+      }
+    },
+    "Secure connection failed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Secure connection failed"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connessione sicura non riuscita"
+          }
+        }
+      }
+    },
+    "Hub access expired": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hub access expired"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accesso Hub scaduto"
+          }
+        }
+      }
+    },
+    "Hub unavailable": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hub unavailable"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hub non disponibile"
+          }
+        }
+      }
+    },
+    "Invalid Hub response": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invalid Hub response"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta Hub non valida"
+          }
+        }
+      }
+    },
+    "Check the iPhone’s network and VPN if your Hub uses a private network. Relay retries automatically.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check the iPhone’s network and VPN if your Hub uses a private network. Relay retries automatically."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controlla la rete dell’iPhone e la VPN se il tuo Hub usa una rete privata. Relay riprova automaticamente."
+          }
+        }
+      }
+    },
+    "Check the Hub’s HTTPS certificate and the iPhone’s date. Certificate validation remains enabled.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check the Hub’s HTTPS certificate and the iPhone’s date. Certificate validation remains enabled."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controlla il certificato HTTPS dell’Hub e la data dell’iPhone. La verifica dei certificati resta attiva."
+          }
+        }
+      }
+    },
+    "Pair this iPhone again with a new controller code.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pair this iPhone again with a new controller code."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Associa di nuovo questo iPhone con un nuovo codice controller."
+          }
+        }
+      }
+    },
+    "Check the Hub service and version. Relay retries automatically.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check the Hub service and version. Relay retries automatically."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controlla il servizio e la versione dell’Hub. Relay riprova automaticamente."
+          }
+        }
+      }
+    },
+    "Retry connection": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retry connection"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riprova connessione"
+          }
+        }
+      }
+    },
+    "Transport error": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transport error"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Errore di trasporto"
+          }
+        }
+      }
+    },
+    "Connection attempts": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connection attempts"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tentativi di connessione"
+          }
+        }
+      }
+    },
+    "Errors": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Errori"
+          }
+        }
+      }
+    },
+    "View all errors": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vedi tutti gli errori"
+          }
+        }
+      }
+    },
+    "Model at capacity": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modello temporaneamente saturo"
+          }
+        }
+      }
+    },
+    "Usage limit reached": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limite di utilizzo raggiunto"
+          }
+        }
+      }
+    },
+    "Too many requests": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Troppe richieste"
+          }
+        }
+      }
+    },
+    "Codex sign-in required": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accesso a Codex richiesto"
+          }
+        }
+      }
+    },
+    "Context limit reached": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limite del contesto raggiunto"
+          }
+        }
+      }
+    },
+    "Model connection lost": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connessione al modello interrotta"
+          }
+        }
+      }
+    },
+    "Codex service unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Servizio Codex non disponibile"
+          }
+        }
+      }
+    },
+    "Codex turn failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turno Codex non riuscito"
+          }
+        }
+      }
+    },
+    "Codex stopped": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex si è fermato"
+          }
+        }
+      }
+    },
+    "Send a message to continue.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invia un messaggio per continuare."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

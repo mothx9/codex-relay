@@ -10,6 +10,7 @@ enum RelaySpacing {
 struct RootView: View {
     @Environment(RelayController.self) private var relay
     @State private var destination = 0
+    @State private var sessionPath: [String] = []
     @State private var library = false
     @State private var fleetSearch = ""
     @State private var fleetFilter = "ALL"
@@ -18,7 +19,7 @@ struct RootView: View {
         Group {
             if relay.credential == nil { NavigationStack { PairingView().navigationTitle("Codex Relay").navigationBarTitleDisplayMode(.inline) } }
             else {
-                NavigationStack {
+                NavigationStack(path: $sessionPath) {
                     TabView(selection: $destination) {
                         FleetView(filter: $fleetFilter, machine: $fleetMachine, search: $fleetSearch).tabItem { Label("Fleet", systemImage: "square.grid.2x2") }.tag(0)
                         NeedsYouView().tabItem { Label(String(localized: "Needs You", bundle: relayLocalizationBundle), systemImage: "bubble.left.and.exclamationmark.bubble.right") }
@@ -52,7 +53,7 @@ struct RootView: View {
                     }
                     .navigationTitle(destination == 0 ? "Codex Relay" : destination == 1 ? String(localized: "Needs You", bundle: relayLocalizationBundle) : String(localized: "Settings", bundle: relayLocalizationBundle))
                     .navigationBarTitleDisplayMode(.inline)
-                    .navigationDestination(isPresented: Binding(get: { !relay.selected.isEmpty }, set: { if !$0 { relay.closeDetail() } })) {
+                    .navigationDestination(for: String.self) { _ in
                         SessionView()
                     }
                 }
@@ -66,6 +67,15 @@ struct RootView: View {
             }
         }
         .onChange(of: relay.returnToFleet) { _, _ in destination = 0 }
+        .onChange(of: relay.selected) { _, selected in
+            let next = selected.isEmpty ? [] : [selected]
+            if sessionPath != next { sessionPath = next }
+        }
+        .onChange(of: sessionPath) { _, path in
+            if let selected = path.last {
+                if relay.selected != selected { relay.open(selected) }
+            } else if !relay.selected.isEmpty { relay.closeDetail() }
+        }
         .safeAreaInset(edge: .top) {
             if let message = relay.navigationStatus {
                 HStack {
@@ -217,7 +227,7 @@ struct NeedsYouView: View {
             if !requests.isEmpty {
                 Section(String(localized: "Action required", bundle: relayLocalizationBundle)) {
                 ForEach(requests) { request in
-                    Button { relay.open(request.sessionId) } label: {
+                    NavigationLink(value: request.sessionId) {
                         VStack(alignment: .leading, spacing: RelaySpacing.compact) {
                             Text(relay.sessions[request.sessionId]?.title ?? String(localized: "Codex session", bundle: relayLocalizationBundle)).font(.body.weight(.medium))
                             Text(relay.machines[request.machineId]?.name ?? request.machineId).font(.caption).foregroundStyle(.secondary)
@@ -232,7 +242,7 @@ struct NeedsYouView: View {
             if !relay.liveQuestions.records.isEmpty {
                 Section {
                     ForEach(relay.liveQuestions.records) { question in
-                        Button { relay.open(question.sessionID) } label: {
+                        NavigationLink(value: question.sessionID) {
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack(alignment: .firstTextBaseline) {
                                     Text(relay.sessions[question.sessionID]?.title ?? String(localized: "Codex session", bundle: relayLocalizationBundle)).font(.body.weight(.medium)).lineLimit(1)
@@ -505,10 +515,10 @@ struct LastKnownSession: View {
             decode(["id": id, "name": name, "status": status, "last_seen": stamp, "agent_version": "0.1.0", "codex_version": "0.160.1", "adapter": "app-server", "freshness": ["protocol_version": 1, "last_heartbeat": stamp, "last_snapshot": stamp, "last_event": stamp, "snapshot_ms": 84, "sync_ms": 102, "sequence": 42, "snapshot_sequence": 40]])
         }
         relay.machines = Dictionary(uniqueKeysWithValues: machines.map { ($0.id, $0) })
-        let sessionSpecs = [("laptop", "decision", "Validate the release", "relay", "NEEDS_YOU"), ("workstation", "build", "Harden input validation", "compiler", "WORKING"), ("laptop", "review", "Review the change set", "app", "WORKING"), ("node", "tests", "Run integration checks", "relay", "WORKING"), ("laptop", "docs", "Update installation guide", "relay", "READY"), ("node", "kernel", "Check compute kernels", "compute", surface == "fleet" ? "READY" : "WORKING")]
-        let sessions: [RelaySession] = sessionSpecs.enumerated().map { index, spec in
-            let (machine, thread, title, project, status) = spec
-            return decode(["id": machine + "~" + thread, "machine_id": machine, "thread_id": thread, "title": title, "project": project, "cwd": "/workspace/" + project, "branch": "main", "status": status, "updated_at": ISO8601DateFormatter().string(from: now.addingTimeInterval(Double(-index * 60))), "turn_id": "example-turn", "turn_started": ISO8601DateFormatter().string(from: now.addingTimeInterval(-267)), "read_only": false, "capabilities": ["can_send": true, "can_send_images": true, "can_follow_up": true, "can_steer": true, "can_steer_queue": true, "can_interrupt": true, "can_answer": true]])
+		let sessionSpecs = [("laptop", "decision", "Validate the release", "relay", "NEEDS_YOU"), ("workstation", "build", "Harden input validation", "compiler", "WORKING"), ("laptop", "review", "Review the change set", "app", "WORKING"), ("node", "tests", "Run integration checks", "relay", "WORKING"), ("laptop", "docs", "Update installation guide", "relay", "FAILED"), ("node", "kernel", "Check compute kernels", "compute", surface == "fleet" ? "READY" : "WORKING")]
+		let sessions: [RelaySession] = sessionSpecs.enumerated().map { index, spec in
+			let (machine, thread, title, project, status) = spec
+			return decode(["id": machine + "~" + thread, "machine_id": machine, "thread_id": thread, "title": title, "project": project, "cwd": "/workspace/" + project, "branch": "main", "status": status, "failure_reason": status == "FAILED" ? "capacity" : "", "updated_at": ISO8601DateFormatter().string(from: now.addingTimeInterval(Double(-index * 60))), "turn_id": status == "FAILED" ? "" : "example-turn", "turn_started": ISO8601DateFormatter().string(from: now.addingTimeInterval(-267)), "read_only": false, "capabilities": ["can_send": true, "can_send_images": true, "can_follow_up": true, "can_steer": true, "can_steer_queue": true, "can_interrupt": status != "FAILED", "can_answer": true]])
         }
         relay.sessions = Dictionary(uniqueKeysWithValues: sessions.map { ($0.id, $0) })
         relay.liveActivities = ["workstation~build": decode(["item_id": "example-command", "kind": "terminal", "label": "cargo test --workspace", "state": "running", "timestamp": stamp])]
@@ -516,10 +526,10 @@ struct LastKnownSession: View {
         relay.liveActivities["node~tests"] = decode(["item_id": "example-tests", "kind": "terminal", "label": "Running integration checks", "state": "running", "timestamp": stamp])
         let request: PendingRequest = decode(["request_id": "example-request", "session_id": "laptop~decision", "machine_id": "laptop", "kind": "user_input", "description": "Which validation scope should I use?", "expires_at": "2099-01-01T00:00:00Z", "created_at": stamp, "can_approve": true, "questions": [["id": "scope", "header": "Validation", "question": "Which validation scope should I use?", "options": [["label": "Full suite", "description": "Run unit tests and integration checks."], ["label": "Focused checks", "description": "Run tests for the changed module."]]]]])
         relay.requests = [request.id: request]
-        relay.selected = ["conversation", "terminal", "tools", "diff", "live-question", "history-question", "compaction", "queue", "question-reply", "activity", "changed-files", "activity-routing", "draft-offline"].contains(surface) ? "workstation~build" : surface == "question" ? "laptop~decision" : ""
+		relay.selected = ["conversation", "terminal", "tools", "diff", "live-question", "history-question", "compaction", "queue", "question-reply", "activity", "changed-files", "activity-routing", "draft-offline"].contains(surface) ? "workstation~build" : surface == "question" ? "laptop~decision" : surface == "failed" ? "laptop~docs" : ""
         relay.outbox = Outbox(); relay.chat = RecentChat()
         relay.chat.put(Activity(id: "example-user", kind: "userMessage", text: "Validate empty inputs, then run the workspace tests."))
-        relay.chat.put(Activity(id: "example-response", kind: "agentMessage", text: "I added an **empty-input guard** and a regression test. The workspace suite is running."))
+		relay.chat.put(Activity(id: "example-response", kind: "agentMessage", text: "I added an **empty-input guard** and a regression test. The workspace suite is running."))
         var command = Activity(id: "example-command", kind: "commandExecution", text: "cargo test --workspace\nCompiling validator v0.4.0\nRunning tests/validation.rs\ntest rejects_empty_input ... ok\ntest preserves_valid_input ... ok\nRunning integration checks…")
         command.command = "cargo test --workspace"; command.state = "running"; command.timestamp = stamp
         relay.chat.put(command)
@@ -569,6 +579,16 @@ struct LastKnownSession: View {
             item.state = "running"; item.turnId = "example-turn"; relay.chat.put(item)
             relay.liveActivities["workstation~build"] = decode(["item_id": item.id, "kind": item.kind, "state": "running", "label": "", "timestamp": stamp])
         }
+        if surface == "failed" {
+            relay.requests = [:]; relay.chat = RecentChat()
+            relay.chat.put(Activity(id: "example-failed-user", kind: "userMessage", text: "Update the installation guide and check the examples."))
+            var completed = Activity(id: "example-failed-command", kind: "commandExecution", text: "go test ./...\nAll tests passed.")
+            completed.command = "go test ./..."; completed.state = "completed"; completed.timestamp = stamp
+            relay.chat.put(completed)
+            var failure = Activity(id: "turn-error-example-turn", kind: "turnError", text: "Selected model is at capacity. Please try a different model.")
+            failure.state = "failed"; failure.timestamp = stamp; failure.turnId = "example-turn"
+            relay.chat.put(failure)
+        }
         let account: AccountEntry = decode(["id": "example-account", "identity_basis": "account_id", "account": ["kind": "chatgpt", "email": "developer@example.invalid", "plan": "Pro", "source": "codex", "observed_at": stamp, "limits": ["primary": ["used_percent": 61, "window_duration_mins": 300, "resets_at": Int(now.timeIntervalSince1970) + 8040], "secondary": ["used_percent": 31, "window_duration_mins": 10080, "resets_at": Int(now.timeIntervalSince1970) + 172800]]], "machines": ["workstation", "laptop"], "source_machine": "laptop", "fresh": true, "updated_at": stamp])
         relay.accounts = [account]
         relay.registry = DeviceRegistry(operators: relay.registry!.operators, machines: machines.map { MachineDevice(machine: $0, access: "ALLOWED") }, currentDeviceId: "preview-device", hubUrl: "https://relay.example.invalid", chatgptDeviceManagement: false)
@@ -587,7 +607,7 @@ struct LastKnownSession: View {
         Group {
             switch surface {
             case "fleet": RootView()
-            case "conversation", "question", "live-question", "history-question", "compaction", "queue", "question-reply", "activity-routing", "draft-offline": NavigationStack { SessionView() }
+            case "conversation", "question", "live-question", "history-question", "compaction", "queue", "question-reply", "activity-routing", "draft-offline", "failed": NavigationStack { SessionView() }
             case "needs-you", "live-inbox": NavigationStack { NeedsYouView().navigationTitle("Needs You").navigationBarTitleDisplayMode(.inline) }
             case "navigation": NavigationStack { RelayLibraryView(openHistory: {}) }
             case "machine-diagnostics": NavigationStack { MachineDiagnosticsView(id: "workstation") }
@@ -612,7 +632,7 @@ struct LastKnownSession: View {
             .onChange(of: relay.selected) { _, selected in
                 // The public walkthrough exercises production navigation with isolated content.
                 guard surface == "fleet", !selected.isEmpty else { return }
-                relay.chat = ProductFixtures.controller(surface: selected == "workstation~build" ? "conversation" : "question").chat
+                relay.chat = ProductFixtures.controller(surface: selected == "workstation~build" ? "conversation" : selected == "laptop~docs" ? "failed" : "question").chat
             }
     }
 }

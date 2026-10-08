@@ -9,6 +9,7 @@ import select
 import subprocess
 import tempfile
 import time
+import shutil
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--simulator', required=True)
@@ -48,10 +49,14 @@ try:
             if recording.poll() is not None or time.monotonic() > deadline:
                 raise RuntimeError('Simulator recording did not start')
         try:
-            subprocess.run(base + ['-parallel-testing-enabled', 'NO', '-collect-test-diagnostics', 'never',
+            outcome = subprocess.run(base + ['-parallel-testing-enabled', 'NO', '-collect-test-diagnostics', 'never',
                                    '-resultBundlePath', str(result),
                                    '-only-testing:CodexRelayUITests/LiveAcceptanceTests/testPublicProductWalkthrough',
-                                   'test-without-building'], check=True)
+                                   'test-without-building'])
+            if outcome.returncode:
+                failure = Path(tempfile.mkdtemp(prefix='relay-capture-failed-'))
+                if result.exists(): shutil.copytree(result, failure / 'capture.xcresult')
+                raise RuntimeError('Capture failed; diagnostic result preserved at ' + str(failure))
         finally:
             recording.send_signal(signal.SIGINT)
             recording.communicate(timeout=20)
@@ -59,31 +64,44 @@ try:
         subprocess.run(['xcrun', 'xcresulttool', 'export', 'attachments', '--path', str(result),
                         '--output-path', str(exported)], check=True)
         markers = {}
+        flows = []
         for test in json.loads((exported / 'manifest.json').read_text()):
             for item in test['attachments']:
                 for marker in ('start', 'end'):
                     if item['suggestedHumanReadableName'].startswith('Public walkthrough ' + marker + '_'):
                         markers[marker] = item['timestamp']
+                name = item['suggestedHumanReadableName'].split('_')[0]
+                if name.startswith('public-flow-') and not item.get('isAssociatedWithFailure', False):
+                    flows.append((name.removeprefix('public-flow-'), item['timestamp'], exported / item['exportedFileName']))
         if set(markers) != {'start', 'end'} or markers['end'] <= markers['start'] or markers['start'] <= started:
             raise RuntimeError('Missing safe recording boundaries')
         target = root / 'docs/assets/app/recordings'
         target.mkdir(parents=True, exist_ok=True)
-        movie, preview = target / 'native-walkthrough.mp4', target / 'native-walkthrough.gif'
+        stem = 'native-walkthrough'
+        movie, preview = target / (stem + '.mp4'), target / (stem + '.gif')
         # The recording acknowledgement is not an exact first-frame timestamp.
         # Leave a tail margin before XCTest tears down the app to exclude Home.
-        duration = markers['end'] - markers['start'] - 2.25
+        duration = markers['end'] - markers['start']
         if duration <= 0:
             raise RuntimeError('Walkthrough is too short for safe recording boundaries')
         subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-ss',
                         str(max(0, markers['start'] - started + .25)), '-i', str(raw),
                         '-t', str(duration), '-an',
-                        '-vf', 'scale=590:-2', '-r', '30', '-c:v', 'libx264', '-crf', '23',
+                        '-vf', 'scale=1170:-2:flags=lanczos', '-r', '30', '-c:v', 'libx264', '-crf', '18',
                         '-pix_fmt', 'yuv420p', '-movflags', '+faststart', str(movie)], check=True)
         subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', str(movie),
-                        '-filter_complex', 'fps=8,scale=280:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer',
+                        '-t', '16', '-filter_complex', 'fps=10,scale=320:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer',
                         '-loop', '0', str(preview)], check=True)
         subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration,size',
                         '-of', 'json', str(movie)], check=True)
+        chapters = []
+        screenshots = root / 'docs/assets/app/screenshots'
+        screenshots.mkdir(parents=True, exist_ok=True)
+        for name, timestamp, path in sorted(flows, key=lambda x: x[1]):
+            chapter = dict(name=name, seconds=round(max(0, timestamp - markers['start']), 2))
+            chapters.append(chapter)
+            shutil.copyfile(path, screenshots / ('flow-' + name + '.png'))
+        (target / (stem + '.chapters.json')).write_text(json.dumps(chapters, indent=2) + '\n')
         print('Review the full recording before publication:', movie)
 finally:
     if recording is not None:

@@ -17,6 +17,7 @@ func TestControlPreconditions(t *testing.T) {
 		{"follow-up without turn ID", Session{Status: Working, Capabilities: Capabilities{CanFollowUp: true}}, Command{Kind: FollowUpCommand}, ""},
 		{"follow-up unavailable", Session{Status: Working}, Command{Kind: FollowUpCommand}, FollowUpUnavailable},
 		{"new turn ready", Session{Status: Ready, Capabilities: Capabilities{CanSend: true}}, Command{Kind: NewTurn}, ""},
+		{"failed turn can resume", Session{Status: Failed, Capabilities: Capabilities{CanSend: true}}, Command{Kind: NewTurn}, ""},
 		{"new turn working", working, Command{Kind: NewTurn}, TurnChanged},
 		{"read only", Session{ReadOnly: true}, Command{Kind: NewTurn}, SessionReadOnly},
 		{"queue editing requires capability", Session{Status: Working}, Command{Kind: QueueUpdate}, FollowUpUnavailable},

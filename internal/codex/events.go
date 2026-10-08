@@ -265,7 +265,16 @@ func (a *Adapter) handle(m rpcMessage) {
 	case "thread/started":
 		ev.Kind = "session"
 	case "thread/status/changed":
-		s.Status = Normalize(p.Status.Type, p.Status.Flags)
+		status := Normalize(p.Status.Type, p.Status.Flags)
+		// Codex may report the thread idle immediately after a failed turn.
+		// Idle is not a successful retry; the next turn/started clears the error.
+		if s.Status == protocol.Failed && status == protocol.Ready {
+			status = protocol.Failed
+		}
+		s.Status = status
+		if s.Status != protocol.Failed {
+			s.FailureReason = ""
+		}
 		s.RawStatus = p.Status.Type
 		ev.Kind = "session"
 	case "thread/name/updated":
@@ -303,6 +312,7 @@ func (a *Adapter) handle(m rpcMessage) {
 		ev.Kind = "session"
 	case "turn/started":
 		s.Status = protocol.Working
+		s.FailureReason = ""
 		s.TurnID = p.Turn.ID
 		s.TurnStarted = time.Now().UTC()
 		ev.Kind = "turn_started"
@@ -321,7 +331,12 @@ func (a *Adapter) handle(m rpcMessage) {
 		ev.TurnID = p.Turn.ID
 		if p.Turn.Status == "failed" {
 			s.Status = protocol.Failed
+			s.FailureReason = failureReason(p.Turn.Error)
 			ev.Kind = "failed"
+			item := turnErrorActivity(p.Turn)
+			ev.Activity = &item
+		} else {
+			s.FailureReason = ""
 		}
 		ev.NotifyKey = s.ID + "/turn/" + p.Turn.ID
 	case "serverRequest/resolved":

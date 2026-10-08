@@ -64,6 +64,7 @@ type Session struct {
 	Cwd            string       `json:"cwd"`
 	Branch         string       `json:"branch,omitempty"`
 	Status         string       `json:"status"`
+	FailureReason  string       `json:"failure_reason,omitempty"`
 	RawStatus      string       `json:"raw_status,omitempty"`
 	UpdatedAt      time.Time    `json:"updated_at"`
 	TurnID         string       `json:"turn_id,omitempty"`

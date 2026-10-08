@@ -2,6 +2,16 @@ import XCTest
 @testable import RelayCore
 
 final class TranscriptTests: XCTestCase {
+	func testFailedSessionSeparatesCauseFromToolFailureAndCanResume() throws {
+		let json = #"{"id":"m~t","machine_id":"m","thread_id":"t","title":"Build","project":"demo","cwd":"/demo","status":"FAILED","failure_reason":"capacity","updated_at":"2026-10-08T12:00:00Z","read_only":false,"capabilities":{"can_send":true,"can_follow_up":false,"can_steer":false,"can_interrupt":false,"can_answer":false}}"#
+		let session = try RelayJSON.decoder().decode(RelaySession.self, from: Data(json.utf8))
+		XCTAssertEqual(session.failureSummary, "Model at capacity")
+		XCTAssertEqual(session.defaultCommand, "new_turn")
+		XCTAssertTrue(session.allows("new_turn"))
+		let error = Activity(id: "turn-error-retry", kind: "turnError", text: "Selected model is at capacity.")
+		let groups = TranscriptGroup.make([Activity(id: "command", kind: "commandExecution", text: "rg file"), error])
+		XCTAssertEqual(groups.map(\.kind), [.terminal, .message])
+	}
     func testFleetActivityIsBoundedAndDoesNotClaimStaleCompletion() throws {
         func activity(_ kind: String, _ state: String) throws -> LiveActivity {
             let value: [String: String] = ["item_id": "operation", "kind": kind, "label": String(repeating: "private-command ", count: 200), "state": state, "timestamp": ""]

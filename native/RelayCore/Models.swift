@@ -89,6 +89,7 @@ public struct Capabilities: Codable, Sendable {
 }
 public struct RelaySession: Codable, Identifiable, Sendable {
     public var tokenUsage: TokenUsage? = nil
+	public var failureReason: String? = nil
     public var fresh: Bool? = nil
     public var observedAt: String? = nil
     public var agentEpoch: String? = nil
@@ -96,7 +97,19 @@ public struct RelaySession: Codable, Identifiable, Sendable {
     public let title: String; public let project: String; public let cwd: String; public let branch: String?
     public var status: String; public let updatedAt: String; public var turnId: String?; public let turnStarted: String?
     public var readOnly: Bool; public var capabilities: Capabilities
-    public var defaultCommand: String { status == "READY" ? "new_turn" : status == "WORKING" ? "follow_up" : status == "NEEDS_YOU" ? "answer" : "" }
+	public var defaultCommand: String { ["READY", "FAILED"].contains(status) ? "new_turn" : status == "WORKING" ? "follow_up" : status == "NEEDS_YOU" ? "answer" : "" }
+	public var failureSummary: String {
+		switch failureReason {
+		case "capacity": String(localized: "Model at capacity", bundle: relayLocalizationBundle)
+		case "usage_limit": String(localized: "Usage limit reached", bundle: relayLocalizationBundle)
+		case "rate_limit": String(localized: "Too many requests", bundle: relayLocalizationBundle)
+		case "authentication": String(localized: "Codex sign-in required", bundle: relayLocalizationBundle)
+		case "context_limit": String(localized: "Context limit reached", bundle: relayLocalizationBundle)
+		case "connection": String(localized: "Model connection lost", bundle: relayLocalizationBundle)
+		case "service": String(localized: "Codex service unavailable", bundle: relayLocalizationBundle)
+		default: String(localized: "Codex turn failed", bundle: relayLocalizationBundle)
+		}
+	}
     public func displayStatus(machine: Machine?, connected: Bool) -> String {
         guard connected, let machine else { return "OFFLINE" }
         guard machine.status == "ONLINE" else { return machine.status }
@@ -109,7 +122,7 @@ public struct RelaySession: Codable, Identifiable, Sendable {
         switch kind {
         case "queue_update": return canEditQueueAvailable
         case "queue_steer": return status == "WORKING" && !(turnId ?? "").isEmpty && capabilities.canSteer && capabilities.canSteerQueue == true
-        case "new_turn": return status == "READY" && capabilities.canSend
+		case "new_turn": return ["READY", "FAILED"].contains(status) && capabilities.canSend
         case "follow_up": return status == "WORKING" && capabilities.canFollowUp
         case "steer": return status == "WORKING" && !(turnId ?? "").isEmpty && capabilities.canSteer
         case "interrupt": return !(turnId ?? "").isEmpty && capabilities.canInterrupt

@@ -272,6 +272,43 @@ func TestNativeIdentityAndQueueSignal(t *testing.T) {
 	}
 }
 
+func TestFailedTurnCarriesPrivateCauseAndAllowsAnotherTurn(t *testing.T) {
+	a := &Adapter{cfg: Config{MachineID: "m"}, sessions: map[string]protocol.Session{"t": {ID: "m~t", MachineID: "m", ThreadID: "t", Status: protocol.Working, TurnID: "active"}}, requests: map[string]pending{}, events: make(chan protocol.Event, 8), done: make(chan struct{}), queue: true}
+	a.handle(rpcMessage{Method: "turn/completed", Params: json.RawMessage(`{"threadId":"t","turn":{"id":"active","status":"failed","error":{"message":"Selected model is at capacity. Please try a different model.","codexErrorInfo":"serverOverloaded"}}}`)})
+	failed := <-a.Events()
+	if failed.Kind != "failed" || failed.Session == nil || failed.Session.Status != protocol.Failed || failed.Session.FailureReason != "capacity" || !failed.Session.Capabilities.CanSend || failed.Activity == nil || failed.Activity.Kind != "turnError" || !strings.Contains(failed.Activity.Text, "capacity") {
+		t.Fatal("failed turn lost cause or recovery capability", failed)
+	}
+	metadata, _ := json.Marshal(failed.Session)
+	if strings.Contains(string(metadata), "Selected model") {
+		t.Fatal("upstream error persisted in fleet metadata")
+	}
+	a.handle(rpcMessage{Method: "thread/status/changed", Params: json.RawMessage(`{"threadId":"t","status":{"type":"idle"}}`)})
+	idle := <-a.Events()
+	if idle.Session == nil || idle.Session.Status != protocol.Failed || idle.Session.FailureReason != "capacity" {
+		t.Fatal("post-failure idle event concealed the error", idle)
+	}
+	a.handle(rpcMessage{Method: "turn/started", Params: json.RawMessage(`{"threadId":"t","turn":{"id":"retry","status":"inProgress","items":[]}}`)})
+	retry := <-a.Events()
+	if retry.Session == nil || retry.Session.Status != protocol.Working || retry.Session.FailureReason != "" {
+		t.Fatal("failure state survived a new turn", retry)
+	}
+}
+
+func TestSnapshotUsesLatestTurnForFailure(t *testing.T) {
+	a := &Adapter{cfg: Config{MachineID: "m"}, queue: true}
+	old := turn{ID: "old", Status: "failed", Error: &turnError{Message: "at capacity"}}
+	canInput := true
+	failed := a.session(thread{ID: "t", Status: status{Type: "idle"}, CanInput: &canInput, Turns: []turn{old}}, true)
+	if failed.Status != protocol.Failed || failed.FailureReason != "capacity" || !failed.Capabilities.CanSend {
+		t.Fatal("latest failure missing from snapshot", failed)
+	}
+	recovered := a.session(thread{ID: "t", Status: status{Type: "idle"}, CanInput: &canInput, Turns: []turn{old, {ID: "new", Status: "completed"}}}, true)
+	if recovered.Status != protocol.Ready || recovered.FailureReason != "" {
+		t.Fatal("older failure leaked into successful snapshot", recovered)
+	}
+}
+
 func TestAdapterCanonicalErrorMapping(t *testing.T) {
 	a := &Adapter{sessions: map[string]protocol.Session{}, requests: map[string]pending{}, events: make(chan protocol.Event, 16), done: make(chan struct{}), queue: true}
 	code := a.errorCode(protocol.Command{Kind: protocol.Steer}, &rpcError{Code: -32000, Message: "expected turn ID mismatch: PRIVATE_PROMPT_CANARY"})

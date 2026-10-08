@@ -20,13 +20,15 @@ controlling and continuing Codex sessions across multiple machines.
 [Architecture](docs/architecture/overview.md) · [Current status](docs/status.md)
 
 <p align="center">
-<img src="docs/assets/app/screenshots/fleet.png" width="260" alt="Fleet prioritizes Needs You and live work">
-<img src="docs/assets/app/screenshots/conversation.png" width="260" alt="Conversation with live activity and sticky composer">
+<img src="docs/assets/app/screenshots/flow-fleet.png" width="250" alt="Fleet separates Needs You, Errors, Working and Recent">
+<img src="docs/assets/app/screenshots/flow-expanded-activity.png" width="250" alt="Conversation with navigable command, tool and file activity">
+<img src="docs/assets/app/screenshots/flow-error.png" width="250" alt="A successful command and a separate model failure with its exact cause">
 </p>
 
 ## Why Codex Relay
 
 - **Know what is happening now:** live Fleet rows stand out from Recent; execution state stays separate from current activity.
+- **Recover from failures:** Errors has its own Fleet section; the conversation shows the Codex cause and accepts a new message to continue.
 - **Respond when needed:** canonical decisions and clearly separate transient live questions.
 - **Continue work:** send a Follow-up, then tap its Steer action to use it in the current turn; attach photos or screenshots with +.
 - **Trust the state:** explicit Online, Syncing, Degraded and Offline; last-known work stays visibly stale.
@@ -34,13 +36,17 @@ controlling and continuing Codex sessions across multiple machines.
 - **Stay informed:** native local alerts while connected; remote APNs with your Apple setup.
 - **Keep control:** your Hub, your machines, local Codex login, no Relay cloud account.
 
-<p align="center"><a href="docs/assets/app/recordings/native-walkthrough.mp4"><img src="docs/assets/app/recordings/native-walkthrough.gif" width="280" alt="Recorded iPhone walkthrough: Fleet, conversation, photo menu, file diff and Needs You"></a></p>
+<p align="center"><a href="docs/assets/app/recordings/native-walkthrough.mp4"><img src="docs/assets/app/recordings/native-walkthrough.gif" width="280" alt="Recorded iPhone walkthrough across Fleet, errors, command output, diff, attachments, Needs You and settings"></a></p>
 
-[Watch the short native walkthrough](docs/assets/app/recordings/native-walkthrough.mp4)
-— actual simulator recording with sanitized example content.
+[Watch the complete native walkthrough](docs/assets/app/recordings/native-walkthrough.mp4)
+— a 90-second simulator recording through the real navigation and activity views
+with an isolated, sanitized example. [Chapters](docs/assets/app/recordings/native-walkthrough.chapters.json).
 
-[Activity list](docs/assets/app/screenshots/activity.png) ·
-[Changed files](docs/assets/app/screenshots/changed-files.png) ·
+[Command output](docs/assets/app/screenshots/flow-command-output.png) ·
+[Activity list](docs/assets/app/screenshots/flow-activity-index.png) ·
+[File diff](docs/assets/app/screenshots/flow-file-diff.png) ·
+[Error and recovery](docs/assets/app/screenshots/flow-error.png) ·
+[Needs You choice](docs/assets/app/screenshots/flow-question-choice.png) ·
 [Partial-height live question](docs/assets/app/screenshots/question-panel.png)
 
 ## How it works
@@ -123,7 +129,7 @@ Keep using Codex on each enrolled machine. Fleet shows active work and requests;
 All Sessions provides on-demand historical navigation. A machine going offline
 does not mean its previous work completed.
 
-<img src="docs/assets/app/screenshots/terminal.png" width="270" alt="Running command with live output, command actions and output disclosure">
+<img src="docs/assets/app/screenshots/flow-command-output.png" width="270" alt="Running command with output and command actions">
 
 ### 5. Control it remotely
 
@@ -133,7 +139,7 @@ current-turn actions. Acknowledgement is not completion, and an uncertain outcom
 is never automatically resent.
 
 <p>
-<img src="docs/assets/app/screenshots/needs-you.png" width="260" alt="Authoritative decisions across machines in Needs You">
+<img src="docs/assets/app/screenshots/flow-needs-you.png" width="260" alt="Authoritative decisions across machines in Needs You">
 <img src="docs/assets/app/screenshots/account.png" width="260" alt="Codex runtime account and dynamically described usage windows">
 </p>
 

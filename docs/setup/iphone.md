@@ -63,6 +63,9 @@ Working rows keep the green execution state separate from the quieter activity
 category, beside elapsed time. Working and Needs You use compact grouped glass
 surfaces; Recent stays flat with quiet separators.
 Machine/project appears to the right of the title; Recent work is a separate list.
+Failed turns appear in **Errors**, with a short category. Open one to read the
+exact Codex error in the conversation; a failed turn does not imply that its
+terminal commands failed. Type a new message in that session to resume it.
 Orange means a current decision needs you, while stale/offline work stays explicit.
 Inside chat, Working belongs to the end of the transcript and scrolls away when
 you read earlier messages. The composer floats over the conversation without a

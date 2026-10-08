@@ -17,7 +17,9 @@ The latest wave adds explicit context-compaction status, compact mixed activity
 groups, direct file diffs, remaining-capacity quota windows and connected-client
 local banners with machine/session/turn context and a slimmer persistent composer.
 Fleet groups compact Working/Needs You rows in visible glass surfaces and keeps
-a flat Recent index with quiet separators.
+a flat Recent index with quiet separators. Failed turns have a separate Errors
+section, a safe summary in Fleet and the exact upstream cause in their private
+conversation; an input-capable failed session can continue with a new message.
 Green execution state is separate from the current activity; source text and
 spacing are balanced. Send queues work, and a direct Next up Steer button (or
 physical-keyboard Escape) promotes the selected canonical input without creating

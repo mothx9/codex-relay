@@ -77,13 +77,20 @@ a successful handshake alone does not reset repeated short-failure backoff.
 No shared Codex daemon restart is required.
 
 The native client opens WSS before optional bootstrap reads. It requires the
-first canonical snapshot within 10 seconds and probes a quiet socket every
-10 seconds, reconnecting after a missing pong exceeds 5 seconds. Callbacks check
+first canonical snapshot within 30 seconds, allowing cold mobile/VPN routing and
+TLS setup. It probes an admitted quiet socket every 10 seconds, reconnecting
+after a missing pong exceeds 10 seconds. No ping is sent before admission. Callbacks check
 both controller generation and socket identity. Foreground recovery starts a new
 connection; retries are capped at 8 seconds with jitter. HTTP diagnostics reuse
 an ephemeral transport with request-scoped credentials and no cookie/cache or
 redirect forwarding. Authentication rejection remains distinct from a network
 retry. Uncertain commands are never automatically replayed.
+
+Fleet retains the failure category while retrying instead of showing an endless
+Connecting label. Diagnostics expose a fixed category and numeric error code,
+including before a first successful connection; copied reports omit URLSession
+descriptions, URLs, headers and credentials. `--connection-diagnostics` adds
+opt-in redacted console traces and an HTTPS health probe for device debugging.
 
 On Hub restart persisted machines load Offline, with last-known session metadata
 and pending routing. Payloads are rehydrated from the Agent/Codex, not SQLite.

@@ -6,6 +6,54 @@ public enum HubFailure: LocalizedError, Sendable {
     public var authenticationRequired: Bool { if case .http(let code, _) = self { return code == 401 || code == 403 }; return false }
     public var retryable: Bool { if case .http(let code, _) = self { return [408, 425, 429].contains(code) || (500...599).contains(code) }; return false }
 }
+
+// URLSession error descriptions/userInfo can contain the Hub URL and request
+// headers. Keep only a fixed category and numeric code for UI and diagnostics.
+public struct ConnectionIssue: Sendable, Equatable {
+    public enum Kind: String, Sendable { case network, dns, unreachable, timeout, tls, authentication, hub, protocolData, snapshotTimeout, pongTimeout }
+    public let kind: Kind
+    public let code: Int?
+    public init(kind: Kind, code: Int? = nil) { self.kind = kind; self.code = code }
+    public init(error: any Error, httpStatus: Int? = nil) {
+        if let httpStatus, httpStatus != 101 {
+            self.init(kind: [401, 403].contains(httpStatus) ? .authentication : .hub, code: httpStatus); return
+        }
+        let ns = error as NSError
+        if ns.domain == NSURLErrorDomain {
+            let kind: Kind
+            switch ns.code {
+            case NSURLErrorNotConnectedToInternet: kind = .network
+            case NSURLErrorCannotFindHost, NSURLErrorDNSLookupFailed: kind = .dns
+            case NSURLErrorCannotConnectToHost, NSURLErrorNetworkConnectionLost: kind = .unreachable
+            case NSURLErrorTimedOut: kind = .timeout
+            case NSURLErrorSecureConnectionFailed, NSURLErrorServerCertificateHasBadDate, NSURLErrorServerCertificateUntrusted, NSURLErrorServerCertificateHasUnknownRoot, NSURLErrorServerCertificateNotYetValid, NSURLErrorAppTransportSecurityRequiresSecureConnection: kind = .tls
+            default: kind = .network
+            }
+            self.init(kind: kind, code: ns.code)
+        } else { self.init(kind: .protocolData) }
+    }
+    public var diagnostic: String { kind.rawValue + (code.map { " (\($0))" } ?? "") }
+    public var title: String {
+        switch kind {
+        case .network: String(localized: "Network unavailable", bundle: relayLocalizationBundle)
+        case .dns: String(localized: "Hub address unavailable", bundle: relayLocalizationBundle)
+        case .unreachable: String(localized: "Hub unreachable", bundle: relayLocalizationBundle)
+        case .timeout, .snapshotTimeout, .pongTimeout: String(localized: "Hub connection timed out", bundle: relayLocalizationBundle)
+        case .tls: String(localized: "Secure connection failed", bundle: relayLocalizationBundle)
+        case .authentication: String(localized: "Hub access expired", bundle: relayLocalizationBundle)
+        case .hub: String(localized: "Hub unavailable", bundle: relayLocalizationBundle)
+        case .protocolData: String(localized: "Invalid Hub response", bundle: relayLocalizationBundle)
+        }
+    }
+    public var guidance: String {
+        switch kind {
+        case .network, .dns, .unreachable, .timeout, .snapshotTimeout, .pongTimeout: String(localized: "Check the iPhone’s network and VPN if your Hub uses a private network. Relay retries automatically.", bundle: relayLocalizationBundle)
+        case .tls: String(localized: "Check the Hub’s HTTPS certificate and the iPhone’s date. Certificate validation remains enabled.", bundle: relayLocalizationBundle)
+        case .authentication: String(localized: "Pair this iPhone again with a new controller code.", bundle: relayLocalizationBundle)
+        case .hub, .protocolData: String(localized: "Check the Hub service and version. Relay retries automatically.", bundle: relayLocalizationBundle)
+        }
+    }
+}
 public struct HubAPI: Sendable {
     // Reuse HTTPS connections instead of creating a separate TLS session for
     // every diagnostic/account request. Authentication stays request-scoped.
@@ -28,7 +76,7 @@ public struct HubAPI: Sendable {
         return request
     }
     public func socketRequest() -> URLRequest {
-        var request = request(path: "api/ui"); var c = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)!; c.scheme = "wss"; request.url = c.url; request.timeoutInterval = 10; return request
+        var request = request(path: "api/ui"); var c = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)!; c.scheme = "wss"; request.url = c.url; request.timeoutInterval = 30; return request
     }
     public func fetch<T: Decodable & Sendable>(_ path: String, body: [String: String]? = nil, as: T.Type = T.self) async throws -> T {
         let data = try body.map { try JSONSerialization.data(withJSONObject: $0) }
@@ -61,8 +109,10 @@ public struct SocketHealth: Sendable {
     public mutating func snapshotReceived() { waitingForSnapshot = false }
     public mutating func pongReceived(now: TimeInterval) { pingSent = nil; nextPing = now + 10 }
     public mutating func action(now: TimeInterval) -> Action {
-        if waitingForSnapshot && now - started >= 10 { return .reconnect }
-        if let pingSent, now - pingSent >= 5 { return .reconnect }
+        // Cold mobile/VPN routing and TLS establishment need more headroom
+        // than a warm simulator. Do not ping until the handshake is admitted.
+        if waitingForSnapshot { return now - started >= 30 ? .reconnect : .idle }
+        if let pingSent, now - pingSent >= 10 { return .reconnect }
         if pingSent == nil && now >= nextPing { pingSent = now; return .ping }
         return .idle
     }
@@ -71,5 +121,8 @@ public struct SocketHealth: Sendable {
     }
 }
 final class NoRedirect: NSObject, URLSessionTaskDelegate, Sendable {
+    let onMetrics: (@Sendable (URLSessionTaskMetrics) -> Void)?
+    init(onMetrics: (@Sendable (URLSessionTaskMetrics) -> Void)? = nil) { self.onMetrics = onMetrics }
+    func urlSession(_ session: URLSession, task: URLSessionTask, didFinishCollecting metrics: URLSessionTaskMetrics) { onMetrics?(metrics) }
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping @Sendable (URLRequest?) -> Void) { completionHandler(nil) }
 }

@@ -27,6 +27,13 @@ struct MachinesView: View {
     @Environment(RelayController.self) private var relay
     var body: some View {
         List {
+            if !relay.online {
+                Section(String(localized: "Hub connection", bundle: relayLocalizationBundle)) {
+                    Text(relay.connection).font(.body.weight(.medium))
+                    if let issue = relay.connectionIssue { Text(issue.guidance).font(.footnote).foregroundStyle(.secondary) }
+                    Button(String(localized: "Retry connection", bundle: relayLocalizationBundle)) { relay.connect() }
+                }
+            }
             ForEach(relay.machines.values.filter { machineIDs?.contains($0.id) ?? true }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) { machine in
                 NavigationLink { MachineSettingsView(id: machine.id) } label: {
                     HStack(spacing: RelaySpacing.row) {
@@ -338,6 +345,12 @@ struct DiagnosticsView: View {
                 LabeledContent(String(localized: "Hub connection", bundle: relayLocalizationBundle), value: relay.online ? String(localized: "Connected", bundle: relayLocalizationBundle) : String(localized: "Not connected", bundle: relayLocalizationBundle))
                     .accessibilityIdentifier("diagnostics.connection")
                     .accessibilityValue(relay.online ? String(localized: "Connected", bundle: relayLocalizationBundle) : String(localized: "Not connected", bundle: relayLocalizationBundle))
+                if let issue = relay.connectionIssue {
+                    Text(issue.title).foregroundStyle(RelayPalette.attention)
+                    Text(issue.guidance).font(.footnote).foregroundStyle(.secondary)
+                    LabeledContent(String(localized: "Transport error", bundle: relayLocalizationBundle), value: issue.diagnostic)
+                }
+                LabeledContent(String(localized: "Connection attempts", bundle: relayLocalizationBundle), value: "\(relay.connectionAttempts)")
                 if let diagnostics = relay.diagnostics {
                     LabeledContent(String(localized: "Hub version", bundle: relayLocalizationBundle), value: diagnostics.hubVersion)
                     LabeledContent(String(localized: "Protocol", bundle: relayLocalizationBundle), value: "\(diagnostics.protocolVersion)")
@@ -367,10 +380,10 @@ struct DiagnosticsView: View {
             }
             Section {
                 Button(copied ? String(localized: "Copied", bundle: relayLocalizationBundle) : String(localized: "Copy Diagnostics", bundle: relayLocalizationBundle), systemImage: copied ? "checkmark" : "doc.on.doc") {
-                    guard let report = relay.diagnostics?.redactedReport(appVersion: AboutView.version, hubConnected: relay.online) else { return }
-                    UIPasteboard.general.string = report + "\nHub APNs configured: \(relay.nativePushAvailable)\nThis controller registered for push: \(relay.pushRegistered)\nNative event samples: \(relay.receiptTiming.samples)\nHub to native estimate ms: \(relay.receiptTiming.clockSkew ? "clocks not comparable" : String(format: "%.1f", relay.receiptTiming.hubToNativeMs))"
+                    let report = relay.diagnostics?.redactedReport(appVersion: AboutView.version, hubConnected: relay.online) ?? "App: \(AboutView.version)\nHub connected: \(relay.online)"
+                    UIPasteboard.general.string = report + "\nConnection attempts: \(relay.connectionAttempts)\nTransport error: \(relay.connectionIssue?.diagnostic ?? "none")\nHub APNs configured: \(relay.nativePushAvailable)\nThis controller registered for push: \(relay.pushRegistered)\nNative event samples: \(relay.receiptTiming.samples)\nHub to native estimate ms: \(relay.receiptTiming.clockSkew ? "clocks not comparable" : String(format: "%.1f", relay.receiptTiming.hubToNativeMs))"
                     copied = true
-                }.disabled(relay.diagnostics == nil).accessibilityIdentifier("diagnostics.copy")
+                }.accessibilityIdentifier("diagnostics.copy")
             } footer: { Text(String(localized: "Copied diagnostics omit machine names, host addresses, account identities, credentials and conversation content.", bundle: relayLocalizationBundle)) }
         }.navigationTitle(String(localized: "Diagnostics", bundle: relayLocalizationBundle)).navigationBarTitleDisplayMode(.inline)
             .task { await relay.loadDiagnostics(); await relay.loadDevices() }.refreshable { copied = false; await relay.loadDiagnostics() }

@@ -150,7 +150,7 @@ struct SessionView: View {
                     Text(String(localized: "Messages can be sent after reconnecting.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
                 }
                 let kind = editingQueue != nil ? "queue_update" : steer ? "steer" : session.defaultCommand
-                let available = machineOnline(session) && session.allows(kind) && (editingQueue != nil || ["READY", "WORKING"].contains(session.status))
+				let available = machineOnline(session) && session.allows(kind) && (editingQueue != nil || ["READY", "WORKING", "FAILED"].contains(session.status))
                 let canSend = available && !submitting && loadingImages == 0 && (!draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !images.isEmpty) && (images.isEmpty || session.capabilities.canSendImages == true)
                 let showStop = editingQueue == nil && !steer && draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && images.isEmpty && loadingImages == 0 && session.allows("interrupt")
                 if !images.isEmpty {
@@ -480,10 +480,14 @@ private struct SessionTranscript: View {
                                     .font(.subheadline).frame(minHeight: 44)
                             }
                         }
-                        if relay.chat.atCapacity || relay.chat.trimmed {
+						if relay.chat.atCapacity || relay.chat.trimmed {
                             Text(String(localized: "The memory window is limited. Full history remains in Codex.", bundle: relayLocalizationBundle))
                                 .font(.caption).foregroundStyle(.secondary)
-                        }
+						}
+						if session.status == "FAILED" && !relay.chat.items.contains(where: { $0.kind == "turnError" }) {
+							Label(session.failureSummary + ". " + String(localized: "Send a message to continue.", bundle: relayLocalizationBundle), systemImage: "exclamationmark.circle")
+								.font(.subheadline).foregroundStyle(RelayPalette.failure).accessibilityIdentifier("session.turn-error-fallback")
+						}
                         ForEach(TranscriptGroup.make(relay.chat.items)) { group in
                             if let activity = group.items.first, activity.kind == "context_compaction" {
                                 Label(activity.state == "running" && activity.turnId == session.turnId && session.displayStatus(machine: relay.machines[session.machineId], connected: relay.online) == "WORKING" ? String(localized: "Compacting context", bundle: relayLocalizationBundle) : activity.state == "completed" ? String(localized: "Context compacted", bundle: relayLocalizationBundle) : String(localized: "Context compaction", bundle: relayLocalizationBundle), systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
@@ -508,7 +512,9 @@ private struct SessionTranscript: View {
                             Text(String(localized: "Recent Codex context will appear here.", bundle: relayLocalizationBundle)).font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 24)
                         }
                         VStack(alignment: .leading, spacing: 8) {
-                            SessionHeartbeat(session: session)
+                            if session.displayStatus(machine: relay.machines[session.machineId], connected: relay.online) != "FAILED" {
+                                SessionHeartbeat(session: session)
+                            }
                             Color.clear.frame(height: bottomInset).id(bottomID)
                                 .background(GeometryReader { geometry in
                                     Color.clear.preference(key: TranscriptBottom.self, value: geometry.frame(in: .named("transcript")).maxY)
@@ -666,8 +672,13 @@ private struct ChatMessageView: View, Equatable {
                         .accessibilityIdentifier("activity." + activity.kind + "." + activity.id)
                 } else {
                     let questions = activity.questions ?? []
-                    if questions.isEmpty || activity.text != questions.map(\.title).joined(separator: "\n\n") {
-                        ChatMarkdown(text: activity.text, identifier: "activity." + activity.kind + "." + activity.id)
+					if questions.isEmpty || activity.text != questions.map(\.title).joined(separator: "\n\n") {
+						if activity.kind == "turnError" {
+							Label(String(localized: "Codex stopped", bundle: relayLocalizationBundle), systemImage: "exclamationmark.circle.fill")
+								.font(.subheadline.weight(.semibold)).foregroundStyle(RelayPalette.failure)
+						}
+						ChatMarkdown(text: activity.text, identifier: "activity." + activity.kind + "." + activity.id)
+						if activity.kind == "turnError" { Text(String(localized: "Send a message to continue.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary) }
                     }
                     ForEach(Array(questions.enumerated()), id: \.offset) { index, question in
                         // Conversation content is readable once. Current actions have

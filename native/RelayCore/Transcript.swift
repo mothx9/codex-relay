@@ -13,7 +13,7 @@ public struct TranscriptGroup: Identifiable, Sendable {
     public var id: String { (items.first.map { Self.kind($0).rawValue } ?? "activity") + "." + (items.first?.id ?? "") }
     private static func kind(_ activity: Activity) -> Kind {
         switch activity.kind {
-        case "userMessage", "agentMessage", "delta", "context_compaction": .message
+		case "userMessage", "agentMessage", "delta", "context_compaction", "turnError": .message
         case "commandExecution", "command_output": .terminal
         case "mcpToolCall": .mcp
         case "fileChange", "diff": .changes

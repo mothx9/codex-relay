@@ -47,10 +47,12 @@ struct FleetView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
                 if search.isEmpty { fleetHeader }
-                if !browsingAll {
-                    sessionSection(String(localized: "Needs You", bundle: relayLocalizationBundle), sessions: sorted.filter { state($0) == "NEEDS_YOU" }, tint: RelayPalette.attention)
-                    sessionSection(String(localized: "Working", bundle: relayLocalizationBundle), sessions: sorted.filter { state($0) == "WORKING" }.sorted { ($0.turnStarted ?? "", $0.id) > ($1.turnStarted ?? "", $1.id) }, tint: RelayPalette.working)
-                    sessionSection(String(localized: "Recent", bundle: relayLocalizationBundle), sessions: Array(sorted.filter { !["WORKING", "NEEDS_YOU"].contains(state($0)) }.prefix(6)), tint: .secondary)
+				if !browsingAll {
+					let failures = sorted.filter { state($0) == "FAILED" }
+					sessionSection(String(localized: "Needs You", bundle: relayLocalizationBundle), sessions: sorted.filter { state($0) == "NEEDS_YOU" }, tint: RelayPalette.attention)
+					sessionSection(String(localized: "Errors", bundle: relayLocalizationBundle), sessions: Array(failures.prefix(4)), tint: RelayPalette.failure, totalCount: failures.count)
+					sessionSection(String(localized: "Working", bundle: relayLocalizationBundle), sessions: sorted.filter { state($0) == "WORKING" }.sorted { ($0.turnStarted ?? "", $0.id) > ($1.turnStarted ?? "", $1.id) }, tint: RelayPalette.working)
+					sessionSection(String(localized: "Recent", bundle: relayLocalizationBundle), sessions: Array(sorted.filter { !["WORKING", "NEEDS_YOU", "FAILED"].contains(state($0)) }.prefix(6)), tint: .secondary)
                     Button { filter = "HISTORY" } label: {
                         HStack {
                             Label(String(localized: "All sessions", bundle: relayLocalizationBundle), systemImage: "clock.arrow.circlepath")
@@ -92,7 +94,7 @@ struct FleetView: View {
             Button { showingMachines = true } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.circle")
-                    if !relay.online { Text(String(localized: "Connecting to Hub…", bundle: relayLocalizationBundle)) }
+                    if !relay.online { Text(relay.connection) }
                     else if exceptions.count == 1, let host = exceptions.first { Text("\(host.name) · \(relay.machineConnectionLabel(host.id))") }
                     else { Text(String(localized: "\(exceptions.count) machines need attention", bundle: relayLocalizationBundle)) }
                     Spacer(minLength: 4)
@@ -101,12 +103,12 @@ struct FleetView: View {
             }.accessibilityIdentifier("fleet.connection")
         }
     }
-    @ViewBuilder private func sessionSection(_ title: String, sessions: [RelaySession], tint: Color) -> some View {
+	@ViewBuilder private func sessionSection(_ title: String, sessions: [RelaySession], tint: Color, totalCount: Int? = nil) -> some View {
         if !sessions.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
                     Text(title).foregroundStyle(tint)
-                    Text("\(sessions.count)").foregroundStyle(.secondary).monospacedDigit()
+					Text("\(totalCount ?? sessions.count)").foregroundStyle(.secondary).monospacedDigit()
                     Spacer()
                 }.font(.footnote.weight(.semibold)).padding(.horizontal, 12).accessibilityAddTraits(.isHeader)
                 VStack(spacing: 0) {
@@ -117,7 +119,11 @@ struct FleetView: View {
                         }
                     }
                 }
-                .modifier(FleetRowSurface(emphasized: sessions.allSatisfy { ["WORKING", "NEEDS_YOU"].contains(state($0)) }))
+				.modifier(FleetRowSurface(emphasized: sessions.allSatisfy { ["WORKING", "NEEDS_YOU", "FAILED"].contains(state($0)) }))
+				if (totalCount ?? sessions.count) > sessions.count {
+					Button(String(localized: "View all errors", bundle: relayLocalizationBundle)) { filter = "FAILED" }
+						.font(.subheadline).frame(minHeight: 44).accessibilityIdentifier("fleet.errors.all")
+				}
             }
         }
     }
@@ -178,7 +184,7 @@ struct FleetSessionRow: View {
                         ElapsedLabel(start: session.turnStarted).monospacedDigit().foregroundStyle(.secondary)
                     } else {
                         SessionStatusMark(status: status)
-                        Text(status == "OFFLINE" ? relay.machineConnectionLabel(session.machineId) : statusLabel(status))
+						Text(status == "OFFLINE" ? relay.machineConnectionLabel(session.machineId) : status == "FAILED" ? session.failureSummary : statusLabel(status))
                             .foregroundStyle(RelayPalette.status(status)).lineLimit(typeSize.isAccessibilitySize ? nil : 1)
                         Spacer(minLength: 4)
                     }

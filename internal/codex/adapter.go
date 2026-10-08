@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/mothx9/codex-relay/internal/protocol"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -66,10 +67,64 @@ type status struct {
 	Flags []string `json:"activeFlags"`
 }
 type turn struct {
-	ID        string            `json:"id"`
-	Status    string            `json:"status"`
-	StartedAt *int64            `json:"startedAt"`
-	Items     []json.RawMessage `json:"items"`
+	ID          string            `json:"id"`
+	Status      string            `json:"status"`
+	StartedAt   *int64            `json:"startedAt"`
+	CompletedAt *int64            `json:"completedAt"`
+	Error       *turnError        `json:"error"`
+	Items       []json.RawMessage `json:"items"`
+}
+
+type turnError struct {
+	Message        string          `json:"message"`
+	CodexErrorInfo json.RawMessage `json:"codexErrorInfo"`
+}
+
+// Only fixed categories become durable fleet metadata. The upstream message
+// stays in the selected conversation and is never saved in Relay's database.
+func failureReason(err *turnError) string {
+	if err == nil {
+		return "execution"
+	}
+	var category string
+	_ = json.Unmarshal(err.CodexErrorInfo, &category)
+	switch category {
+	case "serverOverloaded", "flexUnavailable":
+		return "capacity"
+	case "usageLimitExceeded", "sessionBudgetExceeded":
+		return "usage_limit"
+	case "rateLimitExceeded":
+		return "rate_limit"
+	case "unauthorized":
+		return "authentication"
+	case "contextWindowExceeded":
+		return "context_limit"
+	case "internalServerError":
+		return "service"
+	}
+	var details map[string]json.RawMessage
+	if json.Unmarshal(err.CodexErrorInfo, &details) == nil {
+		if details["httpConnectionFailed"] != nil || details["responseStreamConnectionFailed"] != nil || details["responseStreamDisconnected"] != nil {
+			return "connection"
+		}
+	}
+	message := strings.ToLower(err.Message)
+	if strings.Contains(message, "at capacity") || strings.Contains(message, "overloaded") {
+		return "capacity"
+	}
+	return "execution"
+}
+
+func turnErrorActivity(value turn) protocol.Activity {
+	message := "Codex stopped this turn. Send a message to retry."
+	if value.Error != nil && value.Error.Message != "" {
+		message = protocol.Clip(value.Error.Message, 2048)
+	}
+	item := protocol.Activity{ID: "turn-error-" + value.ID, TurnID: value.ID, Kind: "turnError", State: "failed", Text: message, Timestamp: time.Now().UTC()}
+	if value.CompletedAt != nil {
+		item.Timestamp = time.Unix(*value.CompletedAt, 0).UTC()
+	}
+	return item
 }
 
 func Normalize(raw string, flags []string) string {
@@ -108,6 +163,15 @@ func (a *Adapter) session(t thread, subscribed bool) protocol.Session {
 			}
 		}
 	}
+	// thread/read orders turns oldest to newest. An earlier failure must not
+	// reclassify a later successful or running turn.
+	if len(t.Turns) > 0 {
+		latest := t.Turns[len(t.Turns)-1]
+		if latest.Status == "failed" && s.Status != protocol.Working && s.Status != protocol.NeedsYou {
+			s.Status = protocol.Failed
+			s.FailureReason = failureReason(latest.Error)
+		}
+	}
 	return a.capabilities(s)
 }
 
@@ -129,7 +193,7 @@ func (a *Adapter) capabilities(s protocol.Session) protocol.Session {
 	}
 	s.Capabilities.CanSendImages = true
 	s.Capabilities.CanEditQueue = a.queue
-	s.Capabilities.CanSend = s.Status == protocol.Ready
+	s.Capabilities.CanSend = s.Status == protocol.Ready || s.Status == protocol.Failed
 	s.Capabilities.CanFollowUp = s.Status == protocol.Working && a.queue
 	s.Capabilities.CanSteer = s.Status == protocol.Working && s.TurnID != ""
 	s.Capabilities.CanSteerQueue = a.queue && s.Capabilities.CanSteer

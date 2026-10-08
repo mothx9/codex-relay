@@ -221,6 +221,10 @@ func (a *Adapter) attach(ctx context.Context, id string) (protocol.Session, erro
 			s.TurnStarted = time.Unix(*turns.Data[0].StartedAt, 0).UTC()
 		}
 	}
+	if e == nil && len(turns.Data) > 0 && turns.Data[0].Status == "failed" {
+		s.Status = protocol.Failed
+		s.FailureReason = failureReason(turns.Data[0].Error)
+	}
 	a.mu.Lock()
 	if current, ok := a.sessions[id]; ok && current.UpdatedAt.After(fetchedAt) {
 		// Keep newer live status/pending replay, but trust this metadata read's
@@ -276,6 +280,28 @@ func (a *Adapter) history(ctx context.Context, id, cursor string) ([]protocol.Ac
 			v.Timestamp = time.UnixMilli(*entry.StartedAtMs).UTC()
 		}
 		out = append(out, v)
+	}
+	if cursor == "" {
+		// Codex items/list omits turn errors. Read bounded turn metadata so an
+		// already-failed conversation still explains itself after reopening.
+		lookup, cancel := context.WithTimeout(ctx, 2*time.Second)
+		var turns struct {
+			Data []turn `json:"data"`
+		}
+		metadata, lookupErr := a.rpc(lookup, "thread/turns/list", map[string]any{"threadId": id, "limit": 20, "sortDirection": "desc", "itemsView": "notLoaded"})
+		cancel()
+		if lookupErr == nil && decode(metadata, &turns) == nil {
+			present := make(map[string]bool, len(out))
+			for _, item := range out {
+				present[item.TurnID] = true
+			}
+			for index, value := range turns.Data {
+				if value.Status == "failed" && (index == 0 || present[value.ID]) {
+					out = append(out, turnErrorActivity(value))
+				}
+			}
+			sort.SliceStable(out, func(i, j int) bool { return out[i].Timestamp.Before(out[j].Timestamp) })
+		}
 	}
 	return out, r.NextCursor, nil
 }

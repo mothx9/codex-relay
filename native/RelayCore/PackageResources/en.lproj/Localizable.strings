@@ -84,6 +84,9 @@
 "Changed files" = "Changed files";
 "Changes" = "Changes";
 "Check outcome in Codex" = "Check outcome in Codex";
+"Check the Hub service and version. Relay retries automatically." = "Check the Hub service and version. Relay retries automatically.";
+"Check the Hub’s HTTPS certificate and the iPhone’s date. Certificate validation remains enabled." = "Check the Hub’s HTTPS certificate and the iPhone’s date. Certificate validation remains enabled.";
+"Check the iPhone’s network and VPN if your Hub uses a private network. Relay retries automatically." = "Check the iPhone’s network and VPN if your Hub uses a private network. Relay retries automatically.";
 "Checked" = "Checked";
 "Choose a reply or write your own." = "Choose a reply or write your own.";
 "Choose an option to prepare a message. This is not a pending approval." = "Choose an option to prepare a message. This is not a pending approval.";
@@ -107,8 +110,12 @@
 "Codex not connected" = "Codex not connected";
 "Codex owns conversations and queued work" = "Codex owns conversations and queued work";
 "Codex requests permission" = "Codex requests permission";
+"Codex service unavailable" = "Codex service unavailable";
 "Codex session" = "Codex session";
+"Codex sign-in required" = "Codex sign-in required";
 "Codex snapshot" = "Codex snapshot";
+"Codex stopped" = "Codex stopped";
+"Codex turn failed" = "Codex turn failed";
 "Codex wants to change files" = "Codex wants to change files";
 "Codex wants to run" = "Codex wants to run";
 "Collapsed" = "Collapsed";
@@ -125,6 +132,7 @@
 "Connecting to Hub…" = "Connecting to Hub…";
 "Connecting…" = "Connecting…";
 "Connection" = "Connection";
+"Connection attempts" = "Connection attempts";
 "Connection diagnostics" = "Connection diagnostics";
 "Connection lost while sending. Check the request before retrying." = "Connection lost while sending. Check the request before retrying.";
 "Connection lost." = "Connection lost.";
@@ -132,6 +140,7 @@
 "Connection → Online" = "Connection → Online";
 "Context compacted" = "Context compacted";
 "Context compaction" = "Context compaction";
+"Context limit reached" = "Context limit reached";
 "Control unavailable for this session." = "Control unavailable for this session.";
 "Controller" = "Controller";
 "Controllers & Access" = "Controllers & Access";
@@ -193,6 +202,7 @@
 "Enter the Hub’s HTTPS origin." = "Enter the Hub’s HTTPS origin.";
 "Enter this code on the machine using codex-relay pair. The Agent connects outbound to your Hub." = "Enter this code on the machine using codex-relay pair. The Agent connects outbound to your Hub.";
 "Error" = "Error";
+"Errors" = "Errors";
 "Event sequence" = "Event sequence";
 "Exit %lld" = "Exit %lld";
 "Expanded" = "Expanded";
@@ -222,12 +232,17 @@
 "Hot sessions" = "Hot sessions";
 "Hub APNs" = "Hub APNs";
 "Hub URL" = "Hub URL";
+"Hub access expired" = "Hub access expired";
+"Hub address unavailable" = "Hub address unavailable";
 "Hub connection" = "Hub connection";
+"Hub connection timed out" = "Hub connection timed out";
 "Hub error" = "Hub error";
 "Hub not connected" = "Hub not connected";
 "Hub not connected. Try again when it is online." = "Hub not connected. Try again when it is online.";
 "Hub response too large." = "Hub response too large.";
+"Hub unavailable" = "Hub unavailable";
 "Hub unavailable (%lld)." = "Hub unavailable (%lld).";
+"Hub unreachable" = "Hub unreachable";
 "Hub version" = "Hub version";
 "Hub → iPhone" = "Hub → iPhone";
 "I checked Codex: resend" = "I checked Codex: resend";
@@ -240,6 +255,7 @@
 "Interrupt" = "Interrupt";
 "Interrupt Turn" = "Interrupt Turn";
 "Interrupt the current turn?" = "Interrupt the current turn?";
+"Invalid Hub response" = "Invalid Hub response";
 "Invalid pairing response." = "Invalid pairing response.";
 "JSON response matching the schema" = "JSON response matching the schema";
 "Keychain unavailable." = "Keychain unavailable.";
@@ -284,6 +300,8 @@
 "Message actions" = "Message actions";
 "Messages can be sent after reconnecting." = "Messages can be sent after reconnecting.";
 "Model" = "Model";
+"Model at capacity" = "Model at capacity";
+"Model connection lost" = "Model connection lost";
 "Model context window" = "Model context window";
 "Modified" = "Modified";
 "NEW TURN" = "NEW TURN";
@@ -293,6 +311,7 @@
 "Needs You, completion, failure and machines offline after a grace period. No notifications for individual commands or tokens. Lock-screen previews omit project and conversation content by default." = "Needs You, completion, failure and machines offline after a grace period. No notifications for individual commands or tokens. Lock-screen previews omit project and conversation content by default.";
 "Needs You, live questions, completion, failure and machines offline after a grace period. Previews omit conversation content. Completion is quiet in the session you are reading." = "Needs You, live questions, completion, failure and machines offline after a grace period. Previews omit conversation content. Completion is quiet in the session you are reading.";
 "Needs verification" = "Needs verification";
+"Network unavailable" = "Network unavailable";
 "Next up" = "Next up";
 "No" = "No";
 "No account data yet" = "No account data yet";
@@ -336,6 +355,7 @@
 "Pair controller" = "Pair controller";
 "Pair once to supervise work and respond securely." = "Pair once to supervise work and respond securely.";
 "Pair this iPhone" = "Pair this iPhone";
+"Pair this iPhone again with a new controller code." = "Pair this iPhone again with a new controller code.";
 "Pair with your Hub" = "Pair with your Hub";
 "Paired" = "Paired";
 "Pairing…" = "Pairing…";
@@ -416,6 +436,7 @@
 "Resume Relay on this machine" = "Resume Relay on this machine";
 "Resuming connection…" = "Resuming connection…";
 "Retry" = "Retry";
+"Retry connection" = "Retry connection";
 "Revocation disables the credential on the Hub. Local sign-out only removes this iPhone’s saved credential and does not claim server revocation." = "Revocation disables the credential on the Hub. Local sign-out only removes this iPhone’s saved credential and does not claim server revocation.";
 "Revoke access" = "Revoke access";
 "Revoke and sign out" = "Revoke and sign out";
@@ -436,12 +457,14 @@
 "Save queued message" = "Save queued message";
 "Schema unavailable: resolve in local Codex." = "Schema unavailable: resolve in local Codex.";
 "Search" = "Search";
+"Secure connection failed" = "Secure connection failed";
 "Self-hosted installation" = "Self-hosted installation";
 "Self-hosted. Open source. Independent of OpenAI." = "Self-hosted. Open source. Independent of OpenAI.";
 "Send" = "Send";
 "Send MCP response" = "Send MCP response";
 "Send Now (Steer)" = "Send Now (Steer)";
 "Send Steer" = "Send Steer";
+"Send a message to continue." = "Send a message to continue.";
 "Send a new message" = "Send a new message";
 "Send as follow-up" = "Send as follow-up";
 "Send as new turn" = "Send as new turn";
@@ -506,9 +529,11 @@
 "Token usage" = "Token usage";
 "Too many active requests." = "Too many active requests.";
 "Too many attempts. Wait a minute." = "Too many attempts. Wait a minute.";
+"Too many requests" = "Too many requests";
 "Tool" = "Tool";
 "Tools" = "Tools";
 "Total" = "Total";
+"Transport error" = "Transport error";
 "Turn" = "Turn";
 "Turn duration" = "Turn duration";
 "Unable to save access securely in Keychain." = "Unable to save access securely in Keychain.";
@@ -518,6 +543,7 @@
 "Unlimited" = "Unlimited";
 "Updated" = "Updated";
 "Usage" = "Usage";
+"Usage limit reached" = "Usage limit reached";
 "Usage window" = "Usage window";
 "Usage windows and balances are reported by Codex. Missing values are not estimated." = "Usage windows and balances are reported by Codex. Missing values are not estimated.";
 "Used" = "Used";
@@ -525,6 +551,7 @@
 "VERIFY OUTCOME" = "VERIFY OUTCOME";
 "Version" = "Version";
 "View all %lld activities" = "View all %lld activities";
+"View all errors" = "View all errors";
 "View image" = "View image";
 "View queued messages" = "View queued messages";
 "Waiting for output…" = "Waiting for output…";

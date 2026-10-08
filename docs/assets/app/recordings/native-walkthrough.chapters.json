@@ -1,0 +1,62 @@
+[
+  {
+    "name": "fleet",
+    "seconds": 0.09
+  },
+  {
+    "name": "error",
+    "seconds": 7.22
+  },
+  {
+    "name": "expanded-activity",
+    "seconds": 15.24
+  },
+  {
+    "name": "command-output",
+    "seconds": 21.22
+  },
+  {
+    "name": "activity-index",
+    "seconds": 33.31
+  },
+  {
+    "name": "tool-result",
+    "seconds": 38.19
+  },
+  {
+    "name": "file-diff",
+    "seconds": 45.23
+  },
+  {
+    "name": "markdown",
+    "seconds": 49.51
+  },
+  {
+    "name": "attachments-menu",
+    "seconds": 52.47
+  },
+  {
+    "name": "needs-you",
+    "seconds": 57.19
+  },
+  {
+    "name": "question-choice",
+    "seconds": 64.46
+  },
+  {
+    "name": "navigation",
+    "seconds": 69.59
+  },
+  {
+    "name": "machines",
+    "seconds": 72.89
+  },
+  {
+    "name": "diagnostics",
+    "seconds": 78.6
+  },
+  {
+    "name": "settings",
+    "seconds": 89.52
+  }
+]

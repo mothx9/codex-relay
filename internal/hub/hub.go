@@ -291,6 +291,7 @@ func (h *Hub) announce(id string, a *agentPeer, msg protocol.Message) error {
 	}
 	knownSessions := map[string]bool{}
 	for i := range msg.Sessions {
+		msg.Sessions[i].FailureReason = safeFailureReason(msg.Sessions[i].Status, msg.Sessions[i].FailureReason)
 		msg.Sessions[i].ObservedAt = m.LastSeen
 		msg.Sessions[i].AgentEpoch = msg.Epoch
 		knownSessions[msg.Sessions[i].ID] = true
@@ -431,6 +432,7 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 			return errors.New("invalid session update")
 		}
 		s = *e.Session
+		s.FailureReason = safeFailureReason(s.Status, s.FailureReason)
 		s.ObservedAt, s.AgentEpoch = a.lastSeen, a.epoch
 		h.sessions[s.ID] = s
 		if err := h.store.SaveSession(s); err != nil {
@@ -480,8 +482,14 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 			r.Payload = nil
 			e.Request = &r
 		}
+		// A failed turn's upstream message can contain private context. Fleet
+		// receives only fixed failure metadata; the open conversation receives
+		// the detail on the selected-session channel.
+		if e.Kind == "failed" {
+			e.Activity = nil
+		}
 		h.broadcast(protocol.Message{Type: "event", Event: &e}, "")
-		if full.Request != nil {
+		if full.Request != nil || (full.Kind == "failed" && full.Activity != nil) {
 			h.broadcast(protocol.Message{Type: "pending", Event: &full}, e.SessionID)
 		}
 	}
@@ -493,6 +501,21 @@ func (h *Hub) event(id string, a *agentPeer, e protocol.Event) error {
 	}
 	return nil
 }
+
+// Failure metadata is durable and visible in Fleet. Never allow upstream text
+// to become a stored summary, even if an older or malformed Agent sends it.
+func safeFailureReason(status, reason string) string {
+	if status != protocol.Failed {
+		return ""
+	}
+	switch reason {
+	case "capacity", "usage_limit", "rate_limit", "authentication", "context_limit", "connection", "service", "execution":
+		return reason
+	default:
+		return "execution"
+	}
+}
+
 func (h *Hub) notifyRequest(r protocol.PendingRequest) {
 	s := h.sessions[r.SessionID]
 	key := r.SessionID + "/request/" + r.TurnID + "/" + r.Kind

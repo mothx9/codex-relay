@@ -84,6 +84,9 @@
 "Changed files" = "File modificati";
 "Changes" = "Modifiche";
 "Check outcome in Codex" = "Esito da verificare in Codex";
+"Check the Hub service and version. Relay retries automatically." = "Controlla il servizio e la versione dell’Hub. Relay riprova automaticamente.";
+"Check the Hub’s HTTPS certificate and the iPhone’s date. Certificate validation remains enabled." = "Controlla il certificato HTTPS dell’Hub e la data dell’iPhone. La verifica dei certificati resta attiva.";
+"Check the iPhone’s network and VPN if your Hub uses a private network. Relay retries automatically." = "Controlla la rete dell’iPhone e la VPN se il tuo Hub usa una rete privata. Relay riprova automaticamente.";
 "Checked" = "Verificato";
 "Choose a reply or write your own." = "Scegli una risposta o scrivine una.";
 "Choose an option to prepare a message. This is not a pending approval." = "Scegli un’opzione per preparare un messaggio. Non è un’approvazione in attesa.";
@@ -107,8 +110,12 @@
 "Codex not connected" = "Codex non connesso";
 "Codex owns conversations and queued work" = "Conversazioni e coda rimangono in Codex";
 "Codex requests permission" = "Codex richiede un permesso";
+"Codex service unavailable" = "Servizio Codex non disponibile";
 "Codex session" = "Sessione Codex";
+"Codex sign-in required" = "Accesso a Codex richiesto";
 "Codex snapshot" = "Snapshot Codex";
+"Codex stopped" = "Codex si è fermato";
+"Codex turn failed" = "Turno Codex non riuscito";
 "Codex wants to change files" = "Codex vuole modificare dei file";
 "Codex wants to run" = "Codex vuole eseguire";
 "Collapsed" = "Chiuso";
@@ -125,6 +132,7 @@
 "Connecting to Hub…" = "Connessione al Hub…";
 "Connecting…" = "Connessione…";
 "Connection" = "Collegamento";
+"Connection attempts" = "Tentativi di connessione";
 "Connection diagnostics" = "Diagnostica collegamento";
 "Connection lost while sending. Check the request before retrying." = "Connessione interrotta durante l’invio. Verifica la richiesta prima di riprovare.";
 "Connection lost." = "Connessione interrotta.";
@@ -132,6 +140,7 @@
 "Connection → Online" = "Collegamento → Online";
 "Context compacted" = "Contesto compattato";
 "Context compaction" = "Compattazione del contesto";
+"Context limit reached" = "Limite del contesto raggiunto";
 "Control unavailable for this session." = "Controllo non disponibile per questa sessione.";
 "Controller" = "Controller";
 "Controllers & Access" = "Controller e accesso";
@@ -193,6 +202,7 @@
 "Enter the Hub’s HTTPS origin." = "Inserisci l’origine HTTPS del Hub.";
 "Enter this code on the machine using codex-relay pair. The Agent connects outbound to your Hub." = "Inserisci questo codice sulla macchina con codex-relay pair. L’agent apre una connessione verso il tuo Hub.";
 "Error" = "Errore";
+"Errors" = "Errori";
 "Event sequence" = "Sequenza eventi";
 "Exit %lld" = "Uscita %lld";
 "Expanded" = "Aperto";
@@ -222,12 +232,17 @@
 "Hot sessions" = "Sessioni attive";
 "Hub APNs" = "APNs del Hub";
 "Hub URL" = "URL del Hub";
+"Hub access expired" = "Accesso Hub scaduto";
+"Hub address unavailable" = "Indirizzo Hub non disponibile";
 "Hub connection" = "Collegamento Hub";
+"Hub connection timed out" = "Connessione Hub scaduta";
 "Hub error" = "Errore del Hub";
 "Hub not connected" = "Hub non connesso";
 "Hub not connected. Try again when it is online." = "Hub non connesso. Riprova quando torna online.";
 "Hub response too large." = "Risposta Hub troppo grande.";
+"Hub unavailable" = "Hub non disponibile";
 "Hub unavailable (%lld)." = "Hub non disponibile (%lld).";
+"Hub unreachable" = "Hub non raggiungibile";
 "Hub version" = "Versione Hub";
 "Hub → iPhone" = "Hub → iPhone";
 "I checked Codex: resend" = "Ho verificato Codex: reinvia";
@@ -240,6 +255,7 @@
 "Interrupt" = "Interrompi";
 "Interrupt Turn" = "Interrompi turno";
 "Interrupt the current turn?" = "Interrompere il turno in corso?";
+"Invalid Hub response" = "Risposta Hub non valida";
 "Invalid pairing response." = "Abbinamento non valido.";
 "JSON response matching the schema" = "Risposta JSON conforme allo schema";
 "Keychain unavailable." = "Portachiavi non disponibile.";
@@ -284,6 +300,8 @@
 "Message actions" = "Azioni del messaggio";
 "Messages can be sent after reconnecting." = "I messaggi potranno essere inviati dopo la riconnessione.";
 "Model" = "Modello";
+"Model at capacity" = "Modello temporaneamente saturo";
+"Model connection lost" = "Connessione al modello interrotta";
 "Model context window" = "Finestra di contesto del modello";
 "Modified" = "Modificato";
 "NEW TURN" = "NUOVO TURNO";
@@ -293,6 +311,7 @@
 "Needs You, completion, failure and machines offline after a grace period. No notifications for individual commands or tokens. Lock-screen previews omit project and conversation content by default." = "Richieste di risposta, completamenti, errori e macchine offline dopo un periodo di tolleranza. Nessuna notifica per singoli comandi o token. Le anteprime sulla schermata bloccata escludono progetto e conversazione.";
 "Needs You, live questions, completion, failure and machines offline after a grace period. Previews omit conversation content. Completion is quiet in the session you are reading." = "Richieste, domande live, completamento, errori e macchine offline dopo un periodo di attesa. Le anteprime non includono la conversazione. Nessun avviso di completamento nella sessione che stai leggendo.";
 "Needs verification" = "Da verificare";
+"Network unavailable" = "Rete non disponibile";
 "Next up" = "In coda";
 "No" = "No";
 "No account data yet" = "Nessun dato account disponibile";
@@ -336,6 +355,7 @@
 "Pair controller" = "Abbina controller";
 "Pair once to supervise work and respond securely." = "Abbina una volta per seguire il lavoro e rispondere in sicurezza.";
 "Pair this iPhone" = "Abbina questo iPhone";
+"Pair this iPhone again with a new controller code." = "Associa di nuovo questo iPhone con un nuovo codice controller.";
 "Pair with your Hub" = "Abbina al tuo Hub";
 "Paired" = "Abbinato";
 "Pairing…" = "Abbinamento…";
@@ -416,6 +436,7 @@
 "Resume Relay on this machine" = "Riprendi Relay su questa macchina";
 "Resuming connection…" = "Ripresa del collegamento…";
 "Retry" = "Riprova";
+"Retry connection" = "Riprova connessione";
 "Revocation disables the credential on the Hub. Local sign-out only removes this iPhone’s saved credential and does not claim server revocation." = "La revoca disabilita la credenziale sul Hub. La disconnessione locale rimuove solo la credenziale salvata su questo iPhone e non la revoca sul server.";
 "Revoke access" = "Revoca accesso";
 "Revoke and sign out" = "Revoca e disconnetti";
@@ -436,12 +457,14 @@
 "Save queued message" = "Salva messaggio in coda";
 "Schema unavailable: resolve in local Codex." = "Schema non disponibile: risolvi da Codex locale.";
 "Search" = "Cerca";
+"Secure connection failed" = "Connessione sicura non riuscita";
 "Self-hosted installation" = "Installazione self-hosted";
 "Self-hosted. Open source. Independent of OpenAI." = "Self-hosted. Open source. Indipendente da OpenAI.";
 "Send" = "Invia";
 "Send MCP response" = "Invia risposta MCP";
 "Send Now (Steer)" = "Invia ora (Steer)";
 "Send Steer" = "Invia Steer";
+"Send a message to continue." = "Invia un messaggio per continuare.";
 "Send a new message" = "Invia un nuovo messaggio";
 "Send as follow-up" = "Invia come follow-up";
 "Send as new turn" = "Invia come nuovo turno";
@@ -506,9 +529,11 @@
 "Token usage" = "Utilizzo token";
 "Too many active requests." = "Troppe richieste in corso.";
 "Too many attempts. Wait a minute." = "Troppi tentativi. Attendi un minuto.";
+"Too many requests" = "Troppe richieste";
 "Tool" = "Strumento";
 "Tools" = "Strumenti";
 "Total" = "Totale";
+"Transport error" = "Errore di trasporto";
 "Turn" = "Turno";
 "Turn duration" = "Durata del turno";
 "Unable to save access securely in Keychain." = "Impossibile proteggere l’accesso nel Portachiavi.";
@@ -518,6 +543,7 @@
 "Unlimited" = "Illimitato";
 "Updated" = "Aggiornato";
 "Usage" = "Utilizzo";
+"Usage limit reached" = "Limite di utilizzo raggiunto";
 "Usage window" = "Finestra di utilizzo";
 "Usage windows and balances are reported by Codex. Missing values are not estimated." = "Finestre di utilizzo e saldi sono forniti da Codex. I valori mancanti non vengono stimati.";
 "Used" = "Utilizzati";
@@ -525,6 +551,7 @@
 "VERIFY OUTCOME" = "ESITO DA VERIFICARE";
 "Version" = "Versione";
 "View all %lld activities" = "Mostra tutte le %lld attività";
+"View all errors" = "Vedi tutti gli errori";
 "View image" = "Visualizza immagine";
 "View queued messages" = "Visualizza messaggi in coda";
 "Waiting for output…" = "In attesa di output…";

@@ -62,10 +62,13 @@ For a reproducible recording (requires `ffmpeg` and `ffprobe`):
 python3 scripts/native-walkthrough.py --simulator "$SIMULATOR_UDID"
 ```
 
-Use the same `--watcher-pid` option when necessary. The walkthrough navigates Fleet,
-a conversation, composer actions, a file diff and Needs You. Named test markers
-trim launcher frames before MP4/GIF export to `docs/assets/app/recordings`.
-Review the full recording before committing; never publish the raw capture.
+Use the same `--watcher-pid` option when necessary. The walkthrough navigates
+Fleet, a failed turn, command output, aggregate activity, a tool result, file
+diff, attachments, Needs You, Machines, Diagnostics and Settings. Named test
+markers trim launcher frames before MP4/GIF export. Chapter metadata and 15
+screens from that same run are saved beside the recording and in
+`docs/assets/app/screenshots/flow-*.png`. Review the full recording and each
+frame before committing; never publish the raw capture.
 
 Review every exported image before committing. Source fixtures live in
 `ProductFixtures`; do not publish screenshots from real project work. The pipeline

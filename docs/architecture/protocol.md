@@ -52,6 +52,13 @@ item identity and reach watchers without waiting for completion. Raw upstream
 method labels are diagnostic metadata, never client dispatch instructions or
 user-visible labels. [Event audit](../development/validation/live-event-audit.md) lists supported mappings.
 
+A failed turn carries a fixed `failure_reason` category in session metadata.
+The upstream error message is a `turnError` conversation activity delivered only
+to controllers watching that session; it is neither a failed command nor a Fleet
+broadcast. Codex `items/list` omits turn errors, so the adapter reads bounded
+turn metadata when reopening the latest history page. The Hub does not persist
+the error text. A failed, input-capable session may start a new turn to resume.
+
 ## Commands, results and uncertainty
 
 Commands contain a unique `id`, semantic `kind`, session identity and optional

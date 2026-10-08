@@ -18,6 +18,7 @@ or real conversation screenshots in public issues.
 | Needs You differs from a message question | A blocking request RPC is actionable; an assistant message with question text is not automatically an approval RPC |
 | Unknown command outcome | Inspect canonical conversation/queue before deliberate intervention; do not auto-resend |
 | Steer says turn changed | The original turn ended/replaced; text remains for an explicit next action |
+| Session in Errors | Open it to read the Codex turn failure. A successful terminal command in the same turn is independent of a model/service failure. If input is available, send a new message in that session to continue. |
 | Push unavailable | Distinguish iOS permission, push entitlement, Hub APNs setup and this-controller registration |
 | Account window absent | Codex did not provide it; missing is not zero usage |
 
@@ -37,8 +38,13 @@ If synchronization retries while the Hub is reachable, Agent logs now classify
 snapshot failures by stage (`catalogue`, `loaded_threads`, `subscription`) and
 failure class (`timeout`, RPC code, or generic failure), without upstream payloads.
 A slow snapshot has a 15-second deadline and does not block live forwarding.
-The iPhone retries a socket that supplies no initial snapshot within 10 seconds;
+The iPhone retries a socket that supplies no initial snapshot within 30 seconds;
 optional HTTP bootstrap requests no longer precede the live connection.
+On an affected physical iPhone, enable the optional `--connection-diagnostics`
+launch argument for a redacted console trace and HTTPS health probe. Compare
+snapshot admission with the transport stage and numeric failure category; a
+reachable HTTPS probe does not by itself prove WebSocket admission. Keep the
+paired Keychain credential intact while checking network and client behavior.
 
 For lost-controller recovery, use the Hub administrator's local access to create
 a fresh one-time controller code, then revoke the lost credential. Local sign-out

@@ -40,6 +40,8 @@ import UIKit
     private var navigationTask: Task<Void, Never>?
     var online = false
     var connection = String(localized: "Sign-in required", bundle: relayLocalizationBundle)
+    var connectionIssue: ConnectionIssue?
+    var connectionAttempts = 0
     var error: String?
     var registry: DeviceRegistry?
     var accounts: [AccountEntry] = []
@@ -97,16 +99,34 @@ import UIKit
     func connect() {
         guard !previewOnly else { return }
         stop(); guard let api, !paused else { return }; generation = UUID(); let generation = generation
+        connectionIssue = nil; connectionAttempts = 0
+        let fingerprint = api.origin.absoluteString.utf8.reduce(UInt64(14695981039346656037)) { ($0 ^ UInt64($1)) &* 1099511628211 }
+        traceConnection("origin_fingerprint=\(String(fingerprint, radix: 16)) tailnet=\(api.origin.host?.hasSuffix(".ts.net") == true)")
         loop = Task { [weak self] in
             var attempt = 0
             while !Task.isCancelled {
                 guard let self, self.generation == generation else { return }
                 do {
-                    self.connection = String(localized: "Connecting…", bundle: relayLocalizationBundle)
+                    self.connection = self.connectionIssue?.title ?? String(localized: "Connecting to Hub…", bundle: relayLocalizationBundle)
+                    self.connectionAttempts += 1
+                    self.traceConnection("connecting attempt=\(self.connectionAttempts)")
                     let config = URLSessionConfiguration.ephemeral; config.httpCookieStorage = nil; config.urlCredentialStorage = nil; config.urlCache = nil
-                    let transport = URLSession(configuration: config, delegate: NoRedirect(), delegateQueue: nil); self.transport = transport
+                    let delegate = NoRedirect { [weak self] metrics in
+                        let stages = metrics.transactionMetrics.map { "dns=\($0.domainLookupEndDate != nil) tcp=\($0.connectEndDate != nil) tls=\($0.secureConnectionEndDate != nil) proxy=\($0.isProxyConnection) reused=\($0.isReusedConnection)" }.joined(separator: ";")
+                        Task { @MainActor in self?.traceConnection("transport \(stages)") }
+                    }
+                    let transport = URLSession(configuration: config, delegate: delegate, delegateQueue: nil); self.transport = transport
                     let socket = transport.webSocketTask(with: api.socketRequest()); socket.maximumMessageSize = 1_048_576
                     self.socket = socket; self.socketHealth = SocketHealth(now: ProcessInfo.processInfo.systemUptime); socket.resume()
+                    if ProcessInfo.processInfo.arguments.contains("--connection-diagnostics") {
+                        Task { [weak self] in
+                            let started = ProcessInfo.processInfo.systemUptime
+                            do {
+                                let (_, response) = try await transport.data(for: api.request(path: "healthz"))
+                                self?.traceConnection("https probe status=\((response as? HTTPURLResponse)?.statusCode ?? 0) elapsed_ms=\(Int((ProcessInfo.processInfo.systemUptime - started) * 1000))")
+                            } catch { self?.traceConnection("https probe reason=\(ConnectionIssue(error: error).diagnostic)") }
+                        }
+                    }
                     // The live stream comes first. Optional bootstrap/account
                     // reads must never delay admission or foreground recovery.
                     let watchdog = Task { [weak self] in
@@ -114,12 +134,14 @@ import UIKit
                             do { try await Task.sleep(for: .seconds(1)) } catch { return }
                             guard let self, self.generation == generation, self.socket === socket else { return }
                             switch self.socketHealth?.action(now: ProcessInfo.processInfo.systemUptime) {
-                            case .reconnect: socket.cancel(with: .goingAway, reason: nil); return
+                            case .reconnect:
+                                self.connectionIssue = ConnectionIssue(kind: self.online ? .pongTimeout : .snapshotTimeout)
+                                socket.cancel(with: .goingAway, reason: nil); return
                             case .ping:
                                 socket.sendPing { [weak self] error in
                                     Task { @MainActor in
                                         guard let self, self.generation == generation, self.socket === socket else { return }
-                                        if error != nil { socket.cancel(with: .goingAway, reason: nil) }
+                                        if let error { self.connectionIssue = ConnectionIssue(error: error); socket.cancel(with: .goingAway, reason: nil) }
                                         else { self.socketHealth?.pongReceived(now: ProcessInfo.processInfo.systemUptime) }
                                     }
                                 }
@@ -135,7 +157,8 @@ import UIKit
                         switch message { case .data(let d): data = d; case .string(let s): data = Data(s.utf8); @unknown default: continue }
                         let decoded = try RelayJSON.decoder().decode(WireMessage.self, from: data)
                         if decoded.type == "snapshot", decoded.snapshot != nil {
-                            self.socketHealth?.snapshotReceived(); attempt = 0
+                            self.socketHealth?.snapshotReceived(); attempt = 0; self.connectionIssue = nil
+                            if !bootstrapped { self.traceConnection("snapshot admitted") }
                             if !bootstrapped {
                                 bootstrapped = true
                                 Task { [weak self] in
@@ -151,13 +174,21 @@ import UIKit
                 } catch {
                     guard self.generation == generation, !Task.isCancelled else { return }
                     let status = (self.socket?.response as? HTTPURLResponse)?.statusCode
+                    let path = String(describing: (error as NSError).userInfo["_NSURLErrorNWPathKey"] ?? "")
+                    self.traceConnection("path local_denied=\(path.contains("Local network prohibited")) vpn=\(path.contains("utun")) satisfied=\(path.contains("satisfied"))")
+                    // Preserve a watchdog/ping cause instead of replacing it
+                    // with the cancellation that wakes socket.receive().
+                    if self.connectionIssue == nil || (error as NSError).code != NSURLErrorCancelled {
+                        self.connectionIssue = ConnectionIssue(error: error, httpStatus: status)
+                    }
+                    self.traceConnection("disconnected reason=\(self.connectionIssue?.diagnostic ?? "unknown") http=\(status ?? 0)")
                     let hubError = (error as? HubFailure) ?? status.flatMap { code in
                         code == 101 ? nil : HubFailure.http(code, code == 401 || code == 403 ? String(localized: "Code expired or access revoked or invalid.", bundle: relayLocalizationBundle) : String(localized: "Hub unavailable (\(code)).", bundle: relayLocalizationBundle))
                     }
                     self.liveQuestions.reset(); self.online = false; self.restoredWatch = false; self.historyLoading = false; self.historyRequestID = nil; self.outbox.disconnected(); for id in Array(self.queueWaiters.keys) { self.finishQueueEditUnknown(id) }; self.commands.removeAll(); self.catalogueCommands.removeAll(); self.catalogueLoading.removeAll(); self.socket?.cancel(with: .goingAway, reason: nil); self.transport?.invalidateAndCancel()
                     self.socket = nil; self.socketHealth = nil; self.transport = nil
                     self.updateNotificationBadge(); self.cancelOfflineNotices()
-                    self.connection = String(localized: "Offline · reconnecting", bundle: relayLocalizationBundle)
+                    self.connection = self.connectionIssue?.title ?? String(localized: "Offline · reconnecting", bundle: relayLocalizationBundle)
                     if let hubError {
                         if hubError.authenticationRequired { self.forget(preserveNavigation: true); self.error = hubError.localizedDescription; return }
                         if !hubError.retryable { self.error = hubError.localizedDescription; self.connection = String(localized: "Hub error", bundle: relayLocalizationBundle); return }
@@ -166,6 +197,12 @@ import UIKit
                     try? await Task.sleep(for: .seconds(delay))
                 }
             }
+        }
+    }
+    private func traceConnection(_ message: String) {
+        if ProcessInfo.processInfo.arguments.contains("--connection-diagnostics") {
+            print("RELAY_CONNECTION t=\(Int(ProcessInfo.processInfo.systemUptime)) \(message)")
+            fflush(stdout)
         }
     }
     private func apply(_ message: WireMessage) async {
@@ -207,6 +244,9 @@ import UIKit
                        let prior = requests[incoming.id], incoming.presentationID == prior.presentationID {
                         requests[incoming.id] = incoming.retainingContext(from: prior)
                     }
+					if message.type == "pending", event.kind == "failed", event.sessionId == selected, event.activity?.kind == "turnError" {
+						chat.apply(event)
+					}
                     return
                 }
                 seen.append(id); if seen.count > 1024 { seen.removeFirst(seen.count - 1024) }
@@ -531,8 +571,8 @@ import UIKit
         catch { settingsErrors["logout"] = String(localized: "Access not revoked. ", bundle: relayLocalizationBundle) + error.localizedDescription }
     }
     func forget(preserveNavigation: Bool = false) { guard !previewOnly else { return }; stop(); if !preserveNavigation { pendingNavigation = PendingNavigation() }; navigationTask?.cancel(); routedMachine = nil; CredentialVault.clear(); credential = nil; pushRegistered = false; pushRegistrationVerifiedAt = nil; settingsErrors = [:]; machines = [:]; sessions = [:]; catalogue = SessionCatalogue(); catalogueErrors = [:]; liveActivities = [:]; requests = [:]; registry = nil; accounts = []; diagnostics = nil; diagnosticsUpdatedAt = nil; pairCode = nil; selected = ""; chat = RecentChat(); outbox = Outbox(); connection = String(localized: "Sign-in required", bundle: relayLocalizationBundle); updateNotificationBadge() }
-    func background() { guard !previewOnly else { return }; paused = true; lastBackground = Date(); stop() }
-    func foreground() { guard !previewOnly else { return }; guard paused || loop == nil else { return }; paused = false; outbox.prune(active: ""); if let lastBackground, Date().timeIntervalSince(lastBackground) > 300 { outbox = Outbox(); chat = RecentChat(); historyCursor = nil }; connect() }
+    func background() { guard !previewOnly else { return }; traceConnection("background"); paused = true; lastBackground = Date(); stop() }
+    func foreground() { guard !previewOnly else { return }; traceConnection("foreground paused=\(paused)"); guard paused || loop == nil else { return }; paused = false; outbox.prune(active: ""); if let lastBackground, Date().timeIntervalSince(lastBackground) > 300 { outbox = Outbox(); chat = RecentChat(); historyCursor = nil }; connect() }
     var attentionCount: Int { requests.count + liveQuestions.records.count }
     private func observeLiveQuestion(_ event: RelayEvent) {
         let session = sessions[event.sessionId]

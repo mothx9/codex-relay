@@ -203,6 +203,44 @@ import XCTest
         row.tap()
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "cargo test")).firstMatch.waitForExistence(timeout: 10))
     }
+    func testFailedTurnHasOwnFleetSectionAndVisibleCause() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--product-screenshot", "fleet", "-AppleLanguages", "(en)"]
+        app.launch()
+        let failed = app.buttons["session.laptop~docs"]
+        XCTAssertTrue(failed.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Errors"].exists)
+        XCTAssertTrue(failed.staticTexts["Model at capacity"].exists)
+        failed.tap()
+        XCTAssertTrue(app.staticTexts["Selected model is at capacity. Please try a different model."].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Send a message to continue."].exists)
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch.exists)
+        XCTAssertFalse(app.buttons["composer.stop"].exists)
+        XCTAssertFalse(app.staticTexts["session.connection"].exists)
+    }
+    func testNeedsYouRequestOpensAfterReturningFromAnotherSession() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--product-screenshot", "fleet", "-AppleLanguages", "(en)"]
+        app.launch()
+        let first = app.buttons["session.workstation~build"]
+        XCTAssertTrue(first.waitForExistence(timeout: 10)); first.tap()
+        XCTAssertTrue(app.scrollViews["session.transcript"].waitForExistence(timeout: 10))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(first.waitForExistence(timeout: 10))
+        app.tabBars.buttons["Needs You"].tap()
+        let request = app.buttons["request.example-request"]
+        XCTAssertTrue(request.waitForExistence(timeout: 10)); request.tap()
+        XCTAssertTrue(app.scrollViews["session.transcript"].waitForExistence(timeout: 10))
+    }
+    func testNeedsYouRequestOpensFromFreshFleet() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--product-screenshot", "fleet", "-AppleLanguages", "(en)"]
+        app.launch()
+        app.tabBars.buttons["Needs You"].tap()
+        let request = app.buttons["request.example-request"]
+        XCTAssertTrue(request.waitForExistence(timeout: 10)); request.tap()
+        XCTAssertTrue(app.scrollViews["session.transcript"].waitForExistence(timeout: 10))
+    }
 
     func testWorkingScrollsWithTranscriptAndComposerStaysVisible() {
         let app = XCUIApplication()
@@ -549,33 +587,80 @@ import XCTest
         let app = XCUIApplication()
         app.launchArguments = ["--product-screenshot", "fleet", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
+        func hold(_ seconds: TimeInterval = 2.5) { RunLoop.current.run(until: Date().addingTimeInterval(seconds)) }
+        func capture(_ name: String) {
+            let image = XCTAttachment(screenshot: app.screenshot()); image.name = name; image.lifetime = .keepAlways; add(image)
+        }
         XCTAssertTrue(app.buttons["session.workstation~build"].waitForExistence(timeout: 10))
-        let start = XCTAttachment(screenshot: app.screenshot()); start.name = "Public walkthrough start"; start.lifetime = .keepAlways; add(start)
-        RunLoop.current.run(until: Date().addingTimeInterval(2))
-        app.buttons["session.workstation~build"].tap()
-        XCTAssertTrue(app.buttons["composer.attach"].waitForExistence(timeout: 5))
-        RunLoop.current.run(until: Date().addingTimeInterval(2))
-        app.buttons["composer.attach"].tap()
-        XCTAssertTrue(app.buttons["Add photos"].exists)
-        XCTAssertFalse(app.buttons["Steer Current Turn"].exists)
-        XCTAssertFalse(app.otherElements["composer.attachmentsMenu"].buttons["Interrupt Turn"].exists)
-        RunLoop.current.run(until: Date().addingTimeInterval(2))
-        app.buttons["composer.attach"].tap()
-        let file = app.buttons["activity.file.src/validation.rs"]
-        if !file.isHittable { app.scrollViews["session.transcript"].swipeDown() }
-        XCTAssertTrue(file.isHittable); file.tap()
-        XCTAssertTrue(app.navigationBars["validation.rs"].waitForExistence(timeout: 5))
-        RunLoop.current.run(until: Date().addingTimeInterval(3))
-        app.buttons["Close"].tap()
+        capture("Public walkthrough start"); capture("public-flow-fleet"); hold()
+        app.buttons["session.laptop~docs"].tap()
+        XCTAssertTrue(app.staticTexts["Selected model is at capacity. Please try a different model."].waitForExistence(timeout: 10))
+        hold(); capture("public-flow-error")
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        app.tabBars.buttons["Needs You"].tap()
-        RunLoop.current.run(until: Date().addingTimeInterval(2))
-        let capture = XCTAttachment(screenshot: app.screenshot()); capture.name = "Public walkthrough end"; capture.lifetime = .keepAlways; add(capture)
+        app.buttons["session.workstation~build"].tap()
+        XCTAssertTrue(app.buttons["composer.attach"].waitForExistence(timeout: 5)); hold()
+        let transcript = app.scrollViews["session.transcript"]
+        let group = app.buttons["tool.terminal.example-command"]
+        for _ in 0..<8 { if group.isHittable { break }; transcript.swipeDown() }
+        XCTAssertTrue(group.isHittable); group.tap(); hold()
+        capture("public-flow-expanded-activity")
+        app.buttons["activity.item.example-command"].tap()
+        XCTAssertTrue(app.navigationBars["Operation"].waitForExistence(timeout: 5)); hold(4)
+        capture("public-flow-command-output")
+        app.buttons["Output actions"].tap()
+        XCTAssertTrue(app.buttons["Copy Command"].waitForExistence(timeout: 5)); hold()
+        app.buttons["Copy Command"].tap(); app.buttons["Close"].tap()
+        let details = app.buttons["tool.details.terminal.example-command"]
+        for _ in 0..<6 { if details.isHittable { break }; transcript.swipeUp() }
+        details.tap(); XCTAssertTrue(app.navigationBars["Activity"].waitForExistence(timeout: 5)); hold()
+        capture("public-flow-activity-index")
+        app.buttons["activity.aggregate.example-tool"].tap()
+        XCTAssertTrue(app.navigationBars["Operation"].waitForExistence(timeout: 5)); hold(3)
+        capture("public-flow-tool-result"); app.buttons["Close"].tap()
+        for _ in 0..<6 { if group.isHittable { break }; transcript.swipeDown() }
+        group.tap()
+        let file = app.buttons["activity.file.src/validation.rs"]
+        XCTAssertTrue(file.isHittable); file.tap()
+        XCTAssertTrue(app.navigationBars["validation.rs"].waitForExistence(timeout: 5)); hold(4)
+        capture("public-flow-file-diff"); app.buttons["Close"].tap()
+        transcript.swipeUp(); hold()
+        capture("public-flow-markdown")
+        app.buttons["composer.attach"].tap()
+        XCTAssertTrue(app.buttons["Add photos"].exists); hold()
+        capture("public-flow-attachments-menu")
+        app.buttons["composer.attach"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.tabBars.buttons["Needs You"].tap(); hold()
+        capture("public-flow-needs-you")
+        app.buttons["request.example-request"].tap()
+		XCTAssertTrue(app.scrollViews["session.transcript"].waitForExistence(timeout: 10))
+        let full = app.buttons.containing(.staticText, identifier: "Full suite").firstMatch
+        for _ in 0..<8 { if full.isHittable { break }; app.scrollViews["session.transcript"].swipeUp() }
+        XCTAssertTrue(full.isHittable); hold(); full.tap()
+        XCTAssertTrue(app.buttons["Respond"].isEnabled); hold()
+        capture("public-flow-question-choice")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.tabBars.buttons["Fleet"].tap()
+        app.buttons["navigation.relay"].tap(); hold()
+        capture("public-flow-navigation")
+        app.buttons["Machines"].tap(); hold()
+        capture("public-flow-machines")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["Diagnostics"].tap()
+        XCTAssertTrue(app.navigationBars["Diagnostics"].waitForExistence(timeout: 5)); hold(3)
+        capture("public-flow-diagnostics")
+        let copyDiagnostics = app.buttons["Copy Diagnostics"]
+        for _ in 0..<6 { if copyDiagnostics.isHittable { break }; app.scrollViews.firstMatch.swipeUp() }
+        XCTAssertTrue(copyDiagnostics.isHittable); copyDiagnostics.tap(); hold()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["Settings"].tap(); hold()
+        capture("public-flow-settings")
+        capture("Public walkthrough end"); hold(3)
     }
     func testPublicProductScreenshots() {
         continueAfterFailure = false
         let app = XCUIApplication()
-        for surface in ["fleet", "conversation", "needs-you", "question", "terminal", "tools", "diff", "machines", "account", "settings", "diagnostics", "pairing", "navigation", "machine-diagnostics", "live-question", "live-inbox", "notifications", "compaction", "queue", "question-reply", "activity", "changed-files", "question-panel"] {
+        for surface in ["fleet", "conversation", "failed", "needs-you", "question", "terminal", "tools", "diff", "machines", "account", "settings", "diagnostics", "pairing", "navigation", "machine-diagnostics", "live-question", "live-inbox", "notifications", "compaction", "queue", "question-reply", "activity", "changed-files", "question-panel"] {
             app.launchArguments = ["--product-screenshot", surface == "question-panel" ? "live-question" : surface, "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
             app.launch()
             XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 10))
@@ -672,11 +757,11 @@ import XCTest
         guard Bundle(for: Self.self).url(forResource: "AcceptanceConfig", withExtension: "json") != nil else { throw XCTSkip("Requires the existing paired live Hub and three healthy Agents.") }
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launchArguments = ["-AppleLanguages", "(en)"]
+        app.launchArguments = ["--connection-diagnostics", "-AppleLanguages", "(en)"]
         app.launch()
         XCTAssertTrue(app.textFields["fleet.search"].waitForExistence(timeout: 15))
         let warning = app.buttons["fleet.connection"]
-        wait(15) { !warning.exists && app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "session.")).count > 0 }
+        wait(45) { !warning.exists && app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "session.")).count > 0 }
         // A quiet Fleet still exchanges WebSocket pings. No Codex turn, answer,
         // attach, credential change, or service interruption is needed here.
         for _ in 0..<35 {

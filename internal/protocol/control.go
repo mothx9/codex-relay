@@ -74,7 +74,7 @@ func CheckControl(s Session, c Command) string {
 	}
 	switch CommandKind(c.Kind) {
 	case NewTurn:
-		if s.Status != Ready {
+		if s.Status != Ready && s.Status != Failed {
 			return TurnChanged
 		}
 		if !s.Capabilities.CanSend {

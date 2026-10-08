@@ -157,6 +157,26 @@ func TestRealtimeAuthOrderingAndPending(t *testing.T) {
 		t.Error("display question created a pending approval")
 	}
 	h.mu.Unlock()
+	spectator := testWS(t, srv, http.Header{"Cookie": []string{cookie}, "Origin": []string{"http://relay.test"}}, "/api/ui")
+	readUntil(t, spectator, func(m protocol.Message) bool { return m.Type == "snapshot" })
+	privateMessage := "Selected model is at capacity. Please try a different model."
+	session.Status = protocol.Failed
+	session.FailureReason = "capacity"
+	errorEvent := protocol.Event{ID: "event-6", MachineID: "m", SessionID: session.ID, Sequence: 6, Epoch: "epoch", Kind: "failed", Session: &session, Activity: &protocol.Activity{ID: "turn-error-1", Kind: "turnError", Text: privateMessage}, Timestamp: time.Now()}
+	_ = a.WriteJSON(protocol.Message{Type: "event", Event: &errorEvent})
+	public := readUntil(t, spectator, func(m protocol.Message) bool { return m.Type == "event" && m.Event.Kind == "failed" })
+	if public.Event.Activity != nil || public.Event.Session.FailureReason != "capacity" {
+		t.Fatal("failure detail leaked to fleet stream")
+	}
+	visible := readUntil(t, ui, func(m protocol.Message) bool { return m.Type == "event" && m.Event.Kind == "failed" })
+	if visible.Event.Activity != nil {
+		t.Fatal("private detail leaked to general event")
+	}
+	private := readUntil(t, ui, func(m protocol.Message) bool { return m.Type == "pending" && m.Event.Kind == "failed" })
+	if private.Event.Activity == nil || private.Event.Activity.Text != privateMessage {
+		t.Fatal("selected conversation lost Codex error")
+	}
+	spectator.Close()
 	a.Close()
 	readUntil(t, ui, func(m protocol.Message) bool {
 		return m.Type == "snapshot" && m.Snapshot.Machines[0].Status == protocol.Offline
@@ -404,5 +424,17 @@ func TestLoginToleratesClipboardWhitespace(t *testing.T) {
 		if response.StatusCode != tc.status {
 			t.Fatalf("status %d; want %d", response.StatusCode, tc.status)
 		}
+	}
+}
+
+func TestFailureReasonCannotPersistUpstreamMessage(t *testing.T) {
+	if got := safeFailureReason(protocol.Failed, "Selected model is at capacity. Please try a different model."); got != "execution" {
+		t.Fatalf("upstream text became durable metadata: %q", got)
+	}
+	if got := safeFailureReason(protocol.Failed, "capacity"); got != "capacity" {
+		t.Fatalf("known category lost: %q", got)
+	}
+	if got := safeFailureReason(protocol.Ready, "capacity"); got != "" {
+		t.Fatalf("resolved turn kept a failure reason: %q", got)
 	}
 }
