@@ -45,11 +45,11 @@ struct FleetView: View {
     }
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 18) {
+            LazyVStack(alignment: .leading, spacing: 16) {
                 if search.isEmpty { fleetHeader }
                 if !browsingAll {
                     sessionSection(String(localized: "Needs You", bundle: relayLocalizationBundle), sessions: sorted.filter { state($0) == "NEEDS_YOU" }, tint: RelayPalette.attention)
-                    sessionSection(String(localized: "Working", bundle: relayLocalizationBundle), sessions: sorted.filter { state($0) == "WORKING" }.sorted { ($0.turnStarted ?? "", $0.id) > ($1.turnStarted ?? "", $1.id) }, tint: .primary)
+                    sessionSection(String(localized: "Working", bundle: relayLocalizationBundle), sessions: sorted.filter { state($0) == "WORKING" }.sorted { ($0.turnStarted ?? "", $0.id) > ($1.turnStarted ?? "", $1.id) }, tint: RelayPalette.working)
                     sessionSection(String(localized: "Recent", bundle: relayLocalizationBundle), sessions: Array(sorted.filter { !["WORKING", "NEEDS_YOU"].contains(state($0)) }.prefix(6)), tint: .secondary)
                     Button { filter = "HISTORY" } label: {
                         HStack {
@@ -103,17 +103,21 @@ struct FleetView: View {
     }
     @ViewBuilder private func sessionSection(_ title: String, sessions: [RelaySession], tint: Color) -> some View {
         if !sessions.isEmpty {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
                     Text(title).foregroundStyle(tint)
                     Text("\(sessions.count)").foregroundStyle(.secondary).monospacedDigit()
                     Spacer()
                 }.font(.footnote.weight(.semibold)).padding(.horizontal, 12).accessibilityAddTraits(.isHeader)
-                VStack(spacing: sessions.contains(where: { ["WORKING", "NEEDS_YOU"].contains(state($0)) }) ? 6 : 0) {
+                VStack(spacing: 0) {
                     ForEach(sessions) { session in
                         FleetSessionRow(session: session)
+                        if session.id != sessions.last?.id {
+                            Divider().overlay(.primary.opacity(0.03)).padding(.horizontal, 12)
+                        }
                     }
                 }
+                .modifier(FleetRowSurface(emphasized: sessions.allSatisfy { ["WORKING", "NEEDS_YOU"].contains(state($0)) }))
             }
         }
     }
@@ -155,10 +159,10 @@ struct FleetSessionRow: View {
                     Text(source).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("session.source." + session.id)
                 } else {
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Text(session.title).font(.body.weight(active ? .medium : .regular)).lineLimit(2)
+                        Text(session.title).font(.body.weight(active ? .semibold : .regular)).lineLimit(1)
                             .foregroundStyle(status == "INACTIVE" ? .secondary : .primary).frame(maxWidth: .infinity, alignment: .leading)
-                        Text(source).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
-                            .layoutPriority(1)
+                        Text(source).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                            .frame(maxWidth: 140, alignment: .trailing)
                             .accessibilityIdentifier("session.source." + session.id)
                     }
                 }
@@ -180,19 +184,20 @@ struct FleetSessionRow: View {
                     }
                 }.font(.footnote) }
                 if lastKnown { LastKnownSession(session: session, machine: relay.machines[session.machineId]) }
-            }.padding(.horizontal, 12).padding(.vertical, 10).frame(minHeight: 44)
+            }.padding(.horizontal, 12).padding(.vertical, active ? 11 : 9).frame(minHeight: 44)
                 .frame(maxWidth: .infinity, alignment: .leading).contentShape(RoundedRectangle(cornerRadius: 12))
-                .modifier(FleetRowSurface(emphasized: active))
         }.buttonStyle(RelayRowPressStyle()).accessibilityIdentifier("session." + session.id)
     }
 }
 
 private struct FleetRowSurface: ViewModifier {
     let emphasized: Bool
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @ViewBuilder func body(content: Content) -> some View {
         if emphasized {
-            if #available(iOS 26.0, *) { content.glassEffect(.clear, in: RoundedRectangle(cornerRadius: 14)) }
-            else { content.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14)) }
+            if reduceTransparency { content.background(RelayPalette.surface, in: RoundedRectangle(cornerRadius: 18)) }
+            else if #available(iOS 26.0, *) { content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18)) }
+            else { content.background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18)) }
         } else { content }
     }
 }

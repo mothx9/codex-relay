@@ -7,10 +7,11 @@ machine needs outbound HTTPS access to your Hub; it needs no inbound Relay port.
 1. On the paired iPhone, open **Relay menu → Machines → Add a machine**.
 2. Choose a display name and a unique machine ID (letters, digits, `_` or `-`).
 3. Create the one-time Agent code.
-4. On that machine, install a matching candidate binary with the guided option:
+4. On that machine, download the installer and enroll with the guided option:
 
 ```sh
-./scripts/install.sh agent --binary ./bin/codex-relay \
+curl -fL https://github.com/mothx9/codex-relay/releases/download/v0.1.0/install.sh -o install.sh
+sh install.sh agent \
   --hub-url "$RELAY_HUB_URL" --machine workstation --pair
 ```
 
@@ -34,10 +35,10 @@ The advanced/manual workflow remains available:
 codex-relay pair --kind agent --hub-url "$RELAY_HUB_URL" \
   --machine workstation --code-stdin \
   --out "$HOME/.config/codex-relay/workstation.token"
-./scripts/install.sh agent --binary ./bin/codex-relay \
+sh install.sh agent \
   --hub-url "$RELAY_HUB_URL" --machine workstation \
   --token-file "$HOME/.config/codex-relay/workstation.token"
 ```
 
 For upgrades, use the existing token file, not a new pairing code. See
-[Hub setup](hub.md) for candidate artifact availability and HTTPS prerequisites.
+[downloads](downloads.md) for package selection and [Hub setup](hub.md) for HTTPS prerequisites.

@@ -17,8 +17,9 @@ primary interface; the embedded web/PWA client remains a fallback.
 
 Agents connect outbound to the Hub over WSS. Each uses its existing local Codex
 shared daemon. The Hub never directly opens a remote Codex socket. An always-on
-Linux host, Linux workstation, GPU node and macOS laptop are roles, not required
-hardware or network products. Relay neither requires nor configures Tailscale.
+Hub host and machines are generic roles; the architecture does not depend on a
+particular device or machine category. Available release binaries and service
+installers determine supported platforms. Relay neither requires nor configures Tailscale.
 
 ## State and events
 

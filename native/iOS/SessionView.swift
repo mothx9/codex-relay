@@ -26,6 +26,7 @@ struct SessionView: View {
     @State private var actionsOpen = false
     @State private var queueDetails = false
     @State private var composerHeight: CGFloat = 44
+    @State private var dockHeight: CGFloat = 60
     @State private var submitting = false
     @State private var scrollRequest = 0
     @FocusState private var composing: Bool
@@ -36,17 +37,21 @@ struct SessionView: View {
 
     var body: some View {
         if let session = relay.current {
-            VStack(spacing: 0) {
-                SessionTranscript(session: session, scrollRequest: $scrollRequest, onEdit: beginQueueEdit) { answer in
+            ZStack(alignment: .bottom) {
+                SessionTranscript(session: session, bottomInset: dockHeight, scrollRequest: $scrollRequest, onEdit: beginQueueEdit) { answer in
                     guard editingQueue == nil else { return }
                     if !answer.isEmpty && draft != answer { draft = draft.isEmpty ? answer : draft + "\n\n" + answer }
                     composing = true
                 }
                 .simultaneousGesture(TapGesture().onEnded { actionsOpen = false })
-                liveQuestionDock(session)
-                queuedMessages(session)
-                SessionHeartbeat(session: session).padding(.horizontal, 20).padding(.top, 2)
-                composer(session).padding(.horizontal, 12).padding(.top, 4).padding(.bottom, 2)
+                .ignoresSafeArea(.container, edges: .bottom)
+                VStack(spacing: 4) {
+                    liveQuestionDock(session)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18)).padding(.horizontal, 12)
+                    queuedMessages(session)
+                    composer(session).padding(.horizontal, 12)
+                }.padding(.bottom, 2)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { dockHeight = $0 }
             }
                 .onDrop(of: [UTType.image.identifier], isTargeted: nil) { providers in
                     guard session.capabilities.canSendImages == true, editingQueue == nil, !submitting else { return false }
@@ -307,7 +312,7 @@ struct SessionView: View {
                     }
                 }.frame(maxHeight: pending.count == 1 ? 66 : 120)
             }.padding(.horizontal, 20).padding(.vertical, 6)
-                .background(.primary.opacity(0.035)).accessibilityIdentifier("session.queue")
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18)).padding(.horizontal, 12).accessibilityIdentifier("session.queue")
         }
     }
 
@@ -422,6 +427,7 @@ private struct SessionTranscript: View {
     @Environment(RelayController.self) private var relay
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let session: RelaySession
+    let bottomInset: CGFloat
     @Binding var scrollRequest: Int
     let onEdit: (Outgoing) -> Void
     let onQuestionReply: (String) -> Void
@@ -494,7 +500,8 @@ private struct SessionTranscript: View {
                         if relay.chat.items.isEmpty && relay.outbox.visible(session: session.id).isEmpty {
                             Text(String(localized: "Recent Codex context will appear here.", bundle: relayLocalizationBundle)).font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 24)
                         }
-                        Color.clear.frame(height: 1).id(bottomID)
+                        SessionHeartbeat(session: session)
+                        Color.clear.frame(height: bottomInset + 8).id(bottomID)
                             .background(GeometryReader { geometry in
                                 Color.clear.preference(key: TranscriptBottom.self, value: geometry.frame(in: .named("transcript")).maxY)
                             })
@@ -545,7 +552,7 @@ private struct SessionTranscript: View {
                     if !scrolling.followsLatest && !scrolling.isInteracting {
                         Button { scrollRequest += 1 } label: { Label(String(localized: "Latest messages", bundle: relayLocalizationBundle), systemImage: "arrow.down") }
                             .labelStyle(.iconOnly).font(.subheadline.weight(.semibold)).frame(width: 44, height: 44)
-                            .background(.regularMaterial, in: Circle()).buttonStyle(.plain).padding(8)
+                            .background(.regularMaterial, in: Circle()).buttonStyle(.plain).padding(8).padding(.bottom, bottomInset)
                             .accessibilityIdentifier("transcript.latest")
                     }
                 }

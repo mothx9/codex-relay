@@ -1,4 +1,4 @@
-name: release candidate artifacts
+name: release artifacts
 on:
   push:
     tags: ['v*']
@@ -12,6 +12,17 @@ jobs:
       - run: python3 scripts/localization.py --check
       - run: swift test --package-path native
       - run: xcodebuild -project native/CodexRelay.xcodeproj -scheme CodexRelay -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build-for-testing
+      - name: Build unsigned iPhone package
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          test "$RELEASE_TAG" = "v$(cat VERSION)"
+          python3 scripts/native_package.py --version "${RELEASE_TAG#v}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: iphone-unsigned
+          path: dist/*.ipa
+          if-no-files-found: error
   artifacts:
     needs: native
     runs-on: ubuntu-latest
@@ -22,18 +33,28 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: '1.27.x'
-      - run: make check test
-      - name: Build tagged binaries and checksums
+      - run: make check
+      - uses: actions/download-artifact@v4
+        with:
+          name: iphone-unsigned
+          path: dist/
+      - name: Build tagged packages and checksums
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          case "$RELEASE_TAG" in v[0-9]*.[0-9]*.[0-9]*) ;; *) exit 2 ;; esac
-          make checksums VERSION="${RELEASE_TAG#v}"
+          test "$RELEASE_TAG" = "v$(cat VERSION)"
+          make cross VERSION="${RELEASE_TAG#v}"
+          python3 scripts/release.py --version "${RELEASE_TAG#v}" --ipa "dist/CodexRelay-${RELEASE_TAG#v}-ios-unsigned.ipa"
           (cd dist && sha256sum -c SHA256SUMS)
       - uses: actions/upload-artifact@v4
         with:
-          name: release-binaries
-          path: dist/
+          name: release-packages
+          path: |
+            dist/*.tar.gz
+            dist/*.ipa
+            dist/install.sh
+            dist/release.json
+            dist/SHA256SUMS
       - name: Prepare a draft for owner review
         env:
           GH_TOKEN: ${{ github.token }}
@@ -41,6 +62,5 @@ jobs:
         run: |
           if printf '%s' "$RELEASE_TAG" | grep -q -- '-'; then prerelease=--prerelease; else prerelease=; fi
           gh release create "$RELEASE_TAG" --verify-tag --draft $prerelease \
-            --title "Codex Relay $RELEASE_TAG" --notes-file CHANGELOG.md \
-            dist/codex-relay-linux-amd64 dist/codex-relay-linux-arm64 \
-            dist/codex-relay-darwin-arm64 dist/SHA256SUMS scripts/install.sh
+            --title "Codex Relay $RELEASE_TAG" --notes-file "docs/releases/$RELEASE_TAG.md" \
+            dist/*.tar.gz dist/*.ipa dist/install.sh dist/release.json dist/SHA256SUMS

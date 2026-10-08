@@ -13,7 +13,7 @@ create another installation to test a binary.
 5. Upgrade one Agent at a time with its existing token, state path and service
    configuration. Check version, Online state, sessions and live events before
    the next machine.
-6. Build/install the native client through Xcode, preserving its Keychain. Verify
+6. Install the native update through the same signing account/tool, preserving its Keychain. Verify
    existing pairing, foreground rehydration and representative control flows.
 
 Do not restart shared Codex daemons as an upgrade shortcut. Pausing Relay or
@@ -25,6 +25,13 @@ inspect changes. Initial `agent --pair` deliberately refuses an already enrolled
 installation; use the existing installation path for upgrades, not a new code.
 Read `scripts/install.sh --help` and preserve all service options, including
 APNs configuration, before regenerating units.
+
+Use the [v0.1.0 download installer](../setup/downloads.md) for the matching host
+archive. The installer restarts an already-running Relay service on Linux so
+the new binary is actually loaded; `--no-start` stages the update instead.
+macOS Agent upgrades reload
+the LaunchAgent. Never switch the phone's signing account as an upgrade shortcut:
+different Keychain access can require pairing again.
 
 Rollback requires the prior binary and a compatible database. Never overwrite
 current SQLite with an old backup while newer service writes are active. Stop

@@ -4,21 +4,17 @@ Use an always-on Linux host with an HTTPS origin and WebSocket-capable reverse
 proxy. The Hub needs no GPU, Codex login, Node runtime or external database.
 Agents connect outbound; never expose a Codex app-server socket to the network.
 
-## Build the current candidate
+## Download
 
-On a development machine with the Go version specified by `go.mod`:
+No clone or Go installation is required. Download the v0.1.0 installer on the Hub host:
 
 ```sh
-git clone https://github.com/mothx9/codex-relay.git
-cd codex-relay
-make build
+curl -fL https://github.com/mothx9/codex-relay/releases/download/v0.1.0/install.sh -o install.sh
 ```
 
-The native productization changes are a release candidate. Until a matching
-release artifact is published, install the locally built candidate with
-`--binary`; an older published RC does not include every setup option below.
-For another target architecture, use `make cross` and transfer the matching
-binary plus `scripts/install.sh` to the Hub host through your trusted channel.
+The installer selects the Linux archive and verifies its checksum. For offline
+installation, download/extract the matching archive and supply `--binary
+./codex-relay`. Developers can still clone/build from source; that is optional.
 
 ## Install the service
 
@@ -27,8 +23,7 @@ HTTPS using your own proxy or direct Hub TLS. Relay does not configure a VPN,
 DNS, firewall or Wi-Fi.
 
 ```sh
-./scripts/install.sh hub --binary ./bin/codex-relay \
-  --public-url "$RELAY_HUB_URL"
+sh install.sh hub --public-url "$RELAY_HUB_URL"
 ```
 
 The per-user systemd service listens on loopback by default. Private metadata and

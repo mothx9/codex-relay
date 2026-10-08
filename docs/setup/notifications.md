@@ -74,10 +74,10 @@ The key path must be absolute. Set the JSON and key to mode `0600`, owned by the
 Hub service user; parent directory mode `0700`. Use `vim` or your secure secret
 provisioning workflow. Do not paste the key into a command line.
 
-Build the current candidate (`make build`) and use its installer. Inspect first:
+Download the current installer from the [release](downloads.md). Inspect first:
 
 ```sh
-./scripts/install.sh hub --binary ./bin/codex-relay \
+sh install.sh hub \
   --public-url "$RELAY_HUB_URL" \
   --apns-config "$HOME/.config/codex-relay/apns.json" --dry-run
 ```

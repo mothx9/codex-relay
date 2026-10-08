@@ -21,6 +21,8 @@ Keep overrides in ignored `native/LocalSigning.xcconfig`, included by
 
 `RelayController` holds canonical machines/sessions/requests and bounded ephemeral
 chat/outbox. `SessionTranscript` observes chat independently from the composer.
+Its final heartbeat scrolls with the messages. The floating composer reserves a
+measured bottom content inset and has no opaque full-width footer.
 Stable item and request-incarnation identities prevent reconstruction on each
 snapshot. Markdown parsing is coalesced without waiting for completion; output
 updates do not animate every token. Reduce Motion disables state movement.

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Exercise installation in a disposable root without touching the user's home."""
 import os
+import hashlib
 from pathlib import Path
 import subprocess
 import tempfile
+import tarfile
 import unittest
 
 
@@ -38,14 +40,59 @@ class InstallerTests(unittest.TestCase):
         p.write_text("#!/bin/sh\n" + body + "\n")
         p.chmod(0o755)
 
-    def test_guided_pairing_rejects_implicit_legacy_download(self):
+    def prepare_download(self, corrupt=False):
+        self.binary.write_text('''#!/bin/sh
+if [ "$1" = pair ]; then
+ IFS= read -r code
+ [ "$code" = 12345678 ] || exit 42
+ while [ "$#" -gt 0 ]; do
+  if [ "$1" = --out ]; then shift; umask 077; printf fictional > "$1"; exit 0; fi
+  shift
+ done
+fi
+''')
+        archive = self.root / 'download.tar.gz'
+        with tarfile.open(archive, 'w:gz') as bundle:
+            bundle.add(self.binary, arcname='codex-relay')
+        checksum = self.root / 'SHA256SUMS'
+        digest = '0' * 64 if corrupt else hashlib.sha256(archive.read_bytes()).hexdigest()
+        checksum.write_text(digest + '  codex-relay-0.1.0-linux-amd64.tar.gz\n')
+        self.env.update(RELAY_TEST_ARCHIVE=str(archive), RELAY_TEST_SUMS=str(checksum))
+        self.script('curl', '''printf '%s\\n' "$*" >> "$RELAY_TEST_INSTALL_ROOT/download.calls"
+while [ "$#" -gt 0 ]; do
+ case "$1" in https://*) url=$1;; -o) shift; out=$1;; esac
+ shift
+done
+case "$url" in */SHA256SUMS) cp "$RELAY_TEST_SUMS" "$out";; *.tar.gz) cp "$RELAY_TEST_ARCHIVE" "$out";; *) exit 99;; esac''')
+
+    def test_default_download_is_verified_and_supports_guided_pairing(self):
         self.env.pop("RELAY_VERSION", None)
-        self.script("curl", 'echo unexpected-download >&2; exit 99')
-        result = subprocess.run(["sh", str(self.installer), "agent", "--hub-url", "https://relay.test", "--machine", "test", "--pair", "--codex", "/bin/true", "--no-start"], env=self.env, capture_output=True, text=True)
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("Guided pairing requires a current candidate", result.stderr)
-        self.assertNotIn("unexpected-download", result.stderr)
+        self.prepare_download()
+        self.script('hostname', 'echo test-machine')
+        result = subprocess.run(["sh", str(self.installer), "agent", "--hub-url", "https://relay.test", "--pair", "--codex", "/bin/true", "--no-start"], env=self.env, input='12345678\n', capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('/v0.1.0/codex-relay-0.1.0-linux-amd64.tar.gz', (self.install_root / 'download.calls').read_text())
+        self.assertEqual((self.install_root / '.config/codex-relay/test-machine.token').read_text(), 'fictional')
+        self.assertEqual((self.install_root / '.local/bin/codex-relay').stat().st_mode & 0o777, 0o755)
+
+    def test_corrupt_download_never_pairs_or_installs_service(self):
+        self.env.pop('RELAY_VERSION', None)
+        self.prepare_download(corrupt=True)
+        result = subprocess.run(["sh", str(self.installer), "agent", "--hub-url", "https://relay.test", "--machine", "test", "--pair", "--codex", "/bin/true", "--no-start"], env=self.env, input='12345678\n', capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Archive checksum mismatch', result.stderr)
+        self.assertFalse((self.install_root / '.config/codex-relay/test.token').exists())
         self.assertFalse((self.install_root / ".config/systemd/user/codex-relay-agent.service").exists())
+
+    def test_running_service_is_restarted_after_upgrade(self):
+        self.script('systemctl', '''printf '%s\\n' "$*" >> "$RELAY_TEST_INSTALL_ROOT/systemctl.calls"
+exit 0''')
+        result = subprocess.run(['sh', str(self.installer), 'hub', '--binary', str(self.binary),
+                                 '--public-url', 'https://relay.test'], env=self.env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.install_root / 'systemctl.calls').read_text().splitlines(), [
+            '--user daemon-reload', '--user is-active --quiet codex-relay-hub.service',
+            '--user enable codex-relay-hub.service', '--user restart codex-relay-hub.service'])
 
     def run_install(self, *args, success=True, role="hub"):
         command = ["sh", str(self.installer), role, "--binary", str(self.binary)]

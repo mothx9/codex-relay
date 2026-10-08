@@ -5,30 +5,35 @@ engineering evidence; they do not override this page or claim a public release.
 
 ## Release and distribution
 
-The source candidate is **0.1.0-rc.5**. The reference Hub and all three Agents use
-`0.1.0-rc.5+m2.9`, including canonical queue promotion. No final v0.1.0 is
-published by this productization pass.
-Build the candidate from source with `make build`; use `--binary` with the
-installer. The legacy default download is an older published RC, not current main.
+The release line is **v0.1.0**: three versioned host archives, an unsigned native
+device IPA, installer, checksums and exact source manifest. Start with
+[downloads](setup/downloads.md); cloning and compiling are optional. The
+installer's default is v0.1.0 and includes guided one-time enrollment.
+The reference Hub and all three Agents run `0.1.0`, upgraded in place with their
+credentials, service configuration and shared Codex daemons preserved. Dated
+reports retain their original build identifiers.
 
 The latest wave adds explicit context-compaction status, compact mixed activity
 groups, direct file diffs, remaining-capacity quota windows and connected-client
 local banners with machine/session/turn context and a slimmer persistent composer.
-Fleet uses compact mini-surfaces for Working/Needs You and a flat Recent index.
+Fleet groups compact Working/Needs You rows in visible glass surfaces and keeps
+a flat Recent index with quiet separators.
 Green execution state is separate from the current activity; source text and
 spacing are balanced. Send queues work, and a direct Next up Steer button (or
 physical-keyboard Escape) promotes the selected canonical input without creating
 a second message. The + menu contains attachments only. Activity inspection distinguishes its
 compact aggregate, individual operation and changed-file list. Short live
 questions open in a partial-height material sheet. Sanitized screenshots and a
-recorded walkthrough document the current native views. The m2.9 signed iPhone
+recorded walkthrough document the current native views. The v0.1.0 signed iPhone
 build is installed and launched in place on the physical device. Owner gesture
 and notification presentation acceptance remain separate from installation.
 
 The native app supports iOS 17+, English/Italian, Dynamic Type and Reduce Motion.
-Liquid Glass uses a material fallback on older iOS. Installation currently
-requires Xcode and your own signing team. TestFlight/App Store distribution is
-not yet provided. The PWA remains a fallback/debug client.
+Liquid Glass uses a material fallback on older iOS. The native download can be
+signed/sideloaded with AltStore Classic without Xcode. Free Apple accounts require
+signature refresh every seven days. TestFlight/App Store distribution is not yet
+provided. Safari → Add to Home Screen offers immediate PWA access without a
+computer, with different presentation/features.
 
 ## Codex compatibility
 
@@ -98,10 +103,11 @@ purchase prompt; the paid capability has not been activated. Local alerts remain
 available without that membership. See the setup guide for the separate free
 Home Screen Web Push option.
 Use the [notification setup guide](setup/notifications.md); ordinary control does
-not require APNs. Keep the RC until required physical acceptance passes.
+not require APNs. This release does not claim accepted physical remote APNs delivery.
 
 ## Evidence
 
+- [v0.1.0 release validation](development/validation/v0.1.0.md)
 - [M1 reliability validation](development/validation/m1-validation.md)
 - [M2 product validation](development/validation/m2-validation.md)
 - [Live event audit](development/validation/live-event-audit.md)

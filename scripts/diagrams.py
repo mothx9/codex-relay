@@ -34,7 +34,7 @@ d=Diagram('One Hub. Your Codex fleet.','The iPhone controls Relay. Codex remains
 d.box(360,112,280,'iPhone controller',['Live work · decisions · conversation'])
 d.arrow('M 500 194 V 257','HTTPS / WSS',620,231)
 d.box(340,268,320,'Relay Hub',['Fleet state · routing · controllers','SQLite metadata · notifications'])
-for x,title in [(40,'Linux workstation'),(365,'GPU node'),(690,'macOS laptop')]:
+for x,title in [(40,'Machine 1'),(365,'Machine 2'),(690,'Machine N')]:
  d.box(x,460,270,title,['Relay Agent','Local Codex shared daemon'])
  d.arrow(f'M {x+135} 460 V 410 H 500 V 372')
  d.note(x+16,596,'Codex login and execution stay local')

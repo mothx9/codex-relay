@@ -8,7 +8,7 @@
 <p align="center">
   <a href="#quick-start"><img src="https://img.shields.io/badge/Go_%2F_Swift-707780?style=flat&amp;label=languages&amp;labelColor=30363d" alt="Languages: Go / Swift"></a>
   <a href="docs/setup/iphone.md"><img src="https://img.shields.io/badge/iOS_17%2B-707780?style=flat&amp;label=native&amp;labelColor=30363d" alt="Native: iOS 17+"></a>
-  <a href="docs/status.md"><img src="https://img.shields.io/badge/0.1.0--rc.5-707780?style=flat&amp;label=status&amp;labelColor=30363d" alt="Status: 0.1.0-rc.5"></a>
+  <a href="https://github.com/mothx9/codex-relay/releases/tag/v0.1.0"><img src="https://img.shields.io/badge/v0.1.0-707780?style=flat&amp;label=download&amp;labelColor=30363d" alt="Download: v0.1.0"></a>
   <a href="https://github.com/mothx9/codex-relay/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://img.shields.io/github/actions/workflow/status/mothx9/codex-relay/ci.yml?branch=main&amp;label=CI&amp;style=flat&amp;labelColor=30363d" alt="CI on main"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/Apache--2.0-707780?style=flat&amp;label=license&amp;labelColor=30363d" alt="License: Apache-2.0"></a>
 </p>
@@ -16,7 +16,7 @@
 **Your Codex fleet, on iPhone.** A self-hosted control plane for observing,
 controlling and continuing Codex sessions across multiple machines.
 
-[Quick Start](#quick-start) · [Documentation](docs/README.md) ·
+[Download v0.1.0](https://github.com/mothx9/codex-relay/releases/tag/v0.1.0) · [Quick Start](#quick-start) · [Documentation](docs/README.md) ·
 [Architecture](docs/architecture/overview.md) · [Current status](docs/status.md)
 
 <p align="center">
@@ -45,7 +45,7 @@ controlling and continuing Codex sessions across multiple machines.
 
 ## How it works
 
-<img src="docs/assets/architecture/architecture.svg" alt="An iPhone connects to one Hub; Linux and macOS Agents connect outbound and use local Codex" width="850">
+<img src="docs/assets/architecture/architecture.svg" alt="An iPhone connects to one Hub; Agents on your machines connect outbound and use local Codex" width="850">
 
 The Hub owns Relay access and routing. **Codex owns threads, conversation,
 running turns and the Follow-up queue.** Agents use the existing local shared
@@ -56,37 +56,38 @@ and outbox content are bounded and ephemeral, not a Relay transcript database.
 
 ## Quick Start
 
-You need an always-on Linux Hub host with HTTPS/WSS, a machine with an existing
-signed-in Codex runtime, and a Mac with Xcode to install the iPhone development
-build. Use the Go version in `go.mod` to build the current candidate.
+You need an always-on Hub host with HTTPS/WSS and an existing signed-in Codex
+runtime on each machine. **Download and pair; no clone, Go toolchain or Xcode
+required.** [Choose your installation route](docs/setup/downloads.md).
 
 ### 1. Install the Hub
 
-Choose an always-on Linux host as the coordinator. On that host, build the
-current candidate:
+On your Linux Hub host, download the installer:
 
 ```sh
-git clone https://github.com/mothx9/codex-relay.git
-cd codex-relay
-make build
+curl -fL https://github.com/mothx9/codex-relay/releases/download/v0.1.0/install.sh -o install.sh
 ```
 
 Set `RELAY_HUB_URL` to your actual HTTPS origin and install the user service.
 HTTPS/proxy configuration remains yours; Relay does not configure your network.
 
 ```sh
-./scripts/install.sh hub --binary ./bin/codex-relay \
-  --public-url "$RELAY_HUB_URL"
+sh install.sh hub --public-url "$RELAY_HUB_URL"
 ```
 
 Expected: the Hub service is running and reachable at your HTTPS origin. Follow
-the [Hub guide](docs/setup/hub.md) for TLS, cross-builds, service lifetime and
+the [Hub guide](docs/setup/hub.md) for TLS, service lifetime and
 advanced installation.
 
 ### 2. Pair the iPhone
 
-[Build and install the native app](docs/setup/iphone.md) through Xcode using your
-own signing team. On the Hub host, generate a one-time controller code:
+[Download the native IPA](https://github.com/mothx9/codex-relay/releases/download/v0.1.0/CodexRelay-0.1.0-ios-unsigned.ipa)
+and sign/install it with AltStore Classic; a free Apple account needs a seven-day
+refresh. Follow the [short iPhone guide](docs/setup/iphone.md).
+For immediate access without a computer, open your Hub in Safari and use
+**Share → Add to Home Screen** for the included web/PWA client.
+
+On the Hub host, generate a one-time controller code:
 
 ```sh
 ~/.local/bin/codex-relay pair --hub-url "$RELAY_HUB_URL" \
@@ -101,14 +102,15 @@ Expected: Fleet opens. [Pairing walkthrough and screenshot](docs/setup/iphone.md
 ### 3. Add a machine
 
 On iPhone, open **Relay menu → Machines → Add a machine** to mint a one-time Agent
-code. On the Codex-running machine, install its matching candidate binary:
+code. On the Codex-running machine, download the same installer and run:
 
 ```sh
-./scripts/install.sh agent --binary ./bin/codex-relay \
-  --hub-url "$RELAY_HUB_URL" --machine workstation --pair
+curl -fL https://github.com/mothx9/codex-relay/releases/download/v0.1.0/install.sh -o install.sh
+sh install.sh agent --hub-url "$RELAY_HUB_URL" --pair
 ```
 
-Enter the code at the prompt. The Agent connects outbound and progresses through
+Enter the code at the prompt. Its machine ID defaults to the hostname; use
+`--machine NAME` if needed. The Agent connects outbound and progresses through
 Syncing to Online after a fresh Codex snapshot. Existing enrollment is never
 silently replaced. [Linux guide](docs/setup/linux-agent.md) · [macOS guide](docs/setup/macos-agent.md).
 
@@ -154,12 +156,13 @@ command contents are never included. Notification taps navigate and never approv
 
 ## Current status and distribution
 
-The native app is an Xcode development build. The project remains an explicit
-release candidate, with physical push acceptance outstanding. See the canonical
-[current status and compatibility](docs/status.md) for validated Codex versions,
-iOS distribution, APNs requirements and the distinction between supported pending
-RPCs and transient async assistant questions. Pairing and ordinary control work
-without APNs. Public screenshots use sanitized production-view fixtures.
+**v0.1.0** includes versioned Hub/Agent archives, an unsigned native iPhone IPA,
+the installer, checksums and a source manifest. Xcode is part of the development
+path. TestFlight/App Store distribution is not available yet; the IPA needs
+signing with your own account. See [current status and compatibility](docs/status.md)
+for validated Codex versions, native APNs requirements and pending/live-question
+behavior. Pairing and ordinary control work without APNs. Screenshots and the
+recording use sanitized production-view fixtures.
 
 Native iOS 17+ supports English and Italian, semantic typography, Dynamic Type,
 Reduce Motion, and material fallback where Liquid Glass is unavailable. The

@@ -1,52 +1,56 @@
 # Release engineering
 
-A release requires a reviewed commit, green Go/native CI, coherent version
-reporting and verified artifacts. Current productization remains an explicit RC;
-a final `v0.1.0` must not be declared complete while required physical native
-notification acceptance is unavailable.
+`VERSION` identifies the release line, currently **0.1.0**. The Go development
+default, native marketing version, installer download default and current docs
+must agree. Historical validation reports keep their original build identifiers.
 
-## Build artifacts
+## Packages
 
-`make cross VERSION=<candidate-version>` builds Linux amd64, Linux arm64 and
-macOS arm64 binaries in `dist/`. The version is embedded with Go linker flags;
-verify each executable on its target platform with `codex-relay version`.
-The installer selects the matching architecture and verifies `SHA256SUMS` for
-release downloads. Candidate source installs use `--binary` until a matching
-public release exists. Never imply that locally built artifacts are published.
+- `codex-relay-VERSION-linux-amd64.tar.gz`
+- `codex-relay-VERSION-linux-arm64.tar.gz`
+- `codex-relay-VERSION-darwin-arm64.tar.gz`
+- `CodexRelay-VERSION-ios-unsigned.ipa`
+- `install.sh`, `release.json`, `SHA256SUMS`
 
-Release publication must include the exact binaries, SHA-256 checksums, source
-commit and compatibility/upgrade notes. Keep Hub identity, SQLite state, keys and
-enrollment across upgrades. Read [upgrading](../operations/upgrading.md).
+Archives have a flat layout: executable, installer, license and installation
+guide. Raw build binaries stay in local `dist/`; they are not separate release
+downloads. `release.json` records the source commit and exact asset sizes/hashes;
+checksums cover it and the downloadable assets. Packaging excludes stale files
+in `dist/`, normalizes tar metadata and validates the unsigned device IPA.
 
-## Acceptance gates
+```sh
+make package
+python3 scripts/native_package.py
+python3 scripts/release.py --ipa dist/CodexRelay-0.1.0-ios-unsigned.ipa
+```
 
-- Formatting, vet, ordinary/race Go, PWA, installer and Swift core checks.
-- Simulator build-for-testing and relevant behavioral UI acceptance.
-- Safe real-Hub/Agent synchronization and owned-thread control acceptance.
-- Signed physical iPhone installation, gestures, lifecycle and app icon review.
-- Real APNs banners/Notification Center/badge/tap/cold start where required.
-- Privacy review of source, docs, assets, logs and release attachments.
+The IPA is built for arm64 iPhoneOS in Release configuration without personal
+signing. Publishing a provisioning profile, certificate, key or development
+credential is rejected. End users can sign/sideload the download without Xcode;
+the free account's seven-day refresh and separate APNs capability requirements
+are explicit in [iPhone installation](../setup/iphone.md). No TestFlight/App Store
+availability is implied by packaging an IPA.
 
-If only Apple capability/provisioning/provider credentials remain unavailable,
-retain the RC and name the precise external requirement. Unit tests, simulator
-notifications and fake provider responses are not physical APNs proof.
+## Validation and publication
 
-The iOS source tree is prepared for future TestFlight/App Store distribution,
-but an Xcode development build is the current installation path. Do not submit
-to an Apple distribution channel without owner authorization and configured
-signing/capability access. The Hub remains self-hosted in either model.
+1. Run `make check`, Swift core tests and the relevant simulator behavioral tests.
+2. Rebuild/capture the final sanitized screens and recording; inspect the results.
+3. Check the physical development installation where the authorized device and
+   signing identity are available. State any unperformed gestures or APNs checks.
+4. Commit and run green Go/native CI. Tag that reviewed commit as `vVERSION`.
+5. The release workflow checks the tag against `VERSION`, builds the unsigned
+   device IPA and host packages, verifies checksums and prepares a draft with
+   `docs/releases/vVERSION.md` as its release notes.
+6. Download the draft assets, verify checksums, archive contents, manifest commit,
+   binary versions on supported hosts and native bundle version/platform.
+7. Publish the authorized release. Only then delete explicitly superseded releases
+   and tags; do not remove the working download before its replacement exists.
 
-## Automation
+Native remote APNs remains a separately configured integration. Unit/provider
+tests and a successful build are not physical delivery proof. A self-hosted
+release can ship its supported ordinary controls and connected local alerts
+while documenting that external requirement. Apple distribution remains a
+separate channel requiring an active team and appropriate configuration.
 
-`make checksums VERSION=...` cross-builds all three targets and writes checksums
-for that exact artifact set. A pushed version tag runs `.github/workflows/release.yml`:
-Swift/native build, backend checks, cross-builds and checksum verification. It
-creates a **draft** GitHub release, with prerelease classification for suffixed
-versions. It never auto-publishes final acceptance. The owner reviews the actual
-physical acceptance and compatibility notes before publishing the draft.
-
-The installer retains its legacy published default for existing manual workflows.
-New `--pair` installations must use `--binary` or explicitly select a compatible
-published `RELAY_VERSION`; they cannot silently download an older binary lacking
-the guided-pairing command. Source build defaults are `0.1.0-rc.5`; an embedded
-version string alone does not mean a matching release has been published.
+Keep Hub identity, database, controller/machine enrollment and keys when upgrading.
+See [upgrading](../operations/upgrading.md). The installer never restarts Codex.

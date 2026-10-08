@@ -41,14 +41,20 @@ bodies stay in the session; completed activity never masquerades as a running
 operation. Needs You stays orange, failures red, and stale connectivity explicit.
 Accessibility text sizes use a vertical layout so identity remains readable.
 
-Working and Needs You use compact, subtle glass surfaces; Recent remains a flat
-index on the system canvas. Inactive titles are attenuated. Source metadata uses
-the 13-point footnote role, closer to 17-point titles, without a fixed-width
-column or shrinking the type. Long titles may wrap once. Rows keep 44-point hit
-targets with 10-point vertical padding and smaller section gaps. Working order follows turn-start identity rather than
+Working and Needs You use compact grouped glass surfaces with inset dividers;
+Recent remains a flat index on the system canvas. Inactive titles are attenuated.
+Source metadata uses the subheadline role and a bounded trailing column alongside
+one-line titles. Larger accessibility sizes stack identity text instead of clipping.
+Rows keep 44-point hit targets, tight padding and smaller section gaps.
+Working order follows turn-start identity rather than
 every live timestamp update. Recent rows omit a repeated Ready label. Needs You
 and the Relay menu use the same title-first open-list hierarchy. Glass belongs to active Fleet emphasis and controls. Activity groups inside the
 conversation have quiet opaque cards that contain their own semantic children.
+
+In chat, the execution heartbeat is the final transcript element. It scrolls away
+while reading older messages. The composer overlays the scroll view with material
+only inside its controls, leaving the surrounding footer transparent. A measured
+bottom inset keeps the latest message and heartbeat above the composer and keyboard.
 
 Consecutive command/tool/file activity in the same turn shares one stable inline
 group between conversational messages. The header and its children use one icon

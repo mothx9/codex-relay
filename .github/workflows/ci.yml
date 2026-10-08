@@ -13,12 +13,13 @@ jobs:
       - run: test -z "$(gofmt -l cmd internal web)"
       - run: sh -n scripts/install.sh
       - run: python3 scripts/install_test.py
+      - run: python3 scripts/release_test.py
       - run: python3 scripts/localization.py --check
       - run: python3 scripts/docs-check.py
       - run: go vet ./...
       - run: go test -race ./...
       - run: node web/control.test.mjs
-      - run: make cross
+      - run: make package
       - uses: actions/upload-artifact@v4
         with:
           name: binaries

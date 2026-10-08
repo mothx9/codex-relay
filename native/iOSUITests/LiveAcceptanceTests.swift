@@ -204,6 +204,22 @@ import XCTest
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "cargo test")).firstMatch.waitForExistence(timeout: 10))
     }
 
+    func testWorkingScrollsWithTranscriptAndComposerStaysVisible() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--preview-chat", "--long-transcript", "-AppleLanguages", "(en)"]
+        app.launch()
+        let composer = app.descendants(matching: .any).matching(identifier: "composer.text").firstMatch
+        let working = app.staticTexts["session.connection"]
+        XCTAssertTrue(composer.waitForExistence(timeout: 10))
+        wait(10) { working.isHittable }
+        let transcript = app.scrollViews["session.transcript"]
+        for _ in 0..<5 { if !working.isHittable { break }; transcript.swipeDown() }
+        XCTAssertFalse(working.isHittable, "Working belongs to the latest messages, not the fixed composer")
+        XCTAssertTrue(composer.isHittable)
+        app.buttons["transcript.latest"].tap()
+        wait(5) { working.isHittable }
+    }
+
     func testAdministrativeHomesDoNotDuplicateSettings() {
         let app = XCUIApplication()
         app.launchArguments = ["--product-screenshot", "fleet", "-AppleLanguages", "(en)"]

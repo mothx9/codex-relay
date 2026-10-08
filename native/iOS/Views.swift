@@ -500,18 +500,20 @@ struct LastKnownSession: View {
         func decode<T: Decodable>(_ value: Any, as: T.Type = T.self) -> T {
             try! RelayJSON.decoder().decode(T.self, from: JSONSerialization.data(withJSONObject: value))
         }
-        let specs = [("workstation", "Workstation", "ONLINE"), ("laptop", "Laptop", "ONLINE"), ("node", "GPU node", "OFFLINE")]
+        let specs = [("workstation", "Workstation", "ONLINE"), ("laptop", "Laptop", "ONLINE"), ("node", "Build node", surface == "fleet" ? "ONLINE" : "OFFLINE")]
         let machines: [Machine] = specs.map { id, name, status in
-            decode(["id": id, "name": name, "status": status, "last_seen": stamp, "agent_version": "0.1.0-rc.5", "codex_version": "0.160.1", "adapter": "app-server", "freshness": ["protocol_version": 1, "last_heartbeat": stamp, "last_snapshot": stamp, "last_event": stamp, "snapshot_ms": 84, "sync_ms": 102, "sequence": 42, "snapshot_sequence": 40]])
+            decode(["id": id, "name": name, "status": status, "last_seen": stamp, "agent_version": "0.1.0", "codex_version": "0.160.1", "adapter": "app-server", "freshness": ["protocol_version": 1, "last_heartbeat": stamp, "last_snapshot": stamp, "last_event": stamp, "snapshot_ms": 84, "sync_ms": 102, "sequence": 42, "snapshot_sequence": 40]])
         }
         relay.machines = Dictionary(uniqueKeysWithValues: machines.map { ($0.id, $0) })
-        let sessionSpecs = [("laptop", "decision", "Validate the release", "relay", "NEEDS_YOU"), ("workstation", "build", "Harden input validation", "compiler", "WORKING"), ("laptop", "docs", "Update installation guide", "relay", "READY"), ("node", "kernel", "Check CUDA kernels", "compute", "WORKING")]
+        let sessionSpecs = [("laptop", "decision", "Validate the release", "relay", "NEEDS_YOU"), ("workstation", "build", "Harden input validation", "compiler", "WORKING"), ("laptop", "review", "Review the change set", "app", "WORKING"), ("node", "tests", "Run integration checks", "relay", "WORKING"), ("laptop", "docs", "Update installation guide", "relay", "READY"), ("node", "kernel", "Check compute kernels", "compute", surface == "fleet" ? "READY" : "WORKING")]
         let sessions: [RelaySession] = sessionSpecs.enumerated().map { index, spec in
             let (machine, thread, title, project, status) = spec
             return decode(["id": machine + "~" + thread, "machine_id": machine, "thread_id": thread, "title": title, "project": project, "cwd": "/workspace/" + project, "branch": "main", "status": status, "updated_at": ISO8601DateFormatter().string(from: now.addingTimeInterval(Double(-index * 60))), "turn_id": "example-turn", "turn_started": ISO8601DateFormatter().string(from: now.addingTimeInterval(-267)), "read_only": false, "capabilities": ["can_send": true, "can_send_images": true, "can_follow_up": true, "can_steer": true, "can_steer_queue": true, "can_interrupt": true, "can_answer": true]])
         }
         relay.sessions = Dictionary(uniqueKeysWithValues: sessions.map { ($0.id, $0) })
         relay.liveActivities = ["workstation~build": decode(["item_id": "example-command", "kind": "terminal", "label": "cargo test --workspace", "state": "running", "timestamp": stamp])]
+        relay.liveActivities["laptop~review"] = decode(["item_id": "example-edit", "kind": "diff", "label": "Reviewing the input guard", "state": "running", "timestamp": stamp])
+        relay.liveActivities["node~tests"] = decode(["item_id": "example-tests", "kind": "terminal", "label": "Running integration checks", "state": "running", "timestamp": stamp])
         let request: PendingRequest = decode(["request_id": "example-request", "session_id": "laptop~decision", "machine_id": "laptop", "kind": "user_input", "description": "Which validation scope should I use?", "expires_at": "2099-01-01T00:00:00Z", "created_at": stamp, "can_approve": true, "questions": [["id": "scope", "header": "Validation", "question": "Which validation scope should I use?", "options": [["label": "Full suite", "description": "Run unit tests and integration checks."], ["label": "Focused checks", "description": "Run tests for the changed module."]]]]])
         relay.requests = [request.id: request]
         relay.selected = ["conversation", "terminal", "tools", "diff", "live-question", "history-question", "compaction", "queue", "question-reply", "activity", "changed-files", "activity-routing", "draft-offline"].contains(surface) ? "workstation~build" : surface == "question" ? "laptop~decision" : ""
@@ -570,7 +572,7 @@ struct LastKnownSession: View {
         let account: AccountEntry = decode(["id": "example-account", "identity_basis": "account_id", "account": ["kind": "chatgpt", "email": "developer@example.invalid", "plan": "Pro", "source": "codex", "observed_at": stamp, "limits": ["primary": ["used_percent": 61, "window_duration_mins": 300, "resets_at": Int(now.timeIntervalSince1970) + 8040], "secondary": ["used_percent": 31, "window_duration_mins": 10080, "resets_at": Int(now.timeIntervalSince1970) + 172800]]], "machines": ["workstation", "laptop"], "source_machine": "laptop", "fresh": true, "updated_at": stamp])
         relay.accounts = [account]
         relay.registry = DeviceRegistry(operators: relay.registry!.operators, machines: machines.map { MachineDevice(machine: $0, access: "ALLOWED") }, currentDeviceId: "preview-device", hubUrl: "https://relay.example.invalid", chatgptDeviceManagement: false)
-        relay.diagnostics = decode(["hub_version": "0.1.0-rc.5", "protocol_version": 1, "transport": "HTTPS / WSS", "database": "reachable", "machines": []])
+        relay.diagnostics = decode(["hub_version": "0.1.0", "protocol_version": 1, "transport": "HTTPS / WSS", "database": "reachable", "machines": []])
         relay.diagnosticsUpdatedAt = now
         if surface == "notifications" { relay.notificationsEnabled = true; relay.notificationAllowed = true; relay.notificationPermission = "Allowed" }
         relay.connection = "Connected"; relay.online = surface != "draft-offline"

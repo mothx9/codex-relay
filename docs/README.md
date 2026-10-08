@@ -13,8 +13,10 @@ want to do; you do not need the implementation reports to install Relay.
 
 ## Install
 
+Start with [downloads and the shortest installation path](setup/downloads.md).
+
 1. [Linux Hub](setup/hub.md)
-2. [iPhone build and pairing](setup/iphone.md)
+2. [iPhone download and pairing](setup/iphone.md)
 3. [Linux Agent](setup/linux-agent.md) or [macOS Agent](setup/macos-agent.md)
 4. [Native notification setup](setup/notifications.md)
 
@@ -40,7 +42,7 @@ control of local Codex work; OpenAI credentials stay on workers.
 
 ## Engineering reference
 
-Dated evidence: [M1](development/validation/m1-validation.md),
+Dated evidence: [v0.1.0](development/validation/v0.1.0.md), [M1](development/validation/m1-validation.md),
 [M2](development/validation/m2-validation.md),
 [live event audit](development/validation/live-event-audit.md).
 [Historical records](development/history/README.md) preserve earlier investigations.

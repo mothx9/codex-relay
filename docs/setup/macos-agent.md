@@ -5,10 +5,11 @@ supported workflow and use its existing shared daemon. Relay never restarts that
 daemon to install an Agent.
 
 Create an Agent code in **Relay menu → Machines → Add a machine** on your paired
-iPhone. With the matching macOS arm64 candidate binary available locally:
+iPhone. Download the installer on your Apple silicon Mac; no Xcode or Go is needed:
 
 ```sh
-./scripts/install.sh agent --binary ./bin/codex-relay \
+curl -fL https://github.com/mothx9/codex-relay/releases/download/v0.1.0/install.sh -o install.sh
+sh install.sh agent \
   --hub-url "$RELAY_HUB_URL" --machine laptop --pair
 ```
 

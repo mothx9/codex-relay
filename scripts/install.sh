@@ -2,6 +2,10 @@
 # Per-user installation. No network, firewall, Wi-Fi, or VPN configuration changes.
 set -eu
 role=${1:-}
+if [ "$role" = --help ] || [ "$role" = -h ]; then
+ printf '%s\n' 'Usage: install.sh hub --public-url HTTPS_URL | agent --hub-url HTTPS_URL --pair [--machine NAME]' 'Upgrade: agent --hub-url HTTPS_URL --machine NAME --token-file EXISTING_FILE' 'Options: --binary FILE --dry-run --no-start (Linux) --codex FILE --listen ADDRESS --apns-config FILE|none'
+ exit 0
+fi
 case "$role" in hub|agent) shift ;; *) printf '%s\n' 'Usage: install.sh hub|agent --public-url URL [--apns-config FILE|none] | --hub-url URL --machine ID [--pair | --token-file FILE] [--binary FILE] [--dry-run] [--no-start (Linux)]'; exit 2 ;; esac
 relay_binary=''
 hub_url=''
@@ -51,6 +55,10 @@ done
 case "$role" in
  hub) [ -n "$public_url" ] || { printf '%s\n' '--public-url is required' >&2; exit 2; } ;;
  agent)
+  if [ -z "$machine" ] && [ "$pair_agent" = 1 ]; then
+   host_name=$(hostname -s)
+   machine=$(printf '%s' "$host_name" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_-' '-')
+  fi
   [ -n "$hub_url" ] && [ -n "$machine" ] || { printf '%s\n' '--hub-url and --machine are required; choose --pair or --token-file' >&2; exit 2; }
   if [ "$pair_agent" = 1 ]; then
    case "$hub_url" in https://*) ;; *) printf '%s\n' 'One-time pairing requires HTTPS.' >&2; exit 2 ;; esac
@@ -112,20 +120,20 @@ if [ "$dry_run" = 0 ]; then
  umask 077
  mkdir -p "$(dirname "$install_bin")" "$state_dir" "$config_dir"
  if [ -z "$relay_binary" ]; then
-  relay_version=${RELAY_VERSION:-v0.1.0-rc.3}
-  if [ "$pair_agent" = 1 ] && [ -z "${RELAY_VERSION:-}" ]; then
-   printf '%s\n' 'Guided pairing requires a current candidate. Supply --binary or RELAY_VERSION for a published compatible release; the legacy default does not include this workflow.' >&2
-   exit 2
-  fi
+  relay_version=${RELAY_VERSION:-v0.1.0}
+  case "$relay_version" in v[0-9]*.[0-9]*.[0-9]*) ;; *) printf '%s\n' 'RELAY_VERSION must be a version tag, such as v0.1.0.' >&2; exit 2 ;; esac
   download_dir=$(mktemp -d)
   trap 'rm -rf "$download_dir"' EXIT HUP INT TERM
   base="https://github.com/mothx9/codex-relay/releases/download/$relay_version"
-  curl -fLSs "$base/codex-relay-$target" -o "$download_dir/codex-relay-$target"
+  archive="codex-relay-${relay_version#v}-$target.tar.gz"
+  curl -fLSs "$base/$archive" -o "$download_dir/$archive"
   curl -fLSs "$base/SHA256SUMS" -o "$download_dir/SHA256SUMS"
-  if command -v sha256sum >/dev/null 2>&1; then actual=$(sha256sum "$download_dir/codex-relay-$target" | awk '{print $1}'); else actual=$(shasum -a 256 "$download_dir/codex-relay-$target" | awk '{print $1}'); fi
-  expected=$(awk -v file="codex-relay-$target" '$2==file {print $1}' "$download_dir/SHA256SUMS")
-  [ -n "$expected" ] && [ "$actual" = "$expected" ] || { printf '%s\n' 'Binary checksum mismatch' >&2; exit 1; }
-  relay_binary="$download_dir/codex-relay-$target"
+  if command -v sha256sum >/dev/null 2>&1; then actual=$(sha256sum "$download_dir/$archive" | awk '{print $1}'); else actual=$(shasum -a 256 "$download_dir/$archive" | awk '{print $1}'); fi
+  expected=$(awk -v file="$archive" '$2==file {print $1}' "$download_dir/SHA256SUMS")
+  [ -n "$expected" ] && [ "$actual" = "$expected" ] || { printf '%s\n' 'Archive checksum mismatch' >&2; exit 1; }
+  # Extract only the binary into the temporary directory, never arbitrary paths.
+  tar -xzOf "$download_dir/$archive" codex-relay > "$download_dir/codex-relay"
+  relay_binary="$download_dir/codex-relay"
   chmod 0700 "$relay_binary"
  fi
  if [ "$pair_agent" = 1 ]; then
@@ -165,7 +173,14 @@ if [ "$os" = Linux ]; then
  if [ "$dry_run" = 1 ]; then render_unit; exit 0; fi
  mkdir -p "$unit_dir";render_unit > "$unit_file"
  systemctl --user daemon-reload
- if [ "$no_start" = 0 ]; then systemctl --user enable --now "codex-relay-$role.service"; fi
+ if [ "$no_start" = 0 ]; then
+  if systemctl --user is-active --quiet "codex-relay-$role.service"; then
+   systemctl --user enable "codex-relay-$role.service"
+   systemctl --user restart "codex-relay-$role.service"
+  else
+   systemctl --user enable --now "codex-relay-$role.service"
+  fi
+ fi
  printf 'Installed: %s\n' "$unit_file"
  if [ "$no_start" = 1 ]; then printf 'Service was not enabled or started. When the endpoint is ready: systemctl --user enable --now codex-relay-%s.service\n' "$role"; fi
  printf 'For operation after logout: sudo loginctl enable-linger "%s"\n' "$(id -un)"

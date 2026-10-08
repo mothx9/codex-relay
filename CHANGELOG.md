@@ -1,10 +1,19 @@
 # Changelog
 
 Entries describe verified implementation checkpoints, not unperformed acceptance.
-The project remains a release candidate until native product acceptance, including
-required physical notification delivery, is complete.
+Native remote APNs delivery and Apple consumer distribution are tracked separately
+from the downloadable self-hosted release.
 
-## Unreleased — M2 productization
+## v0.1.0 — 2026-10-08
+
+- Standardized versioned Hub/Agent archives, an unsigned device IPA, installer,
+  checksums and exact source manifest; replaced the old RC downloads/tags.
+- Guided installation downloads the current release automatically; no clone or
+  Go toolchain. The Agent machine ID can default to its hostname.
+- Documented iPhone sideloading without Xcode and immediate Home Screen PWA access.
+- Grouped compact active Fleet surfaces with quieter Recent separators; Working
+  scrolls with the transcript and the composer floats without a solid footer.
+- Generic machine diagrams and refreshed screenshots/recorded walkthrough.
 
 - Compact hybrid Fleet: light glass emphasis for active rows, flat Recent, larger
   source metadata and an explicit Working state separate from activity.

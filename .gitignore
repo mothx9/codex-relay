@@ -12,6 +12,7 @@
 !/native/Signing.xcconfig
 xcuserdata/
 .DS_Store
+__pycache__/
 /native/CodexRelay.xcodeproj/project.xcworkspace/
 *.mobileprovision
 *.p8
