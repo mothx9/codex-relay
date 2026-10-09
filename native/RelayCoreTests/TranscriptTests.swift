@@ -33,14 +33,15 @@ final class TranscriptTests: XCTestCase {
         }
     }
 
-    func testSmallScrollAndDecelerationDoNotResumeFollowing() {
+    func testScrollingAwayAndDecelerationDoNotResumeFollowing() {
         var policy = TranscriptScrollPolicy()
         XCTAssertTrue(policy.shouldFollow)
         policy.beginInteraction()
         XCTAssertFalse(policy.shouldFollow)
+        XCTAssertTrue(policy.followsLatest)
         // Finger lift does not end interaction; the view waits for native idle.
         XCTAssertTrue(policy.isInteracting)
-        policy.endInteraction(distanceFromBottom: 55)
+        policy.endInteraction(distanceFromBottom: 155)
         XCTAssertFalse(policy.shouldFollow)
         policy.readHistory()
         XCTAssertFalse(policy.shouldFollow)
@@ -53,10 +54,26 @@ final class TranscriptTests: XCTestCase {
         policy.endInteraction(distanceFromBottom: 0)
         XCTAssertTrue(policy.shouldFollow)
         policy.beginInteraction()
+        policy.endInteraction(distanceFromBottom: 8)
+        XCTAssertTrue(policy.shouldFollow, "A short gesture at the live edge must keep following")
+        policy.beginInteraction()
+        policy.endInteraction(distanceFromBottom: 55)
+        XCTAssertTrue(policy.shouldFollow, "Small inertial movement must not detach the live edge")
+        policy.beginInteraction()
         policy.endInteraction(distanceFromBottom: nil)
         XCTAssertFalse(policy.shouldFollow)
         policy.jumpToLatest()
         XCTAssertTrue(policy.shouldFollow)
+    }
+
+    func testReplacingEarlierStreamingItemAdvancesTranscriptRevision() {
+        var chat = RecentChat()
+        chat.put(Activity(id: "agent", kind: "agentMessage", text: "First part"))
+        chat.put(Activity(id: "tool", kind: "commandExecution", text: "Checking"))
+        let revision = chat.revision
+        chat.put(Activity(id: "agent", kind: "agentMessage", text: "First part and continuation"))
+        XCTAssertGreaterThan(chat.revision, revision)
+        XCTAssertEqual(chat.items.last?.id, "tool")
     }
 
     func testCompactionKeepsItsBoundaryAndLiveLabel() throws {

@@ -27,6 +27,10 @@ remains a separate, openable chat; this relationship travels in the existing
 session snapshot and needs no second connection.
 Its final heartbeat scrolls with the messages. The floating composer reserves a
 measured bottom content inset and has no opaque full-width footer.
+Live transcript updates stay at the latest message while the reader is near the
+bottom. Scrolling farther up pauses that follow; reaching the bottom again or
+using the latest-message button resumes it. Stream updates do not animate each
+delta, while the explicit jump uses a short motion that respects Reduce Motion.
 The single-line capsule is 38 points high inside 44-point touch targets; scalable
 16-point input text and a bounded heartbeat gap keep the footer compact as drafts grow.
 Stable item and request-incarnation identities prevent reconstruction on each

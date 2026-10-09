@@ -36,19 +36,22 @@ public struct TranscriptGroup: Identifiable, Sendable {
 }
 
 /// Reader intent is independent of content growth and scroll geometry.
-/// Only a completed user scroll at the bottom or an explicit jump resumes follow.
+/// A gesture suspends following while it moves; its final position decides
+/// whether the reader wanted to leave the live edge.
 public struct TranscriptScrollPolicy: Equatable, Sendable {
+    /// A short drag or the last few pixels of deceleration are still the live edge.
+    public static let liveEdgeTolerance: Double = 96
     public private(set) var followsLatest = true
     public private(set) var isInteracting = false
     public var shouldFollow: Bool { followsLatest && !isInteracting }
     public init() {}
-    public mutating func beginInteraction() { isInteracting = true; followsLatest = false }
+    public mutating func beginInteraction() { isInteracting = true }
     public mutating func endInteraction(distanceFromBottom: Double?) {
         isInteracting = false
-        followsLatest = distanceFromBottom.map { $0 <= 12 } ?? false
+        followsLatest = distanceFromBottom.map { $0 <= Self.liveEdgeTolerance } ?? false
     }
     public mutating func readHistory() { followsLatest = false }
-    public mutating func jumpToLatest() { followsLatest = true }
+    public mutating func jumpToLatest() { isInteracting = false; followsLatest = true }
 }
 
 /// A live-stream presentation hint, never a pending request or persisted state.

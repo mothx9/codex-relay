@@ -66,6 +66,9 @@ struct RootView: View {
                 }.toolbar { ToolbarItem(placement: .confirmationAction) { Button(String(localized: "Close", bundle: relayLocalizationBundle)) { library = false } } }
             }
         }
+        .onAppear {
+            if !relay.selected.isEmpty && sessionPath.isEmpty { sessionPath = [relay.selected] }
+        }
         .onChange(of: relay.returnToFleet) { _, _ in destination = 0 }
         .onChange(of: relay.selected) { _, selected in
             let next = selected.isEmpty ? [] : [selected]

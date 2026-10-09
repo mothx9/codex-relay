@@ -115,6 +115,9 @@ public struct RecentChat: Sendable {
     public static let maxItems = 2048
     public static let maxBytes = 8 * 1024 * 1024
     public private(set) var items: [Activity] = []
+    /// Changes whenever a live item or a history page changes the transcript,
+    /// including replacements of an item that is no longer the final item.
+    public private(set) var revision: UInt64 = 0
     public private(set) var trimmed = false
     private var changedDuringHistory: Set<String> = []
     private var readingHistory = false
@@ -130,6 +133,7 @@ public struct RecentChat: Sendable {
         }
         if let i = items.firstIndex(where: { $0.id == a.id || (a.clientId != nil && $0.clientId == a.clientId) }) { items[i] = preservingStream(a, prior: items[i]) } else { items.append(a) }
         trim()
+        revision &+= 1
     }
     /// Prepend missing canonical items while preserving any newer live version.
     /// Exact IDs, never text matching, reconcile history, deltas and the outbox.
@@ -149,6 +153,7 @@ public struct RecentChat: Sendable {
         }
         endHistory()
         trim()
+        revision &+= 1
     }
     private func preservingStream(_ incoming: Activity, prior: Activity) -> Activity {
         var result = incoming

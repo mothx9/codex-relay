@@ -454,11 +454,20 @@ private struct SessionTranscript: View {
     @State private var initialScroll = false
     @State private var historyPositioned = false
     @State private var latestOutsideViewport = false
+    @State private var distanceFromBottom: Double?
     private let bottomID = "transcript.bottom"
     private var revision: [String] {
-        relay.chat.items.map(\.id) + [relay.chat.items.last?.text ?? ""]
+        [session.id, String(relay.chat.revision)]
         + relay.outbox.visible(session: relay.selected).map { $0.id + $0.phase.rawValue }
         + relay.requests.values.filter { $0.sessionId == relay.selected }.map(\.id).sorted()
+    }
+    private func followLatest(_ proxy: ScrollViewProxy) {
+        guard scrolling.shouldFollow else { return }
+        // Streaming can update many times per second. Keep it attached without
+        // restarting a scroll animation for every delta.
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { proxy.scrollTo(bottomID, anchor: .bottom) }
     }
     private func machineOnline(_ session: RelaySession) -> Bool {
         relay.online && relay.machines[session.machineId]?.status == "ONLINE" && session.fresh != false
@@ -539,7 +548,11 @@ private struct SessionTranscript: View {
                 .scrollDismissesKeyboard(.interactively)
                 .modifier(TranscriptScrollInteraction(
                     begin: { scrolling.beginInteraction() },
-                    end: { scrolling.endInteraction(distanceFromBottom: $0) }
+                    end: { distance in
+                        scrolling.endInteraction(distanceFromBottom: distance)
+                        if scrolling.shouldFollow { followLatest(proxy) }
+                    },
+                    distanceFromBottom: { distanceFromBottom }
                 ))
                 .onChange(of: viewport.size, initial: true) { _, size in
                     guard size.height > 0, !initialScroll || scrolling.shouldFollow else { return }
@@ -547,26 +560,26 @@ private struct SessionTranscript: View {
                     // Preserve the latest position only while the reader follows.
                     DispatchQueue.main.async {
                         guard scrolling.shouldFollow else { return }
-                        proxy.scrollTo(bottomID, anchor: .bottom)
+                        followLatest(proxy)
                         initialScroll = true
                     }
                 }
                 .onChange(of: bottomInset) { _, _ in
                     // Growing drafts and queue panels must also keep the final
                     // status above the dock while the reader follows live work.
-                    if scrolling.shouldFollow { DispatchQueue.main.async { if scrolling.shouldFollow { proxy.scrollTo(bottomID, anchor: .bottom) } } }
+                    if scrolling.shouldFollow { DispatchQueue.main.async { followLatest(proxy) } }
                 }
                 .onPreferenceChange(TranscriptBottom.self) { value in
                     if value.isFinite && value < .greatestFiniteMagnitude {
-                        let hidden = value > viewport.size.height + 64
+                        let distance = max(0, Double(value - viewport.size.height))
+                        distanceFromBottom = distance
+                        let hidden = distance > 64
                         if latestOutsideViewport != hidden { latestOutsideViewport = hidden }
                     }
                     // Never infer reader intent from geometry: a short upward
                     // scroll, inertia, or keyboard resize must not re-enable follow.
                     if scrolling.shouldFollow && value > viewport.size.height + 12 {
-                        DispatchQueue.main.async {
-                            if scrolling.shouldFollow { proxy.scrollTo(bottomID, anchor: .bottom) }
-                        }
+                        DispatchQueue.main.async { followLatest(proxy) }
                     }
                 }
                 .onChange(of: relay.historyLoading) { _, loading in
@@ -574,14 +587,14 @@ private struct SessionTranscript: View {
                     historyPositioned = true
                     // The initial empty viewport can lay out before canonical
                     // history arrives. Position after that first hydration too.
-                    DispatchQueue.main.async { if scrolling.shouldFollow { proxy.scrollTo(bottomID, anchor: .bottom) } }
+                    DispatchQueue.main.async { followLatest(proxy) }
                 }
                 .onChange(of: revision) { _, _ in
-                    if scrolling.shouldFollow { DispatchQueue.main.async { if scrolling.shouldFollow { proxy.scrollTo(bottomID, anchor: .bottom) } } }
+                    if scrolling.shouldFollow { DispatchQueue.main.async { followLatest(proxy) } }
                 }
                 .onChange(of: scrollRequest) { _, _ in
                     scrolling.jumpToLatest()
-                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { proxy.scrollTo(bottomID, anchor: .bottom) }
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.24)) { proxy.scrollTo(bottomID, anchor: .bottom) }
                 }
                 .overlay(alignment: .bottom) {
                     if !scrolling.followsLatest && !scrolling.isInteracting && latestOutsideViewport {
@@ -604,7 +617,9 @@ private struct SessionTranscript: View {
 private struct TranscriptScrollInteraction: ViewModifier {
     let begin: () -> Void
     let end: (Double?) -> Void
+    let distanceFromBottom: () -> Double?
     @State private var userInitiated = false
+    @State private var settleToken = 0
     func body(content: Content) -> some View {
         if #available(iOS 18.0, *) {
             content.onScrollPhaseChange { _, phase, context in
@@ -621,11 +636,21 @@ private struct TranscriptScrollInteraction: ViewModifier {
                 }
             }
         } else {
-            // iOS 17 has no scroll-phase API. Once the reader moves, require
-            // Latest messages explicitly rather than guessing when inertia ends.
+            // iOS 17 has no scroll-phase API. Let deceleration settle, then
+            // measure the final distance instead of pinning every gesture away.
             content.simultaneousGesture(DragGesture(minimumDistance: 3)
-                .onChanged { _ in if !userInitiated { userInitiated = true; begin() } }
-                .onEnded { _ in userInitiated = false; end(nil) })
+                .onChanged { _ in
+                    settleToken += 1
+                    if !userInitiated { userInitiated = true; begin() }
+                }
+                .onEnded { _ in
+                    let token = settleToken
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        guard userInitiated && settleToken == token else { return }
+                        userInitiated = false
+                        end(distanceFromBottom())
+                    }
+                })
         }
     }
 }
