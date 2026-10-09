@@ -15,6 +15,7 @@ or real conversation screenshots in public issues.
 | Last known: Working | Machine state is stale; Relay deliberately does not invent completion or Ready |
 | Old session absent from Now | Open All Sessions/search and fetch catalogue pages; active/pending canonical state remains primary |
 | Read-only history | Explicitly attach only when the intended machine/runtime can own that thread |
+| Connect thread says another client holds the writer | Codex rejected `thread/resume` with an active writer. Read history here; close the other Codex client before attaching if you want Relay to send in this thread. No message was submitted. |
 | Needs You differs from a message question | A blocking request RPC is actionable; an assistant message with question text is not automatically an approval RPC |
 | Unknown command outcome | Inspect canonical conversation/queue before deliberate intervention; do not auto-resend |
 | Steer says turn changed | The original turn ended/replaced; text remains for an explicit next action |

@@ -35,7 +35,7 @@ func TestControlPreconditions(t *testing.T) {
 	}
 }
 func TestCanonicalErrorsAreSafe(t *testing.T) {
-	for _, code := range []string{TurnChanged, NotSteerable, FollowUpUnavailable, SessionReadOnly, MachineOffline, PendingRequestChanged, QueueChanged, CodexDisconnected, CodexRejected, UnknownOutcome} {
+	for _, code := range []string{TurnChanged, NotSteerable, FollowUpUnavailable, SessionReadOnly, MachineOffline, PendingRequestChanged, QueueChanged, CodexDisconnected, CodexRejected, ThreadUnavailable, ThreadBusy, UnknownOutcome} {
 		r := Failure(Command{ID: "command", SessionID: "session"}, code)
 		if r.OK || r.ID != "command" || r.SessionID != "session" || r.ErrorCode != code || r.Error == "" {
 			t.Fatal(r)
@@ -46,5 +46,8 @@ func TestCanonicalErrorsAreSafe(t *testing.T) {
 	}
 	if r := Failure(Command{}, "raw secret backend text"); r.ErrorCode != CodexRejected {
 		t.Fatal(r)
+	}
+	if r := Failure(Command{Kind: "attach"}, CodexRejected); r.ErrorCode != CodexRejected || r.Error == "" || r.Error == Failure(Command{}, CodexRejected).Error {
+		t.Fatal("attach must explain connection failure without claiming text was sent", r)
 	}
 }

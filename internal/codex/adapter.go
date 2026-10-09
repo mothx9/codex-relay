@@ -51,13 +51,16 @@ type Config struct {
 }
 
 type thread struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Cwd       string `json:"cwd"`
-	UpdatedAt int64  `json:"updatedAt"`
-	Status    status `json:"status"`
-	CanInput  *bool  `json:"canAcceptDirectInput"`
-	GitInfo   *struct {
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	ParentThreadID string `json:"parentThreadId"`
+	AgentNickname  string `json:"agentNickname"`
+	AgentRole      string `json:"agentRole"`
+	Cwd            string `json:"cwd"`
+	UpdatedAt      int64  `json:"updatedAt"`
+	Status         status `json:"status"`
+	CanInput       *bool  `json:"canAcceptDirectInput"`
+	GitInfo        *struct {
 		Branch string `json:"branch"`
 	} `json:"gitInfo"`
 	Turns []turn `json:"turns"`
@@ -145,7 +148,7 @@ func Normalize(raw string, flags []string) string {
 	}
 }
 func (a *Adapter) session(t thread, subscribed bool) protocol.Session {
-	s := protocol.Session{ID: protocol.SessionID(a.cfg.MachineID, t.ID), MachineID: a.cfg.MachineID, ThreadID: t.ID, Title: protocol.Clip(t.Name, 128), Cwd: t.Cwd, Project: filepath.Base(t.Cwd), Status: Normalize(t.Status.Type, t.Status.Flags), RawStatus: t.Status.Type, UpdatedAt: time.Unix(t.UpdatedAt, 0).UTC(), ReadOnly: !subscribed, QueueSupported: a.queue}
+	s := protocol.Session{ID: protocol.SessionID(a.cfg.MachineID, t.ID), MachineID: a.cfg.MachineID, ThreadID: t.ID, ParentThreadID: protocol.Clip(t.ParentThreadID, 256), AgentNickname: protocol.Clip(t.AgentNickname, 64), AgentRole: protocol.Clip(t.AgentRole, 64), Title: protocol.Clip(t.Name, 128), Cwd: t.Cwd, Project: filepath.Base(t.Cwd), Status: Normalize(t.Status.Type, t.Status.Flags), RawStatus: t.Status.Type, UpdatedAt: time.Unix(t.UpdatedAt, 0).UTC(), ReadOnly: !subscribed, QueueSupported: a.queue}
 	if s.Title == "" {
 		s.Title = "Thread " + protocol.Clip(t.ID, 8)
 	}

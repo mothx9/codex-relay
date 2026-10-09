@@ -2,6 +2,15 @@ import XCTest
 @testable import RelayCore
 
 final class TranscriptTests: XCTestCase {
+	func testSubagentIdentityKeepsParentAndDistinctTitle() throws {
+		let child = try RelayJSON.decoder().decode(RelaySession.self, from: Data(#"{"id":"exon~child","machine_id":"exon","thread_id":"child","parent_thread_id":"parent","agent_nickname":"Atlas","agent_role":"explorer","title":"Thread child","project":"studio","cwd":"/work/studio","status":"WORKING","updated_at":"2026-10-09T12:00:00Z","read_only":false,"capabilities":{"can_send":true,"can_follow_up":true,"can_steer":true,"can_interrupt":true,"can_answer":false}}"#.utf8))
+		XCTAssertEqual(child.parentSessionId, "exon~parent")
+		XCTAssertTrue(child.isSubagent)
+		XCTAssertEqual(child.displayTitle, "Subagent · explorer")
+		let root = try RelayJSON.decoder().decode(RelaySession.self, from: Data(#"{"id":"exon~parent","machine_id":"exon","thread_id":"parent","title":"Studio work","project":"studio","cwd":"/work/studio","status":"WORKING","updated_at":"2026-10-09T12:00:00Z","read_only":false,"capabilities":{"can_send":true,"can_follow_up":true,"can_steer":true,"can_interrupt":true,"can_answer":false}}"#.utf8))
+		XCTAssertNil(root.parentSessionId)
+		XCTAssertEqual(root.displayTitle, "Studio work")
+	}
 	func testFailedSessionSeparatesCauseFromToolFailureAndCanResume() throws {
 		let json = #"{"id":"m~t","machine_id":"m","thread_id":"t","title":"Build","project":"demo","cwd":"/demo","status":"FAILED","failure_reason":"capacity","updated_at":"2026-10-08T12:00:00Z","read_only":false,"capabilities":{"can_send":true,"can_follow_up":false,"can_steer":false,"can_interrupt":false,"can_answer":false}}"#
 		let session = try RelayJSON.decoder().decode(RelaySession.self, from: Data(json.utf8))

@@ -510,16 +510,20 @@ struct LastKnownSession: View {
         func decode<T: Decodable>(_ value: Any, as: T.Type = T.self) -> T {
             try! RelayJSON.decoder().decode(T.self, from: JSONSerialization.data(withJSONObject: value))
         }
-        let specs = [("workstation", "Workstation", "ONLINE"), ("laptop", "Laptop", "ONLINE"), ("node", "Build node", surface == "fleet" ? "ONLINE" : "OFFLINE")]
+        let specs = [("workstation", "Workstation", "ONLINE"), ("laptop", "Laptop", "ONLINE"), ("node", "Build node", ["fleet", "fleet-subagents"].contains(surface) ? "ONLINE" : "OFFLINE")]
         let machines: [Machine] = specs.map { id, name, status in
             decode(["id": id, "name": name, "status": status, "last_seen": stamp, "agent_version": "0.1.0", "codex_version": "0.160.1", "adapter": "app-server", "freshness": ["protocol_version": 1, "last_heartbeat": stamp, "last_snapshot": stamp, "last_event": stamp, "snapshot_ms": 84, "sync_ms": 102, "sequence": 42, "snapshot_sequence": 40]])
         }
         relay.machines = Dictionary(uniqueKeysWithValues: machines.map { ($0.id, $0) })
-		let sessionSpecs = [("laptop", "decision", "Validate the release", "relay", "NEEDS_YOU"), ("workstation", "build", "Harden input validation", "compiler", "WORKING"), ("laptop", "review", "Review the change set", "app", "WORKING"), ("node", "tests", "Run integration checks", "relay", "WORKING"), ("laptop", "docs", "Update installation guide", "relay", "FAILED"), ("node", "kernel", "Check compute kernels", "compute", surface == "fleet" ? "READY" : "WORKING")]
-		let sessions: [RelaySession] = sessionSpecs.enumerated().map { index, spec in
+		let sessionSpecs = [("laptop", "decision", "Validate the release", "relay", "NEEDS_YOU"), ("workstation", "build", "Harden input validation", "compiler", "WORKING"), ("laptop", "review", "Review the change set", "app", "WORKING"), ("node", "tests", "Run integration checks", "relay", "WORKING"), ("laptop", "docs", "Update installation guide", "relay", "FAILED"), ("node", "kernel", "Check compute kernels", "compute", ["fleet", "fleet-subagents"].contains(surface) ? "READY" : "WORKING")]
+		var sessions: [RelaySession] = sessionSpecs.enumerated().map { index, spec in
 			let (machine, thread, title, project, status) = spec
 			return decode(["id": machine + "~" + thread, "machine_id": machine, "thread_id": thread, "title": title, "project": project, "cwd": "/workspace/" + project, "branch": "main", "status": status, "failure_reason": status == "FAILED" ? "capacity" : "", "updated_at": ISO8601DateFormatter().string(from: now.addingTimeInterval(Double(-index * 60))), "turn_id": status == "FAILED" ? "" : "example-turn", "turn_started": ISO8601DateFormatter().string(from: now.addingTimeInterval(-267)), "read_only": false, "capabilities": ["can_send": true, "can_send_images": true, "can_follow_up": true, "can_steer": true, "can_steer_queue": true, "can_interrupt": status != "FAILED", "can_answer": true]])
         }
+		if surface == "fleet-subagents" {
+			let child: RelaySession = decode(["id": "workstation~checks", "machine_id": "workstation", "thread_id": "checks", "parent_thread_id": "build", "agent_role": "test runner", "title": "Thread checks", "project": "compiler", "cwd": "/workspace/compiler", "status": "WORKING", "updated_at": ISO8601DateFormatter().string(from: now.addingTimeInterval(-40)), "turn_id": "child-turn", "turn_started": ISO8601DateFormatter().string(from: now.addingTimeInterval(-180)), "read_only": false, "capabilities": ["can_send": true, "can_follow_up": true, "can_steer": true, "can_interrupt": true, "can_answer": false]])
+			sessions.append(child)
+		}
         relay.sessions = Dictionary(uniqueKeysWithValues: sessions.map { ($0.id, $0) })
         relay.liveActivities = ["workstation~build": decode(["item_id": "example-command", "kind": "terminal", "label": "cargo test --workspace", "state": "running", "timestamp": stamp])]
         relay.liveActivities["laptop~review"] = decode(["item_id": "example-edit", "kind": "diff", "label": "Reviewing the input guard", "state": "running", "timestamp": stamp])
@@ -606,7 +610,7 @@ struct LastKnownSession: View {
     var body: some View {
         Group {
             switch surface {
-            case "fleet": RootView()
+            case "fleet", "fleet-subagents": RootView()
             case "conversation", "question", "live-question", "history-question", "compaction", "queue", "question-reply", "activity-routing", "draft-offline", "failed": NavigationStack { SessionView() }
             case "needs-you", "live-inbox": NavigationStack { NeedsYouView().navigationTitle("Needs You").navigationBarTitleDisplayMode(.inline) }
             case "navigation": NavigationStack { RelayLibraryView(openHistory: {}) }
@@ -631,7 +635,7 @@ struct LastKnownSession: View {
         }.environment(relay).preferredColorScheme(.dark)
             .onChange(of: relay.selected) { _, selected in
                 // The public walkthrough exercises production navigation with isolated content.
-                guard surface == "fleet", !selected.isEmpty else { return }
+                guard ["fleet", "fleet-subagents"].contains(surface), !selected.isEmpty else { return }
                 relay.chat = ProductFixtures.controller(surface: selected == "workstation~build" ? "conversation" : selected == "laptop~docs" ? "failed" : "question").chat
             }
     }

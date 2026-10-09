@@ -82,8 +82,8 @@ struct SessionView: View {
                     ToolbarItem(placement: .principal) {
                         Button { context = true } label: {
                             VStack(spacing: 3) {
-                                Text(session.title).font(.headline).lineLimit(1).foregroundStyle(.primary)
-                                Text("\(relay.machines[session.machineId]?.name ?? session.machineId) · \(session.project)")
+                                Text(session.displayTitle).font(.headline).lineLimit(1).foregroundStyle(.primary)
+                                Text(session.parentSessionId.flatMap { relay.fleetSessions[$0]?.displayTitle }.map { String(localized: "Parent session", bundle: relayLocalizationBundle) + " · " + $0 } ?? "\(relay.machines[session.machineId]?.name ?? session.machineId) · \(session.project)")
                                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                             }.frame(minHeight: 44)
                         }.buttonStyle(.plain).accessibilityLabel(String(localized: "Session Info", bundle: relayLocalizationBundle))
@@ -121,7 +121,14 @@ struct SessionView: View {
         VStack(spacing: 8) {
             if session.readOnly {
                 Text(String(localized: "Connect this thread to Codex to send messages.", bundle: relayLocalizationBundle)).font(.caption).foregroundStyle(.secondary)
-                Button(String(localized: "Connect thread", bundle: relayLocalizationBundle)) { Task { await relay.action("attach") } }.disabled(!machineOnline(session))
+                if let error = relay.attachError { Text(error).font(.caption).foregroundStyle(RelayPalette.attention).accessibilityIdentifier("session.attach-error") }
+                Button {
+                    Task { await relay.attachCurrent() }
+                } label: {
+                    if relay.attachingThread { ProgressView().accessibilityLabel(String(localized: "Connecting thread…", bundle: relayLocalizationBundle)) }
+                    else { Text(String(localized: "Connect thread", bundle: relayLocalizationBundle)) }
+                }.disabled(!machineOnline(session) || relay.attachingThread)
+                    .accessibilityIdentifier("session.attach")
             } else {
                 if let editingQueue {
                     HStack {
@@ -387,6 +394,9 @@ struct SessionView: View {
                 LabeledContent(String(localized: "Folder", bundle: relayLocalizationBundle), value: session.cwd)
                 if let branch = session.branch, !branch.isEmpty { LabeledContent("Branch", value: branch) }
                 LabeledContent("Thread", value: session.threadId)
+                if let parentID = session.parentSessionId {
+                    LabeledContent(String(localized: "Parent session", bundle: relayLocalizationBundle), value: relay.fleetSessions[parentID]?.displayTitle ?? String(localized: "Another Codex session", bundle: relayLocalizationBundle))
+                }
                 if let machine = relay.machines[session.machineId] {
                     if let version = machine.codexVersion { LabeledContent("Codex", value: version) }
                     if let account = machine.account { LabeledContent(String(localized: "Codex Account", bundle: relayLocalizationBundle), value: account.email ?? account.kind) }
@@ -522,6 +532,7 @@ private struct SessionTranscript: View {
                         }
                     }.scrollTargetLayout().padding(.horizontal, 20).padding(.top, 12)
                 }
+                .refreshable { await relay.refreshChat(sessionID: session.id) }
                 .coordinateSpace(name: "transcript")
                 .accessibilityIdentifier("session.transcript")
                 .accessibilityValue("\(relay.chat.items.count) items")

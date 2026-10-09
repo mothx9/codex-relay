@@ -94,9 +94,29 @@ public struct RelaySession: Codable, Identifiable, Sendable {
     public var observedAt: String? = nil
     public var agentEpoch: String? = nil
     public let id: String; public let machineId: String; public let threadId: String
+    public let parentThreadId: String?
+    public let agentNickname: String?
+    public let agentRole: String?
     public let title: String; public let project: String; public let cwd: String; public let branch: String?
     public var status: String; public let updatedAt: String; public var turnId: String?; public let turnStarted: String?
     public var readOnly: Bool; public var capabilities: Capabilities
+	public var parentSessionId: String? {
+		guard let parentThreadId, !parentThreadId.isEmpty else { return nil }
+		return machineId + "~" + parentThreadId
+	}
+	public var isSubagent: Bool { parentSessionId != nil }
+	public var displayTitle: String {
+		guard isSubagent else { return title }
+		let fallback = "Thread " + String(threadId.prefix(8))
+		let role = agentRole?.trimmingCharacters(in: .whitespacesAndNewlines)
+		let nickname = agentNickname?.trimmingCharacters(in: .whitespacesAndNewlines)
+		let detail: String
+		if title != fallback && !title.isEmpty { detail = title }
+		else if let role, !role.isEmpty, role != "default", role != "worker" { detail = role }
+		else if let nickname, !nickname.isEmpty { detail = nickname }
+		else { detail = String(threadId.prefix(8)) }
+		return String(localized: "Subagent", bundle: relayLocalizationBundle) + " · " + detail
+	}
 	public var defaultCommand: String { ["READY", "FAILED"].contains(status) ? "new_turn" : status == "WORKING" ? "follow_up" : status == "NEEDS_YOU" ? "answer" : "" }
 	public var failureSummary: String {
 		switch failureReason {
@@ -219,7 +239,7 @@ public struct CommandResult: Decodable, Sendable {
     public let id: String; public let ok: Bool; public let error: String?; public let errorCode: String?; public let sessionId: String?
     public let history: [Activity]?; public let historyCursor: String?; public let followUps: [FollowUp]?
 }
-public struct WireMessage: Decodable, Sendable { public let type: String; public let snapshot: Snapshot?; public let event: RelayEvent?; public let result: CommandResult? }
+public struct WireMessage: Decodable, Sendable { public let type: String; public let historyRequestId: String?; public let snapshot: Snapshot?; public let event: RelayEvent?; public let result: CommandResult? }
 public struct OperatorDevice: Decodable, Identifiable, Sendable { public let id: String; public let name: String; public let createdAt: String; public let expiresAt: String; public let lastSeen: String; public let revoked: Bool }
 public struct MachineDevice: Decodable, Identifiable, Sendable { public var id: String { machine.id }; public let machine: Machine; public let access: String }
 public struct DeviceRegistry: Decodable, Sendable { public let operators: [OperatorDevice]; public let machines: [MachineDevice]; public let currentDeviceId: String; public let hubUrl: String; public let chatgptDeviceManagement: Bool }

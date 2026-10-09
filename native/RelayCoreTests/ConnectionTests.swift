@@ -2,6 +2,12 @@ import XCTest
 @testable import RelayCore
 
 final class ConnectionTests: XCTestCase {
+    func testFleetRefreshSnapshotCarriesRequestIdentity() throws {
+        let data = Data(#"{"type":"snapshot","history_request_id":"refresh-1","snapshot":{"machines":[],"sessions":[],"requests":[]}}"#.utf8)
+        let message = try RelayJSON.decoder().decode(WireMessage.self, from: data)
+        XCTAssertEqual(message.historyRequestId, "refresh-1")
+        XCTAssertNotNil(message.snapshot)
+    }
     func testConnectionFailuresExposeOnlySafeCategoryAndCode() {
         let privateURL = "https://private-host.example/api/ui?token=private-token"
         for (code, kind) in [(NSURLErrorCannotFindHost, ConnectionIssue.Kind.dns), (NSURLErrorCannotConnectToHost, .unreachable), (NSURLErrorTimedOut, .timeout), (NSURLErrorNotConnectedToInternet, .network), (NSURLErrorServerCertificateUntrusted, .tls)] {

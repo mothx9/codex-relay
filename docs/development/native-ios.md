@@ -21,6 +21,10 @@ Keep overrides in ignored `native/LocalSigning.xcconfig`, included by
 
 `RelayController` holds canonical machines/sessions/requests and bounded ephemeral
 chat/outbox. `SessionTranscript` observes chat independently from the composer.
+Fleet uses Codex's `parentThreadId`, agent role and nickname when a thread is a
+subagent. Its row and session header identify the parent session while the child
+remains a separate, openable chat; this relationship travels in the existing
+session snapshot and needs no second connection.
 Its final heartbeat scrolls with the messages. The floating composer reserves a
 measured bottom content inset and has no opaque full-width footer.
 The single-line capsule is 38 points high inside 44-point touch targets; scalable
@@ -37,6 +41,13 @@ Liquid Glass is navigation/composer chrome; prose remains on the content canvas.
 No background socket service or transcript persistence is added. Foreground
 rehydrates from Hub/Codex. A Follow-up already queued in Codex survives application
 termination without local resend.
+
+Pulling down in Fleet requests the current Hub snapshot on the existing operator
+socket and reloads recent machine catalogue metadata. Pulling down in a chat
+re-reads its first canonical history page; the merge retains live activity and
+the scroll position. An explicit Connect thread attempt reports its own status
+beside the composer, without a message-send alert. Codex may refuse connection
+when another client holds the thread's active writer; history stays readable.
 
 ## Previews and public screenshots
 

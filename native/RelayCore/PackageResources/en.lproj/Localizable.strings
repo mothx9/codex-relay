@@ -61,6 +61,7 @@
 "Allow notifications" = "Allow notifications";
 "Allowed" = "Allowed";
 "An Agent connects a machine’s local Codex runtime to your Hub. Relay connectivity is separate from the work running on that machine." = "An Agent connects a machine’s local Codex runtime to your Hub. Relay connectivity is separate from the work running on that machine.";
+"Another Codex session" = "Another Codex session";
 "Answer" = "Answer";
 "App" = "App";
 "Apple device token" = "Apple device token";
@@ -101,8 +102,10 @@
 "Codex Accounts" = "Codex Accounts";
 "Codex account" = "Codex account";
 "Codex asked a live question" = "Codex asked a live question";
+"Codex could not connect this thread. Check Codex on the machine and try again; its history is still readable." = "Codex could not connect this thread. Check Codex on the machine and try again; its history is still readable.";
 "Codex finished" = "Codex finished";
 "Codex has a question" = "Codex has a question";
+"Codex is not connected on this machine. Try again when it reconnects." = "Codex is not connected on this machine. Try again when it reconnects.";
 "Codex needs a decision" = "Codex needs a decision";
 "Codex needs attention" = "Codex needs attention";
 "Codex needs your input" = "Codex needs your input";
@@ -129,6 +132,7 @@
 "Connect to Relay" = "Connect to Relay";
 "Connected" = "Connected";
 "Connected to your Hub" = "Connected to your Hub";
+"Connecting thread…" = "Connecting thread…";
 "Connecting to Hub…" = "Connecting to Hub…";
 "Connecting…" = "Connecting…";
 "Connection" = "Connection";
@@ -137,6 +141,7 @@
 "Connection lost while sending. Check the request before retrying." = "Connection lost while sending. Check the request before retrying.";
 "Connection lost." = "Connection lost.";
 "Connection lost. Try again." = "Connection lost. Try again.";
+"Connection lost. Try connecting this thread again." = "Connection lost. Try connecting this thread again.";
 "Connection → Online" = "Connection → Online";
 "Context compacted" = "Context compacted";
 "Context compaction" = "Context compaction";
@@ -162,6 +167,7 @@
 "Copy Path" = "Copy Path";
 "Copy Previous Path" = "Copy Previous Path";
 "Copy Session Link" = "Copy Session Link";
+"Could not connect this thread. Try again when Codex is available." = "Could not connect this thread. Try again when Codex is available.";
 "Create a one-time code on the Hub host or from an authorized controller. It expires after 5 minutes." = "Create a one-time code on the Hub host or from an authorized controller. It expires after 5 minutes.";
 "Create one-time code" = "Create one-time code";
 "Created" = "Created";
@@ -359,6 +365,7 @@
 "Pair with your Hub" = "Pair with your Hub";
 "Paired" = "Paired";
 "Pairing…" = "Pairing…";
+"Parent session" = "Parent session";
 "Partial content" = "Partial content";
 "Partial context · see Codex for the full content." = "Partial context · see Codex for the full content.";
 "Patch" = "Patch";
@@ -498,6 +505,7 @@
 "State reducer" = "State reducer";
 "Steer Current Turn" = "Steer Current Turn";
 "Steer · send to the current turn now" = "Steer · send to the current turn now";
+"Subagent" = "Subagent";
 "Supervise and continue Codex across your machines from iPhone." = "Supervise and continue Codex across your machines from iPhone.";
 "Syncing with Codex…" = "Syncing with Codex…";
 "System health" = "System health";
@@ -525,6 +533,8 @@
 "This message is no longer editable in the queue. Your text stays in the composer." = "This message is no longer editable in the queue. Your text stays in the composer.";
 "This notification’s machine is no longer enrolled in this Relay." = "This notification’s machine is no longer enrolled in this Relay.";
 "This session is no longer available in the machine’s history." = "This session is no longer available in the machine’s history.";
+"This thread cannot be connected because Codex has no resumable session or does not allow direct input. Its history is still readable." = "This thread cannot be connected because Codex has no resumable session or does not allow direct input. Its history is still readable.";
+"This thread is open in another Codex client. Close that client before connecting it to Relay; its history is still readable." = "This thread is open in another Codex client. Close that client before connecting it to Relay; its history is still readable.";
 "Thread" = "Thread";
 "Token usage" = "Token usage";
 "Too many active requests." = "Too many active requests.";

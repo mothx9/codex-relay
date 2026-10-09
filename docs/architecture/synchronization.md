@@ -138,6 +138,9 @@ pages are fetched again from Codex rather than retained indefinitely.
 An unknown canonical machine/thread identity may be read or explicitly attached,
 never directly controlled. Opening cold history reads metadata without resuming
 the thread; explicit Attach retains the existing control admission checks.
+Codex 0.162.0 can reject `thread/resume` when another client holds the active
+writer. Relay classifies this as `THREAD_BUSY` and leaves the thread read-only;
+it does not take over that writer or imply that a draft was sent.
 Reconnection does not enumerate all cold pages. Tests cover 600 discovered
 threads, a full initial catalogue with Working/pending threads outside it, and
 canonical pending state taking precedence over stale discovery metadata.

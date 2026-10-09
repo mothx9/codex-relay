@@ -59,6 +59,9 @@ type Session struct {
 	ID             string       `json:"id"`
 	MachineID      string       `json:"machine_id"`
 	ThreadID       string       `json:"thread_id"`
+	ParentThreadID string       `json:"parent_thread_id,omitempty"`
+	AgentNickname  string       `json:"agent_nickname,omitempty"`
+	AgentRole      string       `json:"agent_role,omitempty"`
 	Title          string       `json:"title"`
 	Project        string       `json:"project"`
 	Cwd            string       `json:"cwd"`

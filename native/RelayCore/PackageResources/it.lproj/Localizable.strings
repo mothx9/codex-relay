@@ -61,6 +61,7 @@
 "Allow notifications" = "Consenti notifiche";
 "Allowed" = "Consentito";
 "An Agent connects a machine’s local Codex runtime to your Hub. Relay connectivity is separate from the work running on that machine." = "Un agent collega il Codex locale al tuo Hub. Il collegamento Relay è distinto dal lavoro in corso sulla macchina.";
+"Another Codex session" = "Un’altra sessione Codex";
 "Answer" = "Risposta";
 "App" = "App";
 "Apple device token" = "Token dispositivo Apple";
@@ -101,8 +102,10 @@
 "Codex Accounts" = "Account Codex";
 "Codex account" = "Account Codex";
 "Codex asked a live question" = "Codex ha fatto una domanda live";
+"Codex could not connect this thread. Check Codex on the machine and try again; its history is still readable." = "Codex non ha collegato questo thread. Controlla Codex sulla macchina e riprova; la cronologia resta leggibile.";
 "Codex finished" = "Codex ha terminato";
 "Codex has a question" = "Codex ha una domanda";
+"Codex is not connected on this machine. Try again when it reconnects." = "Codex non è collegato su questa macchina. Riprova quando si riconnette.";
 "Codex needs a decision" = "Codex richiede una decisione";
 "Codex needs attention" = "Codex richiede attenzione";
 "Codex needs your input" = "Codex ha bisogno del tuo input";
@@ -129,6 +132,7 @@
 "Connect to Relay" = "Collega Relay";
 "Connected" = "Collegato";
 "Connected to your Hub" = "Collegato al tuo Hub";
+"Connecting thread…" = "Collegamento del thread…";
 "Connecting to Hub…" = "Connessione al Hub…";
 "Connecting…" = "Connessione…";
 "Connection" = "Collegamento";
@@ -137,6 +141,7 @@
 "Connection lost while sending. Check the request before retrying." = "Connessione interrotta durante l’invio. Verifica la richiesta prima di riprovare.";
 "Connection lost." = "Connessione interrotta.";
 "Connection lost. Try again." = "Connessione interrotta. Riprova.";
+"Connection lost. Try connecting this thread again." = "Connessione interrotta. Riprova a collegare il thread.";
 "Connection → Online" = "Collegamento → Online";
 "Context compacted" = "Contesto compattato";
 "Context compaction" = "Compattazione del contesto";
@@ -162,6 +167,7 @@
 "Copy Path" = "Copia percorso";
 "Copy Previous Path" = "Copia percorso precedente";
 "Copy Session Link" = "Copia link della sessione";
+"Could not connect this thread. Try again when Codex is available." = "Impossibile collegare questo thread. Riprova quando Codex è disponibile.";
 "Create a one-time code on the Hub host or from an authorized controller. It expires after 5 minutes." = "Crea un codice monouso sul computer del Hub o da un controller autorizzato. Scade dopo 5 minuti.";
 "Create one-time code" = "Crea codice monouso";
 "Created" = "Creato";
@@ -359,6 +365,7 @@
 "Pair with your Hub" = "Abbina al tuo Hub";
 "Paired" = "Abbinato";
 "Pairing…" = "Abbinamento…";
+"Parent session" = "Sessione madre";
 "Partial content" = "Contenuto parziale";
 "Partial context · see Codex for the full content." = "Contesto parziale · consulta Codex per il contenuto completo.";
 "Patch" = "Patch";
@@ -498,6 +505,7 @@
 "State reducer" = "Reducer dello stato";
 "Steer Current Turn" = "Steer del turno corrente";
 "Steer · send to the current turn now" = "Steer · invia subito al turno corrente";
+"Subagent" = "Subagent";
 "Supervise and continue Codex across your machines from iPhone." = "Segui e continua Codex sulle tue macchine dall’iPhone.";
 "Syncing with Codex…" = "Sincronizzazione Codex…";
 "System health" = "Stato del sistema";
@@ -525,6 +533,8 @@
 "This message is no longer editable in the queue. Your text stays in the composer." = "Il messaggio non è più modificabile in coda. Il testo resta nel composer.";
 "This notification’s machine is no longer enrolled in this Relay." = "La macchina di questa notifica non è più registrata in questo Relay.";
 "This session is no longer available in the machine’s history." = "Questa sessione non è più disponibile nella cronologia della macchina.";
+"This thread cannot be connected because Codex has no resumable session or does not allow direct input. Its history is still readable." = "Questo thread non può essere collegato: Codex non ha una sessione ripristinabile oppure non consente l'invio diretto. La cronologia resta leggibile.";
+"This thread is open in another Codex client. Close that client before connecting it to Relay; its history is still readable." = "Questo thread è aperto in un altro client Codex. Chiudi quel client prima di collegarlo a Relay; la cronologia resta leggibile.";
 "Thread" = "Thread";
 "Token usage" = "Utilizzo token";
 "Too many active requests." = "Troppe richieste in corso.";

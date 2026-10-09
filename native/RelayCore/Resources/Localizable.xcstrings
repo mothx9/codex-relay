@@ -6710,6 +6710,116 @@
           }
         }
       }
+    },
+    "Subagent": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subagent"
+          }
+        }
+      }
+    },
+    "Parent session": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessione madre"
+          }
+        }
+      }
+    },
+    "Another Codex session": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un’altra sessione Codex"
+          }
+        }
+      }
+    },
+    "This thread cannot be connected because Codex has no resumable session or does not allow direct input. Its history is still readable.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo thread non può essere collegato: Codex non ha una sessione ripristinabile oppure non consente l'invio diretto. La cronologia resta leggibile."
+          }
+        }
+      }
+    },
+    "Codex could not connect this thread. Check Codex on the machine and try again; its history is still readable.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex non ha collegato questo thread. Controlla Codex sulla macchina e riprova; la cronologia resta leggibile."
+          }
+        }
+      }
+    },
+    "Could not connect this thread. Try again when Codex is available.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile collegare questo thread. Riprova quando Codex è disponibile."
+          }
+        }
+      }
+    },
+    "Codex is not connected on this machine. Try again when it reconnects.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex non è collegato su questa macchina. Riprova quando si riconnette."
+          }
+        }
+      }
+    },
+    "Connection lost. Try connecting this thread again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connessione interrotta. Riprova a collegare il thread."
+          }
+        }
+      }
+    },
+    "Connecting thread…": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collegamento del thread…"
+          }
+        }
+      }
+    },
+    "This thread is open in another Codex client. Close that client before connecting it to Relay; its history is still readable.": {
+      "extractionState": "manual",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo thread è aperto in un altro client Codex. Chiudi quel client prima di collegarlo a Relay; la cronologia resta leggibile."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

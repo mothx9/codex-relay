@@ -325,6 +325,12 @@ func (h *Hub) ui(w http.ResponseWriter, r *http.Request) {
 		case "watch":
 			old := o.session
 			o.session = msg.SessionID
+			if o.session == "" && msg.HistoryRequestID != "" {
+				// A Fleet pull reuses the operator socket. The reply is correlated so
+				// the iPhone can finish its refresh without reconnecting.
+				snap := h.snapshot()
+				p.Enqueue(protocol.Message{Type: "snapshot", HistoryRequestID: msg.HistoryRequestID, Snapshot: &snap})
+			}
 			if old != o.session && !h.watched(old) {
 				delete(h.buffers, old)
 			}

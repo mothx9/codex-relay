@@ -208,8 +208,11 @@ func (a *Adapter) attach(ctx context.Context, id string) (protocol.Session, erro
 		return protocol.Session{}, e
 	}
 	a.mu.Lock()
-	a.subscribed[id] = true
-	s := a.session(r.Thread, true)
+	// A resumed thread may still reject direct input. Keep it attachable so a
+	// later retry can resume it after the other writer releases the thread.
+	writable := r.Thread.CanInput != nil && *r.Thread.CanInput
+	a.subscribed[id] = writable
+	s := a.session(r.Thread, writable)
 	a.mu.Unlock()
 	var turns struct {
 		Data []turn `json:"data"`
@@ -239,6 +242,11 @@ func (a *Adapter) attach(ctx context.Context, id string) (protocol.Session, erro
 		}
 		if current.Title == "Thread "+protocol.Clip(id, 8) {
 			current.Title = s.Title
+		}
+		if current.ParentThreadID == "" {
+			current.ParentThreadID = s.ParentThreadID
+			current.AgentNickname = s.AgentNickname
+			current.AgentRole = s.AgentRole
 		}
 		s = current
 	}
@@ -354,6 +362,9 @@ func (a *Adapter) Execute(ctx context.Context, c protocol.Command) protocol.Resu
 		var attached protocol.Session
 		attached, err = a.attach(ctx, c.ThreadID)
 		if err == nil {
+			if attached.ReadOnly {
+				return protocol.Failure(c, protocol.ThreadUnavailable)
+			}
 			a.emit(protocol.Event{Kind: "session", SessionID: attached.ID, Session: &attached})
 		}
 	case protocol.QueueUpdate:
@@ -420,6 +431,12 @@ func (a *Adapter) errorCode(c protocol.Command, err error) string {
 	var rpc *rpcError
 	if errors.As(err, &rpc) {
 		message := strings.ToLower(rpc.Message)
+		if c.Kind == "attach" && strings.Contains(message, "already has an active writer") {
+			return protocol.ThreadBusy
+		}
+		if c.Kind == "attach" && rpc.Code == -32600 && strings.Contains(message, "no rollout found for thread id") {
+			return protocol.ThreadUnavailable
+		}
 		if c.Kind == protocol.FollowUpCommand && rpc.Code == -32601 {
 			a.disableQueue()
 			return protocol.FollowUpUnavailable

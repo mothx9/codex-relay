@@ -38,9 +38,10 @@ struct FleetView: View {
         session.displayStatus(machine: relay.machines[session.machineId], connected: relay.online)
     }
     private var visible: [RelaySession] {
-        sorted.filter {
+        let sessionsByID = relay.fleetSessions
+        return sorted.filter {
             (filter == "ALL" || filter == "HISTORY" || state($0) == filter)
-            && (search.isEmpty || "\($0.title) \($0.project) \($0.machineId)".localizedCaseInsensitiveContains(search))
+            && (search.isEmpty || "\($0.displayTitle) \($0.project) \($0.machineId) \($0.parentSessionId.flatMap { sessionsByID[$0]?.displayTitle } ?? "")".localizedCaseInsensitiveContains(search))
         }
     }
     var body: some View {
@@ -68,6 +69,7 @@ struct FleetView: View {
                 }
             }.padding(.horizontal, RelaySpacing.page).padding(.top, 4).padding(.bottom, 16)
         }
+        .refreshable { await relay.refreshFleet() }
         .safeAreaInset(edge: .top, spacing: 0) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
@@ -155,23 +157,34 @@ struct FleetSessionRow: View {
     private var status: String { session.displayStatus(machine: relay.machines[session.machineId], connected: relay.online) }
     private var active: Bool { ["WORKING", "NEEDS_YOU"].contains(status) }
     private var source: String { [relay.machines[session.machineId]?.name ?? session.machineId, session.project].filter { !$0.isEmpty }.joined(separator: " · ") }
+    private var parent: RelaySession? { session.parentSessionId.flatMap { relay.fleetSessions[$0] } }
     private var showsState: Bool { status != "READY" }
     private var lastKnown: Bool { ["OFFLINE", "SYNCING", "RECONNECTING", "DEGRADED"].contains(status) }
     var body: some View {
         Button { relay.open(session.id) } label: {
             VStack(alignment: .leading, spacing: 4) {
                 if typeSize.isAccessibilitySize {
-                    Text(session.title).font(.body.weight(active ? .medium : .regular)).foregroundStyle(status == "INACTIVE" ? .secondary : .primary)
+                    Text(session.displayTitle).font(.body.weight(active ? .medium : .regular)).foregroundStyle(status == "INACTIVE" ? .secondary : .primary)
                     Text(source).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("session.source." + session.id)
                 } else {
                     HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Text(session.title).font(.body.weight(active ? .semibold : .regular)).lineLimit(1)
+                        Text(session.displayTitle).font(.body.weight(active ? .semibold : .regular)).lineLimit(1)
                             .foregroundStyle(status == "INACTIVE" ? .secondary : .primary).frame(maxWidth: .infinity, alignment: .leading)
                         Text(source).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                             .frame(maxWidth: 140, alignment: .trailing)
                             .accessibilityIdentifier("session.source." + session.id)
                     }
                 }
+				if session.isSubagent {
+					let parentTitle = parent?.displayTitle ?? String(localized: "Another Codex session", bundle: relayLocalizationBundle)
+					HStack(spacing: 5) {
+						Image(systemName: "arrow.turn.down.right").font(.caption2)
+						Text(parentTitle).lineLimit(1)
+					}.font(.footnote).foregroundStyle(.secondary)
+						.accessibilityElement(children: .ignore)
+						.accessibilityLabel(String(localized: "Parent session", bundle: relayLocalizationBundle) + " · " + parentTitle)
+						.accessibilityIdentifier("session.parent." + session.id)
+				}
                 if showsState { HStack(spacing: 6) {
                     if status == "WORKING" {
                         Circle().fill(RelayPalette.working).frame(width: 5, height: 5).accessibilityHidden(true)

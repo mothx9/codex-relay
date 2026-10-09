@@ -75,6 +75,55 @@ func readUntil(t *testing.T, c *websocket.Conn, fn func(protocol.Message) bool) 
 		}
 	}
 }
+func TestFleetPullRefreshUsesExistingOperatorSocket(t *testing.T) {
+	h, s, srv := testHub(t, filepath.Join(t.TempDir(), "db"))
+	defer s.Close()
+	defer srv.Close()
+	defer h.Close()
+	ui := testWS(t, srv, http.Header{"Cookie": []string{login(t, srv)}, "Origin": []string{"http://relay.test"}}, "/api/ui")
+	defer ui.Close()
+	readUntil(t, ui, func(m protocol.Message) bool { return m.Type == "snapshot" })
+	id := protocol.ID()
+	if err := ui.WriteJSON(protocol.Message{Type: "watch", HistoryRequestID: id}); err != nil {
+		t.Fatal(err)
+	}
+	refreshed := readUntil(t, ui, func(m protocol.Message) bool { return m.Type == "snapshot" && m.HistoryRequestID == id })
+	if refreshed.Snapshot == nil || refreshed.Snapshot.Machines == nil {
+		t.Fatal("refresh did not return canonical fleet state")
+	}
+}
+func TestAttachBusyReasonSurvivesHubSanitizer(t *testing.T) {
+	h, s, srv := testHub(t, filepath.Join(t.TempDir(), "db"))
+	defer s.Close()
+	defer srv.Close()
+	defer h.Close()
+	_ = s.Token("m", testToken)
+	ui := testWS(t, srv, http.Header{"Cookie": []string{login(t, srv)}, "Origin": []string{"http://relay.test"}}, "/api/ui")
+	defer ui.Close()
+	readUntil(t, ui, func(m protocol.Message) bool { return m.Type == "snapshot" })
+	agent := testWS(t, srv, http.Header{"X-Relay-Machine": []string{"m"}, "Authorization": []string{"Bearer " + testToken}}, "/api/agent")
+	defer agent.Close()
+	session := protocol.Session{ID: "m~t", MachineID: "m", ThreadID: "t", Status: protocol.Inactive, ReadOnly: true, UpdatedAt: time.Now()}
+	if err := agent.WriteJSON(protocol.Message{Version: protocol.Version, Type: "announce", Machine: &protocol.Machine{ID: "m", Name: "M"}, Sessions: []protocol.Session{session}, Epoch: "epoch"}); err != nil {
+		t.Fatal(err)
+	}
+	readUntil(t, ui, func(m protocol.Message) bool { return m.Type == "snapshot" && len(m.Snapshot.Sessions) == 1 })
+	id := protocol.ID()
+	if err := ui.WriteJSON(protocol.Message{Type: "command", Command: &protocol.Command{ID: id, Kind: "attach", SessionID: session.ID}}); err != nil {
+		t.Fatal(err)
+	}
+	routed := readUntil(t, agent, func(m protocol.Message) bool { return m.Type == "command" && m.Command != nil && m.Command.ID == id })
+	if routed.Command.Kind != "attach" || routed.Command.ThreadID != "t" {
+		t.Fatal("attach was not routed to the owning machine")
+	}
+	if err := agent.WriteJSON(protocol.Message{Type: "result", Result: &protocol.Result{ID: id, ErrorCode: protocol.ThreadBusy, Error: "PRIVATE_PROMPT_CANARY"}}); err != nil {
+		t.Fatal(err)
+	}
+	reply := readUntil(t, ui, func(m protocol.Message) bool { return m.Type == "result" && m.Result != nil && m.Result.ID == id })
+	if reply.Result.ErrorCode != protocol.ThreadBusy || strings.Contains(reply.Result.Error, "PRIVATE") {
+		t.Fatal("Hub failed to preserve the safe category", reply.Result)
+	}
+}
 func TestRealtimeAuthOrderingAndPending(t *testing.T) {
 	h, s, srv := testHub(t, filepath.Join(t.TempDir(), "db"))
 	defer s.Close()

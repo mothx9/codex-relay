@@ -23,10 +23,14 @@ import UIKit
     var historyLoading = false
     var historyError: String?
     private var historyRequestID: String?
+    private var fleetRefreshID: String?
     private var restoredWatch = false
     private var historyCorrelated = false
     private var issuedHistoryIDs: [String] = []
     var queueEditError: String?
+    var attachError: String?
+    private var attachCommandID: String?
+    private var attachSessionID: String?
     var queueEditingID: String?
     var queueSteeringID: String?
     private var queueSteerCommands: [String: String] = [:]
@@ -185,7 +189,7 @@ import UIKit
                     let hubError = (error as? HubFailure) ?? status.flatMap { code in
                         code == 101 ? nil : HubFailure.http(code, code == 401 || code == 403 ? String(localized: "Code expired or access revoked or invalid.", bundle: relayLocalizationBundle) : String(localized: "Hub unavailable (\(code)).", bundle: relayLocalizationBundle))
                     }
-                    self.liveQuestions.reset(); self.online = false; self.restoredWatch = false; self.historyLoading = false; self.historyRequestID = nil; self.outbox.disconnected(); for id in Array(self.queueWaiters.keys) { self.finishQueueEditUnknown(id) }; self.commands.removeAll(); self.catalogueCommands.removeAll(); self.catalogueLoading.removeAll(); self.socket?.cancel(with: .goingAway, reason: nil); self.transport?.invalidateAndCancel()
+                    self.liveQuestions.reset(); self.online = false; self.restoredWatch = false; self.historyLoading = false; self.historyRequestID = nil; self.fleetRefreshID = nil; self.attachCommandID = nil; self.attachSessionID = nil; self.outbox.disconnected(); for id in Array(self.queueWaiters.keys) { self.finishQueueEditUnknown(id) }; self.commands.removeAll(); self.catalogueCommands.removeAll(); self.catalogueLoading.removeAll(); self.socket?.cancel(with: .goingAway, reason: nil); self.transport?.invalidateAndCancel()
                     self.socket = nil; self.socketHealth = nil; self.transport = nil
                     self.updateNotificationBadge(); self.cancelOfflineNotices()
                     self.connection = self.connectionIssue?.title ?? String(localized: "Offline · reconnecting", bundle: relayLocalizationBundle)
@@ -209,6 +213,7 @@ import UIKit
         switch message.type {
         case "snapshot":
             guard let snapshot = message.snapshot else { return }
+            if let id = fleetRefreshID, message.historyRequestId == nil || message.historyRequestId == id { fleetRefreshID = nil }
             let reconnecting = !online
             eventFreshness.snapshot(snapshot.machines)
             attentionFreshness.snapshot(snapshot.machines)
@@ -268,6 +273,25 @@ import UIKit
             }
         case "result":
             guard let result = message.result else { return }; commands.remove(result.id)
+            if result.id == attachCommandID {
+                let target = attachSessionID
+                attachCommandID = nil
+                attachSessionID = nil
+                guard selected == target else { return }
+                if !result.ok {
+                    switch result.errorCode {
+                    case "THREAD_UNAVAILABLE":
+                        attachError = String(localized: "This thread cannot be connected because Codex has no resumable session or does not allow direct input. Its history is still readable.", bundle: relayLocalizationBundle)
+                    case "THREAD_BUSY":
+                        attachError = String(localized: "This thread is open in another Codex client. Close that client before connecting it to Relay; its history is still readable.", bundle: relayLocalizationBundle)
+                    case "CODEX_REJECTED":
+                        attachError = String(localized: "Codex could not connect this thread. Check Codex on the machine and try again; its history is still readable.", bundle: relayLocalizationBundle)
+                    default:
+                        attachError = result.error ?? String(localized: "Could not connect this thread. Try again when Codex is available.", bundle: relayLocalizationBundle)
+                    }
+                } else { attachError = nil }
+                return
+            }
             if let clientID = queueSteerCommands.removeValue(forKey: result.id) { outbox.queueSteerResult(clientID, result: result) }
             outbox.result(result)
             if let page = catalogueCommands.removeValue(forKey: result.id) {
@@ -340,6 +364,54 @@ import UIKit
         restoredWatch = await send(["type": "watch", "session_id": selected, "history_request_id": id])
         if !restoredWatch { historyLoading = false; historyRequestID = nil }
     }
+    func refreshFleet() async {
+        guard !previewOnly, online else { return }
+        // Reload discovery through the existing command channel as well: older
+        // Hubs silently ignore the correlated empty watch below.
+        for machine in machines.values where machine.status == "ONLINE" {
+            catalogue.restart(machine: machine.id)
+            await loadCatalogue(machine: machine.id)
+        }
+        let id = UUID().uuidString
+        fleetRefreshID = id
+        guard await send(["type": "watch", "session_id": "", "history_request_id": id]) else { fleetRefreshID = nil; return }
+        for _ in 0..<10 {
+            if fleetRefreshID != id { return }
+            try? await Task.sleep(for: .milliseconds(200))
+        }
+        if fleetRefreshID == id { fleetRefreshID = nil }
+    }
+    func refreshChat(sessionID: String) async {
+        guard !previewOnly, selected == sessionID, online, current != nil else { return }
+        if !historyLoading { await watchSelected() }
+        let id = historyRequestID
+        guard id != nil else { return }
+        for _ in 0..<50 {
+            if selected != sessionID || historyRequestID != id || !historyLoading || !online { return }
+            try? await Task.sleep(for: .milliseconds(200))
+        }
+    }
+    var attachingThread: Bool { attachCommandID != nil }
+    func attachCurrent() async {
+        guard attachCommandID == nil, let current, current.readOnly else { return }
+        guard online, machines[current.machineId]?.status == "ONLINE", current.fresh != false else {
+            attachError = String(localized: "Codex is not connected on this machine. Try again when it reconnects.", bundle: relayLocalizationBundle)
+            return
+        }
+        attachError = nil
+        let id = UUID().uuidString
+        attachCommandID = id
+        attachSessionID = current.id
+        if !(await sendCommand(["id": id, "kind": "attach", "session_id": current.id])) {
+            if attachCommandID == id {
+                attachCommandID = nil
+                attachSessionID = nil
+                if selected == current.id {
+                    attachError = String(localized: "Connection lost. Try connecting this thread again.", bundle: relayLocalizationBundle)
+                }
+            }
+        }
+    }
     func loadOlderHistory() async {
         guard !previewOnly, !historyLoading, !chat.atCapacity, let cursor = historyCursor, !cursor.isEmpty,
               let current, online, machines[current.machineId]?.status == "ONLINE" else { return }
@@ -396,10 +468,12 @@ import UIKit
     }
     func open(_ id: String) {
         guard id != selected else { return }
+        attachError = nil
         selected = id; chat = RecentChat(); historyCursor = nil; historyError = nil; historyLoading = false
         restoredWatch = false; outbox.prune(active: id); Task { await watchSelected() }
     }
     func closeDetail() {
+        attachError = nil
         selected = ""; chat = RecentChat(); historyCursor = nil; historyRequestID = nil; historyLoading = false; restoredWatch = false
         Task { await send(["type": "watch", "session_id": ""]) }
     }
@@ -581,6 +655,6 @@ import UIKit
     private func reconcileLiveQuestions() {
         liveQuestions.reconcile(sessions: sessions, machines: machines, connected: online)
     }
-    private func stop() { liveQuestions.reset(); cancelOfflineNotices(); updateNotificationBadge(); for id in Array(queueWaiters.keys) { finishQueueEditUnknown(id) }; chat.endHistory(); restoredWatch = false; historyLoading = false; historyRequestID = nil; generation = UUID(); loop?.cancel(); loop = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; socketHealth = nil; transport?.invalidateAndCancel(); transport = nil; online = false; commands.removeAll(); catalogueCommands.removeAll(); catalogueLoading.removeAll(); outbox.disconnected() }
+    private func stop() { liveQuestions.reset(); cancelOfflineNotices(); updateNotificationBadge(); for id in Array(queueWaiters.keys) { finishQueueEditUnknown(id) }; chat.endHistory(); restoredWatch = false; historyLoading = false; historyRequestID = nil; fleetRefreshID = nil; attachCommandID = nil; attachSessionID = nil; generation = UUID(); loop?.cancel(); loop = nil; socket?.cancel(with: .goingAway, reason: nil); socket = nil; socketHealth = nil; transport?.invalidateAndCancel(); transport = nil; online = false; commands.removeAll(); catalogueCommands.removeAll(); catalogueLoading.removeAll(); outbox.disconnected() }
 }
 private struct AckBootstrap: Decodable, Sendable { let version: Int; let secure: Bool; let nativePush: Bool? }

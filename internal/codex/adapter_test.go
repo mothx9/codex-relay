@@ -26,6 +26,29 @@ func TestNormalize(t *testing.T) {
 	}
 }
 
+func TestSubagentParentMetadataReachesRelaySession(t *testing.T) {
+	var source thread
+	if err := json.Unmarshal([]byte(`{"id":"child","name":null,"cwd":"/work/studio","updatedAt":1,"status":{"type":"active"},"parentThreadId":"parent","agentNickname":"Atlas","agentRole":"explorer"}`), &source); err != nil {
+		t.Fatal(err)
+	}
+	a := &Adapter{cfg: Config{MachineID: "exon"}}
+	session := a.session(source, true)
+	if session.ParentThreadID != "parent" || session.AgentNickname != "Atlas" || session.AgentRole != "explorer" || session.Title != "Thread child" {
+		t.Fatalf("subagent identity lost: %+v", session)
+	}
+	wire, err := json.Marshal(session)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded protocol.Session
+	if err := json.Unmarshal(wire, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.ParentThreadID != source.ParentThreadID || decoded.AgentNickname != source.AgentNickname || decoded.AgentRole != source.AgentRole {
+		t.Fatalf("subagent relationship lost on Relay wire: %+v", decoded)
+	}
+}
+
 func TestAsyncQuestionAgentMessagePreservesCanonicalDisplayContext(t *testing.T) {
 	for _, text := range []string{"", "Review the options below."} {
 		raw, _ := json.Marshal(map[string]any{"type": "agentMessage", "id": "canonical-question", "delivery": "async", "text": text, "questions": []map[string]any{{"title": "Which scope?", "options": []string{"Minimal", "Complete"}}}})
@@ -321,6 +344,15 @@ func TestAdapterCanonicalErrorMapping(t *testing.T) {
 	}
 	if code = a.errorCode(protocol.Command{Kind: protocol.FollowUpCommand}, &rpcError{Code: -32601, Message: "unknown method"}); code != protocol.FollowUpUnavailable || a.queue {
 		t.Fatal(code)
+	}
+	if code = a.errorCode(protocol.Command{Kind: "attach"}, &rpcError{Code: -32600, Message: "no rollout found for thread id PRIVATE_PROMPT_CANARY"}); code != protocol.ThreadUnavailable {
+		t.Fatal(code)
+	}
+	if code = a.errorCode(protocol.Command{Kind: "attach"}, &rpcError{Code: -32600, Message: "thread PRIVATE_PROMPT_CANARY already has an active writer"}); code != protocol.ThreadBusy {
+		t.Fatal(code)
+	}
+	if strings.Contains(protocol.Failure(protocol.Command{Kind: "attach"}, code).Error, "PRIVATE") {
+		t.Fatal("attach error leaked backend thread identity")
 	}
 }
 

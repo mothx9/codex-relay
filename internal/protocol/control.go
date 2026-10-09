@@ -17,6 +17,8 @@ const (
 	QueueChanged          = "QUEUE_CHANGED"
 	CodexDisconnected     = "CODEX_DISCONNECTED"
 	CodexRejected         = "CODEX_REJECTED"
+	ThreadUnavailable     = "THREAD_UNAVAILABLE"
+	ThreadBusy            = "THREAD_BUSY"
 	UnknownOutcome        = "UNKNOWN_OUTCOME"
 )
 
@@ -55,10 +57,17 @@ func Failure(c Command, code string) Result {
 	case CodexDisconnected:
 		message = "Codex è disconnesso. Il comando non è stato inviato."
 		retryable = true
+	case ThreadUnavailable:
+		message = "Questo thread non può essere collegato: Codex non dispone di una sessione ripristinabile o non consente l'invio diretto. La cronologia resta leggibile."
+	case ThreadBusy:
+		message = "Questo thread è già aperto in un altro client Codex. Chiudi quel client prima di collegarlo a Relay; la cronologia resta leggibile."
 	case UnknownOutcome:
 		message = "Esito sconosciuto. Verifica il thread Codex prima di decidere se reinviare."
 	default:
 		code = CodexRejected
+	}
+	if c.Kind == "attach" && code == CodexRejected {
+		message = "Codex non ha consentito di collegare questo thread. Controlla Codex sulla macchina e riprova; la cronologia resta leggibile."
 	}
 	return Result{ID: c.ID, SessionID: c.SessionID, ErrorCode: code, Error: message, Retryable: retryable}
 }
