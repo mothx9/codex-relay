@@ -27,7 +27,7 @@ a second message. The + menu contains attachments only. Activity inspection dist
 compact aggregate, individual operation and changed-file list. Short live
 questions open in a partial-height material sheet. Sanitized screenshots and a
 recorded walkthrough document the current native views. The v0.1.0 signed iPhone
-build is installed and launched in place on the physical device. Owner gesture
+build has been installed and launched in place on the physical device. Owner gesture
 and notification presentation acceptance remain separate from installation.
 
 The native app supports iOS 17+, English/Italian, Dynamic Type and Reduce Motion.
@@ -109,7 +109,7 @@ not require APNs. This release does not claim accepted physical remote APNs deli
 
 ## Evidence
 
-- [v0.1.0 release validation](development/validation/v0.1.0.md)
+- [v0.1.0 refresh validation](development/validation/v0.1.0-refresh.md)
 - [M1 reliability validation](development/validation/m1-validation.md)
 - [M2 product validation](development/validation/m2-validation.md)
 - [Live event audit](development/validation/live-event-audit.md)

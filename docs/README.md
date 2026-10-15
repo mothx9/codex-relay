@@ -42,7 +42,8 @@ control of local Codex work; OpenAI credentials stay on workers.
 
 ## Engineering reference
 
-Dated evidence: [v0.1.0](development/validation/v0.1.0.md), [M1](development/validation/m1-validation.md),
+Dated evidence: [v0.1.0](development/validation/v0.1.0.md),
+[v0.1.0 refresh](development/validation/v0.1.0-refresh.md), [M1](development/validation/m1-validation.md),
 [M2](development/validation/m2-validation.md),
 [live event audit](development/validation/live-event-audit.md).
 [Historical records](development/history/README.md) preserve earlier investigations.

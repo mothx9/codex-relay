@@ -4,7 +4,16 @@ Entries describe verified implementation checkpoints, not unperformed acceptance
 Native remote APNs delivery and Apple consumer distribution are tracked separately
 from the downloadable self-hosted release.
 
-## v0.1.0 — 2026-10-08
+## v0.1.0 — 2026-10-08 (refreshed 2026-10-15)
+
+- Refreshed the v0.1.0 packages with native live-edge transcript following while
+  preserving deliberate manual scroll position.
+- Added an optional Mac signing guard for Personal Team iPhone installs. It
+  checks every six hours, attempts renewal three days before profile expiry,
+  and pins committed source so it does not deploy uncommitted changes. The
+  paired iPhone and Apple Account must remain available.
+- The public tag and asset checksums change with this refresh; existing
+  installations keep the same Relay protocol and database format.
 
 - Rebuilt release with independent bounded snapshot refresh, same-socket sync
   recovery and explicit first-complete-snapshot admission for pending requests.
