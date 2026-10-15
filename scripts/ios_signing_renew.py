@@ -1,0 +1,270 @@
+#!/usr/bin/env python3
+"""Renew a Personal Team iPhone install before its seven-day profile expires.
+
+The local LaunchAgent runs a pinned source snapshot. It never installs whatever
+uncommitted work happens to be in the developer's checkout on renewal day.
+"""
+
+import argparse
+import datetime as dt
+import fcntl
+import json
+import os
+from pathlib import Path
+import plistlib
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+
+
+BUNDLE_ID = "net.codex-relay.iphone"
+REPO = Path(__file__).resolve().parent.parent
+STATE_DIR = Path.home() / "Library/Application Support/CodexRelay/iPhoneSigningGuard"
+PROFILE_DIRS = (
+    Path.home() / "Library/Developer/Xcode/UserData/Provisioning Profiles",
+    Path.home() / "Library/MobileDevice/Provisioning Profiles",
+)
+RENEW_BEFORE = dt.timedelta(days=3)
+
+
+def run(args, *, timeout=60, output=None):
+    if output is None:
+        return subprocess.run(args, check=True, capture_output=True, text=True, timeout=timeout).stdout
+    with open(output, "w") as log:
+        subprocess.run(args, check=True, stdout=log, stderr=subprocess.STDOUT, timeout=timeout)
+
+
+def profile(path):
+    data = subprocess.run(
+        ["/usr/bin/security", "cms", "-D", "-i", str(path)],
+        check=True, capture_output=True, timeout=15,
+    ).stdout
+    return plistlib.loads(data)
+
+
+def expires_at(value):
+    if isinstance(value, dt.datetime):
+        return value.replace(tzinfo=dt.timezone.utc) if value.tzinfo is None else value
+    return dt.datetime.fromisoformat(value).astimezone(dt.timezone.utc)
+
+
+def renewal_due(now, installed_expiry, force=False):
+    return force or now + RENEW_BEFORE >= installed_expiry
+
+
+def matching_profile(value):
+    identifier = value.get("Entitlements", {}).get("application-identifier", "")
+    return identifier.endswith("." + BUNDLE_ID)
+
+
+def cached_profiles():
+    found = []
+    for root in PROFILE_DIRS:
+        for path in root.glob("*.mobileprovision"):
+            try:
+                value = profile(path)
+            except (OSError, subprocess.SubprocessError, ValueError, plistlib.InvalidFileException):
+                continue
+            if matching_profile(value):
+                found.append(path)
+    return found
+
+
+def write_json(path, value):
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
+    os.chmod(temporary, 0o600)
+    temporary.replace(path)
+
+
+def get_config():
+    return json.loads((STATE_DIR / "config.json").read_text())
+
+
+def record(config, status, detail=""):
+    write_json(STATE_DIR / "status.json", {
+        "checked_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "installed_profile_expires_at": config["installed_profile_expires_at"],
+        "status": status,
+        "detail": detail,
+    })
+    print(status + (": " + detail if detail else ""), flush=True)
+
+
+def device_available(udid):
+    with tempfile.TemporaryDirectory(prefix="relay-device-") as name:
+        result = Path(name) / "devices.json"
+        run(["/usr/bin/xcrun", "devicectl", "list", "devices", "--json-output", str(result)], timeout=30)
+        devices = json.loads(result.read_text()).get("result", {}).get("devices", [])
+        matches = [item for item in devices if item.get("hardwareProperties", {}).get("udid") == udid
+                   and item.get("hardwareProperties", {}).get("reality") == "physical"]
+        if len(matches) != 1 or matches[0].get("connectionProperties", {}).get("pairingState") != "paired":
+            return False
+        if matches[0].get("deviceProperties", {}).get("bootState") != "booted":
+            return False
+        try:
+            run(["/usr/bin/xcrun", "devicectl", "device", "info", "apps", "--device", udid,
+                 "--json-output", str(Path(name) / "apps.json")], timeout=45)
+        except (subprocess.SubprocessError, OSError):
+            return False
+        return True
+
+
+def snapshot_source(destination):
+    if run(["/usr/bin/git", "-C", str(REPO), "status", "--porcelain"]).strip():
+        raise RuntimeError("checkout has uncommitted changes; finish or stash them before setup")
+    signing = REPO / "native/LocalSigning.xcconfig"
+    if not signing.is_file():
+        raise RuntimeError("native/LocalSigning.xcconfig is missing")
+    head = run(["/usr/bin/git", "-C", str(REPO), "rev-parse", "HEAD"]).strip()
+    with tempfile.TemporaryDirectory(prefix="relay-source-", dir=str(STATE_DIR)) as name:
+        staged = Path(name) / "source"
+        staged.mkdir()
+        archive = subprocess.Popen(["/usr/bin/git", "-C", str(REPO), "archive", "--format=tar", head],
+                                   stdout=subprocess.PIPE)
+        with tarfile.open(fileobj=archive.stdout, mode="r|") as tar:
+            for member in tar:
+                parts = Path(member.name).parts
+                if member.name.startswith("/") or ".." in parts or member.issym() or member.islnk():
+                    raise RuntimeError("unsafe path in source archive")
+                tar.extract(member, staged)
+        if archive.wait() != 0:
+            raise RuntimeError("git archive failed")
+        shutil.copy2(signing, staged / "native/LocalSigning.xcconfig")
+        os.chmod(staged / "native/LocalSigning.xcconfig", 0o600)
+        if destination.exists():
+            shutil.rmtree(destination)
+        shutil.move(staged, destination)
+    return head
+
+
+def setup(udid, app):
+    STATE_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(STATE_DIR, 0o700)
+    if not device_available(udid):
+        raise RuntimeError("the paired physical iPhone is not reachable")
+    run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], timeout=30)
+    embedded = profile(app / "embedded.mobileprovision")
+    if not matching_profile(embedded) or udid not in embedded.get("ProvisionedDevices", []):
+        raise RuntimeError("signed app does not match this bundle and device")
+    commit = snapshot_source(STATE_DIR / "source")
+    config = {
+        "device_udid": udid,
+        "source_commit": commit,
+        "installed_profile_expires_at": expires_at(embedded["ExpirationDate"]).isoformat(),
+        "last_installed_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+    }
+    write_json(STATE_DIR / "config.json", config)
+    record(config, "ready", "pinned source and installed signing profile recorded")
+    install_launch_agent()
+
+
+def install_launch_agent():
+    label = "net.codex-relay.ios-signing-renew"
+    destination = Path.home() / "Library/LaunchAgents" / (label + ".plist")
+    value = {
+        "Label": label,
+        "ProgramArguments": ["/usr/bin/python3", str(Path(__file__).resolve()), "check"],
+        "RunAtLoad": True,
+        "StartInterval": 21600,
+        "StandardOutPath": str(STATE_DIR / "refresh.stdout.log"),
+        "StandardErrorPath": str(STATE_DIR / "refresh.stderr.log"),
+    }
+    if destination.exists():
+        with open(destination, "rb") as existing:
+            if plistlib.load(existing) != value:
+                raise RuntimeError("LaunchAgent differs from the expected schedule; inspect it before replacing")
+        print("existing six-hour LaunchAgent kept", flush=True)
+        return
+    with open(destination, "wb") as output:
+        plistlib.dump(value, output)
+    os.chmod(destination, 0o600)
+    try:
+        run(["/bin/launchctl", "bootstrap", "gui/" + str(os.getuid()), str(destination)])
+    except Exception:
+        destination.unlink()
+        raise
+    print("scheduled every six hours using " + str(destination), flush=True)
+
+
+def refresh(config, force=False):
+    udid = config["device_udid"]
+    previous = expires_at(config["installed_profile_expires_at"])
+    now = dt.datetime.now(dt.timezone.utc)
+    if not renewal_due(now, previous, force):
+        record(config, "current", "next renewal when fewer than three days remain")
+        return
+    if not device_available(udid):
+        record(config, "waiting_for_iphone", "connect the paired iPhone to this Mac; will retry in six hours")
+        return
+
+    backup = Path(tempfile.mkdtemp(prefix="profile-backup-", dir=str(STATE_DIR)))
+    os.chmod(backup, 0o700)
+    moved = []
+    try:
+        for item in cached_profiles():
+            target = backup / (str(len(moved)) + "-" + item.name)
+            shutil.move(item, target)
+            moved.append((target, item))
+        project = STATE_DIR / "source/native/CodexRelay.xcodeproj"
+        app = STATE_DIR / "DerivedData/Build/Products/Debug-iphoneos/CodexRelay.app"
+        run(["/usr/bin/xcodebuild", "-project", str(project), "-scheme", "CodexRelay",
+             "-configuration", "Debug", "-destination", "platform=iOS,id=" + udid,
+             "-derivedDataPath", str(STATE_DIR / "DerivedData"),
+             "-allowProvisioningUpdates", "clean", "build"],
+            timeout=1200, output=STATE_DIR / "build.log")
+        embedded = profile(app / "embedded.mobileprovision")
+        new_expiry = expires_at(embedded["ExpirationDate"])
+        if not matching_profile(embedded) or udid not in embedded.get("ProvisionedDevices", []):
+            raise RuntimeError("renewed app has the wrong bundle or device")
+        if new_expiry <= previous or new_expiry <= dt.datetime.now(dt.timezone.utc) + RENEW_BEFORE:
+            raise RuntimeError("Xcode did not extend the app profile expiry")
+        run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(app)], timeout=30)
+        run(["/usr/bin/xcrun", "devicectl", "device", "install", "app", "--device", udid, str(app)],
+            timeout=180, output=STATE_DIR / "install.log")
+        config["installed_profile_expires_at"] = new_expiry.isoformat()
+        config["last_installed_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+        write_json(STATE_DIR / "config.json", config)
+        record(config, "renewed", "signed app reinstalled over existing app")
+    finally:
+        for saved, original in moved:
+            if not original.exists():
+                shutil.move(saved, original)
+            else:
+                saved.unlink()
+        shutil.rmtree(backup)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest="command", required=True)
+    setup_parser = sub.add_parser("setup", help="pin the currently installed app version")
+    setup_parser.add_argument("--device", required=True)
+    setup_parser.add_argument("--app", type=Path, required=True)
+    check_parser = sub.add_parser("check", help="refresh when the installed profile is near expiry")
+    check_parser.add_argument("--force", action="store_true", help="renew now for an end-to-end check")
+    args = parser.parse_args()
+    try:
+        STATE_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
+        os.chmod(STATE_DIR, 0o700)
+        with open(STATE_DIR / "lock", "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            if args.command == "setup":
+                setup(args.device, args.app)
+            else:
+                config = get_config()
+                try:
+                    refresh(config, force=args.force)
+                except Exception as exc:
+                    record(config, "failed", str(exc))
+                    raise
+    except Exception as exc:
+        print("iPhone signing renewal: " + str(exc), file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

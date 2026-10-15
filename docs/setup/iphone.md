@@ -12,10 +12,36 @@
 
 The release IPA is an unsigned iPhone/iPad device build. It needs signing before
 iOS can launch it; tapping it in Files alone does not install it. With a free
-Apple account, sideloaded apps [expire after seven days](https://faq.altstore.io/altstore-classic/your-altstore)
-and require refresh through AltStore/AltServer. This distribution path is
+Apple account, [Personal Team provisioning expires after seven days](https://developer.apple.com/help/account/basics/about-your-developer-account),
+and AltStore-signed apps need [regular refresh](https://faq.altstore.io/altstore-classic/your-altstore)
+through AltStore/AltServer. This distribution path is
 documented; the release's device packaging is checked independently of an
 end-to-end AltStore installation. TestFlight/App Store distribution is not yet available.
+
+### Keep a local Personal Team development install renewed
+
+An Xcode-signed **Personal Team** development app also stops opening when its
+seven-day profile expires. Keep the same Apple Account in Xcode and install over
+the existing app; deleting it risks losing local pairing. On the owner's Mac,
+`scripts/ios_signing_renew.py` can renew that install automatically while the
+paired iPhone is reachable. After a successful signed build and in-place install:
+
+```sh
+python3 scripts/ios_signing_renew.py setup --device YOUR_IPHONE_UDID \
+  --app /path/to/DerivedData/Build/Products/Debug-iphoneos/CodexRelay.app
+python3 scripts/ios_signing_renew.py check
+```
+
+Setup pins the current committed source and private local signing configuration,
+then installs a user LaunchAgent that checks every six hours. With three days
+left, it asks Xcode for a fresh profile and reinstalls the same app version. It
+never silently publishes later checkout edits. The local status and build/install
+logs are under `~/Library/Application Support/CodexRelay/iPhoneSigningGuard/`.
+The profile itself is managed by Xcode and is not committed. Automatic renewal
+still requires this Mac to be awake, Xcode's account signed in and the paired
+iPhone reachable during the renewal window. If those conditions fail, the job
+retries; inspect `status.json` if the phone was away. The Safari Home Screen
+version below remains available without development signing.
 
 ## Immediate access through Safari
 
