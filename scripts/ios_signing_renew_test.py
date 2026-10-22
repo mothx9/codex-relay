@@ -1,6 +1,8 @@
 import datetime as dt
 import subprocess
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import ios_signing_renew as guard
@@ -49,6 +51,35 @@ class SigningRenewalTests(unittest.TestCase):
             guard.refresh(config)
         self.assertEqual(record.call_args.args[:2], (config, "waiting_for_iphone"))
         alert.assert_called_once_with(expiry)
+
+    def test_launch_rejection_is_not_recorded_as_renewed(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(guard, "STATE_DIR", Path(tmp)), \
+             patch.object(guard, "run", side_effect=subprocess.CalledProcessError(1, "devicectl")), \
+             patch.object(guard, "record") as record, patch.object(guard, "alert_unverified") as alert:
+            config = {"device_udid": "test-device", "installed_profile_expires_at": "2026-10-29T18:00:00+00:00",
+                      "pending_launch_validation": True}
+            self.assertFalse(guard.verify_launch(config))
+            self.assertTrue(config["pending_launch_validation"])
+            self.assertEqual(record.call_args.args[:2], (config, "installed_unverified"))
+            alert.assert_called_once()
+
+    def test_successful_launch_clears_pending_validation(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(guard, "STATE_DIR", Path(tmp)), \
+             patch.object(guard, "run"), patch.object(guard, "record") as record:
+            config = {"device_udid": "test-device", "installed_profile_expires_at": "2026-10-29T18:00:00+00:00",
+                      "pending_launch_validation": True}
+            self.assertTrue(guard.verify_launch(config))
+            self.assertNotIn("pending_launch_validation", config)
+            self.assertEqual(record.call_args.args[:2], (config, "renewed"))
+
+    def test_pending_launch_retries_without_rebuilding(self):
+        expiry = dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=7)
+        config = {"device_udid": "test-device", "installed_profile_expires_at": expiry.isoformat(),
+                  "pending_launch_validation": True}
+        with patch.object(guard, "device_available", return_value=True), \
+             patch.object(guard, "verify_launch") as launch:
+            guard.refresh(config)
+        launch.assert_called_once_with(config)
 
 
 if __name__ == "__main__":

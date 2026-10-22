@@ -145,6 +145,10 @@ def alert_failure():
     post_alert("renewal_failed", "Codex Relay could not renew. Check Xcode Accounts and the local build log.")
 
 
+def alert_unverified():
+    post_alert("launch_unverified", "Codex Relay was installed but launch is unverified. Open it on iPhone and check any trust prompt.")
+
+
 def device_available(udid):
     with tempfile.TemporaryDirectory(prefix="relay-device-") as name:
         result = Path(name) / "devices.json"
@@ -262,11 +266,29 @@ def install_launch_agent():
     print("scheduled every 15 minutes using " + str(destination), flush=True)
 
 
+def verify_launch(config):
+    """Only report a renewed install after iOS accepts a launch request."""
+    try:
+        run(["/usr/bin/xcrun", "devicectl", "device", "process", "launch",
+             "--device", config["device_udid"], "--no-activate", BUNDLE_ID],
+            timeout=60, output=STATE_DIR / "launch.log")
+    except (OSError, subprocess.SubprocessError):
+        record(config, "installed_unverified", "iOS did not accept launch; inspect launch.log and check any trust prompt on iPhone")
+        alert_unverified()
+        return False
+    config.pop("pending_launch_validation", None)
+    write_json(STATE_DIR / "config.json", config)
+    (STATE_DIR / "alert.json").unlink(missing_ok=True)
+    record(config, "renewed", "signed app installed and iOS accepted launch")
+    return True
+
+
 def refresh(config, force=False):
     udid = config["device_udid"]
     previous = expires_at(config["installed_profile_expires_at"])
     now = dt.datetime.now(dt.timezone.utc)
-    if not renewal_due(now, previous, force):
+    pending = bool(config.get("pending_launch_validation")) and now < previous
+    if not pending and not renewal_due(now, previous, force):
         record(config, "current", "next renewal when fewer than three days remain")
         return
     try:
@@ -274,8 +296,16 @@ def refresh(config, force=False):
     except (OSError, subprocess.SubprocessError, ValueError):
         available = False
     if not available:
-        record(config, "waiting_for_iphone", "connect and unlock the paired iPhone; will retry in 15 minutes")
-        alert_unavailable(previous)
+        detail = "connect and unlock the paired iPhone; will retry launch validation in 15 minutes" if pending else \
+            "connect and unlock the paired iPhone; will retry in 15 minutes"
+        record(config, "waiting_for_iphone", detail)
+        if pending:
+            alert_unverified()
+        else:
+            alert_unavailable(previous)
+        return
+    if pending:
+        verify_launch(config)
         return
 
     backup = Path(tempfile.mkdtemp(prefix="profile-backup-", dir=str(STATE_DIR)))
@@ -304,9 +334,9 @@ def refresh(config, force=False):
             timeout=180, output=STATE_DIR / "install.log")
         config["installed_profile_expires_at"] = new_expiry.isoformat()
         config["last_installed_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+        config["pending_launch_validation"] = True
         write_json(STATE_DIR / "config.json", config)
-        (STATE_DIR / "alert.json").unlink(missing_ok=True)
-        record(config, "renewed", "signed app reinstalled over existing app")
+        verify_launch(config)
     finally:
         for saved, original in moved:
             if not original.exists():

@@ -11,6 +11,9 @@ from the downloadable self-hosted release.
   reminders when renewal is due or a signing attempt fails. Existing six-hour
   LaunchAgents can be updated with `ios_signing_renew.py schedule`. A reachable
   paired iPhone is still required to extend a free Personal Team install.
+- In-place iPhone renewals now verify that iOS accepts an app launch before
+  reporting success. A launch that iOS does not accept stays visible as
+  `installed_unverified` and is retried without deleting the installation.
 
 ## v0.1.0 — 2026-10-08 (refreshed 2026-10-15)
 

@@ -50,6 +50,15 @@ six-hour schedule without reinstalling the app, run
 cannot be renewed while the iPhone remains unreachable. The Safari Home Screen
 version below remains available without development signing.
 
+The guard also asks iOS to launch the newly installed app before it reports
+`renewed`. If installation succeeds but iOS refuses to open it, `status.json`
+shows `installed_unverified` and the guard retries launch validation on its next
+check without deleting the app or rebuilding it. Inspect `launch.log` for the
+device error. On iPhone, open the app and follow any developer trust or
+verification prompt; check **Settings → General → VPN & Device Management** if
+one appears. A valid local signature and provisioning profile alone do not
+prove that iOS will allow the app to launch.
+
 ## Immediate access through Safari
 
 For a route without signing or a computer, open the Hub's HTTPS URL in Safari,
