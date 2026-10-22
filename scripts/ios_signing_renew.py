@@ -27,6 +27,8 @@ PROFILE_DIRS = (
     Path.home() / "Library/MobileDevice/Provisioning Profiles",
 )
 RENEW_BEFORE = dt.timedelta(days=3)
+CHECK_INTERVAL_SECONDS = 15 * 60
+ALERT_INTERVAL = dt.timedelta(days=1)
 
 
 def run(args, *, timeout=60, output=None):
@@ -91,6 +93,49 @@ def record(config, status, detail=""):
         "detail": detail,
     })
     print(status + (": " + detail if detail else ""), flush=True)
+
+
+def alert_stage(now, expiry):
+    if now >= expiry:
+        return "expired"
+    if renewal_due(now, expiry):
+        return "due"
+    return None
+
+
+def should_alert(now, stage, previous):
+    if not stage:
+        return False
+    if previous.get("stage") != stage:
+        return True
+    try:
+        return now - expires_at(previous["alerted_at"]) >= ALERT_INTERVAL
+    except (KeyError, TypeError, ValueError):
+        return True
+
+
+def alert_unavailable(expiry):
+    now = dt.datetime.now(dt.timezone.utc)
+    stage = alert_stage(now, expiry)
+    alert_file = STATE_DIR / "alert.json"
+    try:
+        previous = json.loads(alert_file.read_text())
+    except (OSError, ValueError):
+        previous = {}
+    if not isinstance(previous, dict):
+        previous = {}
+    if not should_alert(now, stage, previous):
+        return
+    if stage == "expired":
+        message = "Codex Relay has expired on iPhone. Connect and unlock it to reinstall."
+    else:
+        message = "Connect and unlock your iPhone so Codex Relay can renew before expiry."
+    script = f'display notification "{message}" with title "Codex Relay"'
+    try:
+        run(["/usr/bin/osascript", "-e", script], timeout=15)
+    except (OSError, subprocess.SubprocessError):
+        return
+    write_json(alert_file, {"stage": stage, "alerted_at": now.isoformat()})
 
 
 def device_available(udid):
@@ -161,22 +206,43 @@ def setup(udid, app):
     install_launch_agent()
 
 
-def install_launch_agent():
+def launch_agent_value(interval=CHECK_INTERVAL_SECONDS):
     label = "net.codex-relay.ios-signing-renew"
-    destination = Path.home() / "Library/LaunchAgents" / (label + ".plist")
-    value = {
+    return {
         "Label": label,
         "ProgramArguments": ["/usr/bin/python3", str(Path(__file__).resolve()), "check"],
         "RunAtLoad": True,
-        "StartInterval": 21600,
+        "StartInterval": interval,
         "StandardOutPath": str(STATE_DIR / "refresh.stdout.log"),
         "StandardErrorPath": str(STATE_DIR / "refresh.stderr.log"),
     }
+
+
+def install_launch_agent():
+    label = "net.codex-relay.ios-signing-renew"
+    destination = Path.home() / "Library/LaunchAgents" / (label + ".plist")
+    value = launch_agent_value()
     if destination.exists():
         with open(destination, "rb") as existing:
-            if plistlib.load(existing) != value:
-                raise RuntimeError("LaunchAgent differs from the expected schedule; inspect it before replacing")
-        print("existing six-hour LaunchAgent kept", flush=True)
+            old_value = plistlib.load(existing)
+        if old_value == value:
+            print("existing 15-minute LaunchAgent kept", flush=True)
+            return
+        if old_value != launch_agent_value(21600):
+            raise RuntimeError("LaunchAgent differs from the known schedule; inspect it before replacing")
+        run(["/bin/launchctl", "bootout", "gui/" + str(os.getuid()) + "/" + label])
+        try:
+            with open(destination, "wb") as output:
+                plistlib.dump(value, output)
+            os.chmod(destination, 0o600)
+            run(["/bin/launchctl", "bootstrap", "gui/" + str(os.getuid()), str(destination)])
+        except Exception:
+            with open(destination, "wb") as output:
+                plistlib.dump(old_value, output)
+            os.chmod(destination, 0o600)
+            run(["/bin/launchctl", "bootstrap", "gui/" + str(os.getuid()), str(destination)])
+            raise
+        print("updated LaunchAgent to check every 15 minutes", flush=True)
         return
     with open(destination, "wb") as output:
         plistlib.dump(value, output)
@@ -186,7 +252,7 @@ def install_launch_agent():
     except Exception:
         destination.unlink()
         raise
-    print("scheduled every six hours using " + str(destination), flush=True)
+    print("scheduled every 15 minutes using " + str(destination), flush=True)
 
 
 def refresh(config, force=False):
@@ -196,8 +262,13 @@ def refresh(config, force=False):
     if not renewal_due(now, previous, force):
         record(config, "current", "next renewal when fewer than three days remain")
         return
-    if not device_available(udid):
-        record(config, "waiting_for_iphone", "connect the paired iPhone to this Mac; will retry in six hours")
+    try:
+        available = device_available(udid)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        available = False
+    if not available:
+        record(config, "waiting_for_iphone", "connect and unlock the paired iPhone; will retry in 15 minutes")
+        alert_unavailable(previous)
         return
 
     backup = Path(tempfile.mkdtemp(prefix="profile-backup-", dir=str(STATE_DIR)))
@@ -227,6 +298,7 @@ def refresh(config, force=False):
         config["installed_profile_expires_at"] = new_expiry.isoformat()
         config["last_installed_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
         write_json(STATE_DIR / "config.json", config)
+        (STATE_DIR / "alert.json").unlink(missing_ok=True)
         record(config, "renewed", "signed app reinstalled over existing app")
     finally:
         for saved, original in moved:
@@ -245,6 +317,7 @@ def main():
     setup_parser.add_argument("--app", type=Path, required=True)
     check_parser = sub.add_parser("check", help="refresh when the installed profile is near expiry")
     check_parser.add_argument("--force", action="store_true", help="renew now for an end-to-end check")
+    sub.add_parser("schedule", help="install or update the periodic LaunchAgent")
     args = parser.parse_args()
     try:
         STATE_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -253,6 +326,8 @@ def main():
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             if args.command == "setup":
                 setup(args.device, args.app)
+            elif args.command == "schedule":
+                install_launch_agent()
             else:
                 config = get_config()
                 try:

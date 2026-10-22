@@ -33,14 +33,19 @@ python3 scripts/ios_signing_renew.py check
 ```
 
 Setup pins the current committed source and private local signing configuration,
-then installs a user LaunchAgent that checks every six hours. With three days
-left, it asks Xcode for a fresh profile and reinstalls the same app version. It
+then installs a user LaunchAgent that checks every 15 minutes while the Mac is
+awake. With three days left, it asks Xcode for a fresh profile and reinstalls
+the same app version. If the iPhone is unavailable, it posts a Mac notification
+at most once per day and again when the profile expires. It
 never silently publishes later checkout edits. The local status and build/install
 logs are under `~/Library/Application Support/CodexRelay/iPhoneSigningGuard/`.
 The profile itself is managed by Xcode and is not committed. Automatic renewal
 still requires this Mac to be awake, Xcode's account signed in and the paired
 iPhone reachable during the renewal window. If those conditions fail, the job
-retries; inspect `status.json` if the phone was away. The Safari Home Screen
+retries; inspect `status.json` if the phone was away. To update an older
+six-hour schedule without reinstalling the app, run
+`python3 scripts/ios_signing_renew.py schedule`. A free Personal Team profile
+cannot be renewed while the iPhone remains unreachable. The Safari Home Screen
 version below remains available without development signing.
 
 ## Immediate access through Safari
