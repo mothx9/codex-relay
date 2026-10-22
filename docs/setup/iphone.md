@@ -39,8 +39,10 @@ the same app version. If the iPhone is unavailable, it posts a Mac notification
 at most once per day and again when the profile expires. It
 never silently publishes later checkout edits. The local status and build/install
 logs are under `~/Library/Application Support/CodexRelay/iPhoneSigningGuard/`.
-The profile itself is managed by Xcode and is not committed. Automatic renewal
-still requires this Mac to be awake, Xcode's account signed in and the paired
+The profile itself is managed by Xcode and is not committed. A failed signing
+attempt also posts a Mac notification; inspect `build.log` and confirm the Apple
+Account in **Xcode → Settings → Accounts**. Automatic renewal still requires
+this Mac to be awake, Xcode's account signed in and the paired
 iPhone reachable during the renewal window. If those conditions fail, the job
 retries; inspect `status.json` if the phone was away. To update an older
 six-hour schedule without reinstalling the app, run

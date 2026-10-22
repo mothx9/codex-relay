@@ -8,9 +8,9 @@ from the downloadable self-hosted release.
 
 - The Mac signing guard now checks every 15 minutes while awake, treats device
   discovery timeouts as an unavailable iPhone and posts rate-limited Mac
-  reminders when renewal is due. Existing six-hour LaunchAgents can be updated
-  with `ios_signing_renew.py schedule`. A reachable paired iPhone is still
-  required to extend a free Personal Team install.
+  reminders when renewal is due or a signing attempt fails. Existing six-hour
+  LaunchAgents can be updated with `ios_signing_renew.py schedule`. A reachable
+  paired iPhone is still required to extend a free Personal Team install.
 
 ## v0.1.0 — 2026-10-08 (refreshed 2026-10-15)
 

@@ -114,9 +114,8 @@ def should_alert(now, stage, previous):
         return True
 
 
-def alert_unavailable(expiry):
+def post_alert(stage, message):
     now = dt.datetime.now(dt.timezone.utc)
-    stage = alert_stage(now, expiry)
     alert_file = STATE_DIR / "alert.json"
     try:
         previous = json.loads(alert_file.read_text())
@@ -126,16 +125,24 @@ def alert_unavailable(expiry):
         previous = {}
     if not should_alert(now, stage, previous):
         return
-    if stage == "expired":
-        message = "Codex Relay has expired on iPhone. Connect and unlock it to reinstall."
-    else:
-        message = "Connect and unlock your iPhone so Codex Relay can renew before expiry."
     script = f'display notification "{message}" with title "Codex Relay"'
     try:
         run(["/usr/bin/osascript", "-e", script], timeout=15)
     except (OSError, subprocess.SubprocessError):
         return
     write_json(alert_file, {"stage": stage, "alerted_at": now.isoformat()})
+
+
+def alert_unavailable(expiry):
+    stage = alert_stage(dt.datetime.now(dt.timezone.utc), expiry)
+    if stage == "expired":
+        post_alert(stage, "Codex Relay has expired on iPhone. Connect and unlock it to reinstall.")
+    elif stage == "due":
+        post_alert(stage, "Connect and unlock your iPhone so Codex Relay can renew before expiry.")
+
+
+def alert_failure():
+    post_alert("renewal_failed", "Codex Relay could not renew. Check Xcode Accounts and the local build log.")
 
 
 def device_available(udid):
@@ -334,6 +341,7 @@ def main():
                     refresh(config, force=args.force)
                 except Exception as exc:
                     record(config, "failed", str(exc))
+                    alert_failure()
                     raise
     except Exception as exc:
         print("iPhone signing renewal: " + str(exc), file=sys.stderr)
